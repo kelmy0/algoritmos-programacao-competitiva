@@ -10,7 +10,7 @@ This project is divided into two main parts.
 First, clone the repository to your local machine:
 
 ```sh
-git clone [https://github.com/kelmy0/algoritmos-programacao-competitiva](https://github.com/kelmy0/algoritmos-programacao-competitiva)
+git clone https://github.com/kelmy0/algoritmos-programacao-competitiva.git
 cd algoritmos-programacao-competitiva
 ```
 
