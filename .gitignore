@@ -1,0 +1,45 @@
+node_modules/
+
+# SvelteKit / Frontend Output
+frontend/.output
+frontend/.vercel
+frontend/.netlify
+frontend/.wrangler
+frontend/.svelte-kit
+frontend/build
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+*.js.timestamp-*
+*.ts.timestamp-*
+
+# IDEs / Editors
+.vscode/
+.idea/
+
+# Go Binaries and package artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go Test artifacts
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Go workspace file
+go.work
+go.work.sum
