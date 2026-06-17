@@ -30,9 +30,10 @@ Before running the backend, make sure you have installed:
 
 ### 1. Setup the Database
 1. Open your PostgreSQL client and create a new database:
-   ```sql
-   CREATE DATABASE "algoritmos-programacao-competitiva";
-   ```
+```sql
+CREATE DATABASE
+"algoritmos-programacao-competitiva";
+```
 
 ### 2. Environment Variables
 1. Navigate to the backend folder:
