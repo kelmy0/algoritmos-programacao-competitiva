@@ -8,6 +8,7 @@ import (
 )
 
 func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool) {
+	// Algorithm Handlers and Services
 	algoService := services.NewAlgorithmService(db)
 	algoHandler := handlers.NewAlgorithmHandler(algoService)
 

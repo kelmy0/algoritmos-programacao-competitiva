@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	// Development flags
 	seedFlag := flag.Bool("seed", false, "Populates the Database with the seeds.")
 	resetFlag := flag.Bool("resetDB", false, "Resets all DB data")
 	flag.Parse()
@@ -23,12 +24,22 @@ func main() {
 		log.Println("⚠️ Warning: .env not found. Using environmental variables.")
 	}
 
+	env := os.Getenv("APP_ENV")
+
+	if env == "production" {
+		if *resetFlag || *seedFlag {
+			log.Fatalf("❌ Security Error: It's not allowed to use these flags in production.")
+		}
+	}
+
+	// Database connection
 	if !database.ConnectDB(*resetFlag) {
 		log.Fatalln("❌ Fatal error: Could not connect to database or run migrations.")
 	}
 
 	defer database.DB.Close()
 
+	// Database flags functions
 	if *seedFlag {
 		database.RunSeeds()
 		return
@@ -38,15 +49,15 @@ func main() {
 		return
 	}
 
-	env := os.Getenv("APP_ENV")
+	// Port config
 	port := os.Getenv("PORT")
-
 	if port == "" {
 		port = "8080"
 	}
 
 	router := gin.Default()
 
+	// CORS config
 	switch env {
 	case "production":
 		gin.SetMode(gin.ReleaseMode)
@@ -73,11 +84,11 @@ func main() {
 		log.Fatalln("❌ Fatal error: Missing .env parameters.")
 	}
 
+	// Routes config
 	routes.ConfigRoutes(router, database.DB)
 
 	if string(port[0]) != ":" {
 		port = ":" + port
 	}
 	router.Run(port)
-
 }

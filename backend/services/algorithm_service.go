@@ -16,6 +16,7 @@ func NewAlgorithmService(db *pgxpool.Pool) *AlgorithmService {
 	return &AlgorithmService{db: db}
 }
 
+// List some Algorithms
 func (s *AlgorithmService) List(limit, offset int) ([]models.Algorithm, error) {
 	query := `
 		SELECT id, name, category, difficulty, content, created_at, updated_at
@@ -54,6 +55,7 @@ func (s *AlgorithmService) List(limit, offset int) ([]models.Algorithm, error) {
 	return list, nil
 }
 
+// Get a specific algorithm by id
 func (s *AlgorithmService) GetById(id string) (*models.Algorithm, error) {
 	query := `
 		SELECT id, name, category, difficulty, content, created_at, updated_at

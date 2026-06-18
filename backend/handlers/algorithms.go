@@ -16,6 +16,7 @@ func NewAlgorithmHandler(service *services.AlgorithmService) *AlgorithmHandler {
 	return &AlgorithmHandler{service: service}
 }
 
+// List algorithms
 func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
@@ -46,6 +47,7 @@ func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 	})
 }
 
+// Get algorithm by id
 func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 	id := c.Param("id")
 

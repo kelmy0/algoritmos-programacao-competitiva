@@ -30,6 +30,7 @@ func ConnectDB(reset bool) bool {
 		return false
 	}
 
+	// Try running the migrations at startup
 	if !runMigrations(connStr, reset) {
 		return false
 	}
