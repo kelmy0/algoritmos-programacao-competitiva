@@ -8,15 +8,15 @@ import (
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-var DB *pgx.Conn
+var DB *pgxpool.Pool
 
-func ConnectDB() bool {
+func ConnectDB(reset bool) bool {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
 		log.Println("❌ DATABASE_URL not found.")
@@ -24,20 +24,20 @@ func ConnectDB() bool {
 	}
 
 	var err error
-	DB, err = pgx.Connect(context.Background(), connStr)
+	DB, err = pgxpool.New(context.Background(), connStr)
 	if err != nil {
 		log.Printf("❌ Error connecting to the database: %v\n", err)
 		return false
 	}
 
-	if !runMigrations(connStr) {
+	if !runMigrations(connStr, reset) {
 		return false
 	}
 
 	return true
 }
 
-func runMigrations(connStr string) bool {
+func runMigrations(connStr string, shouldReset bool) bool {
 	migrateConnStr := strings.Replace(connStr, "postgres://", "pgx5://", 1)
 	migrateConnStr = strings.Replace(migrateConnStr, "postgresql://", "pgx5://", 1)
 
@@ -46,6 +46,15 @@ func runMigrations(connStr string) bool {
 	if err != nil {
 		log.Printf("❌ Error initializing the migration manager: %v\n", err)
 		return false
+	}
+
+	m.Force(1)
+	if shouldReset {
+		log.Println("🗑️ Dropping all tables and types...")
+		if err := m.Down(); err != nil && err != migrate.ErrNoChange {
+			log.Printf("⚠️ Warning during database clean: %v\n", err)
+		}
+		log.Println("✨ Database cleaned successfully!")
 	}
 
 	err = m.Up()

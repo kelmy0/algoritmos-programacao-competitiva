@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 	"os"
@@ -16,6 +15,7 @@ import (
 
 func main() {
 	seedFlag := flag.Bool("seed", false, "Populates the Database with the seeds.")
+	resetFlag := flag.Bool("resetDB", false, "Resets all DB data")
 	flag.Parse()
 
 	err := godotenv.Load()
@@ -23,14 +23,18 @@ func main() {
 		log.Println("⚠️ Warning: .env not found. Using environmental variables.")
 	}
 
-	if !database.ConnectDB() {
+	if !database.ConnectDB(*resetFlag) {
 		log.Fatalln("❌ Fatal error: Could not connect to database or run migrations.")
 	}
 
-	defer database.DB.Close(context.Background())
+	defer database.DB.Close()
 
 	if *seedFlag {
 		database.RunSeeds()
+		return
+	}
+
+	if *resetFlag {
 		return
 	}
 
@@ -69,7 +73,7 @@ func main() {
 		log.Fatalln("❌ Fatal error: Missing .env parameters.")
 	}
 
-	routes.ConfigRoutes(router)
+	routes.ConfigRoutes(router, database.DB)
 
 	if string(port[0]) != ":" {
 		port = ":" + port

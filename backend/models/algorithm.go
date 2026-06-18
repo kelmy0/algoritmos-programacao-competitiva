@@ -16,6 +16,7 @@ type Algorithm struct {
 	Name       string     `json:"name" db:"name"`
 	Category   string     `json:"category" db:"category"`
 	Difficulty Difficulty `json:"difficulty" db:"difficulty"`
+	Content    string     `json:"content" db:"content"`
 	CreatedAt  time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at" db:"updated_at"`
 }
