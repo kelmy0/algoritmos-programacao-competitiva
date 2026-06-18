@@ -18,22 +18,10 @@ func NewAlgorithmHandler(service *services.AlgorithmService) *AlgorithmHandler {
 
 // List algorithms
 func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
-	pageStr := c.DefaultQuery("page", "1")
-	limitStr := c.DefaultQuery("limit", "10")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	page, _ := strconv.Atoi(pageStr)
-	limit, _ := strconv.Atoi(limitStr)
-
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 10
-	}
-
-	offset := (page - 1) * limit
-
-	algorithms, err := h.service.List(limit, offset)
+	algorithms, finalPage, err := h.service.List(c.Request.Context(), page, limit)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error querying algorithms"})
@@ -41,7 +29,7 @@ func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"page":  page,
+		"page":  finalPage,
 		"limit": limit,
 		"data":  algorithms,
 	})
@@ -53,10 +41,10 @@ func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Id"})
+		return
 	}
 
-	algorithm, err := h.service.GetById(id)
-
+	algorithm, err := h.service.GetAlgorithmById(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error geting content"})
 		return
