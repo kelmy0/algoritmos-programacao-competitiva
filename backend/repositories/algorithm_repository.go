@@ -18,13 +18,13 @@ func NewAlgorithmRepository(db *pgxpool.Pool) *AlgorithmRepository {
 
 func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]models.Algorithm, error) {
 	query := `
-		SELECT id, name, category, difficulty, content, created_at, updated_at
+		SELECT id, public_id, slug, name, category, difficulty, content, created_at, updated_at
 		FROM algorithms
 		ORDER BY name ASC
 		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := r.db.Query(context.Background(), query, limit, offset)
+	rows, err := r.db.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query algorithms: %w", err)
 	}
@@ -36,6 +36,8 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]mo
 
 		err := rows.Scan(
 			&algo.Id,
+			&algo.PublicId,
+			&algo.Slug,
 			&algo.Name,
 			&algo.Category,
 			&algo.Difficulty,
@@ -53,16 +55,18 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]mo
 	return list, nil
 }
 
-func (r *AlgorithmRepository) GetById(ctx context.Context, id string) (*models.Algorithm, error) {
+func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error) {
 	query := `
-		SELECT id, name, category, difficulty, content, created_at, updated_at
+		SELECT id, public_id, slug, name, category, difficulty, content, created_at, updated_at
 		FROM algorithms
-		WHERE id = $1
+		WHERE public_id = $1
 	`
 
 	var algo models.Algorithm
-	err := r.db.QueryRow(context.Background(), query, id).Scan(
+	err := r.db.QueryRow(ctx, query, publicId).Scan(
 		&algo.Id,
+		&algo.PublicId,
+		&algo.Slug,
 		&algo.Name,
 		&algo.Category,
 		&algo.Difficulty,

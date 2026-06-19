@@ -13,6 +13,8 @@ const (
 
 type Algorithm struct {
 	Id         string     `json:"id" db:"id"`
+	PublicId   string     `json:"public_id" db:"public_id"`
+	Slug       string     `json:"slug" db:"slug"`
 	Name       string     `json:"name" db:"name"`
 	Category   string     `json:"category" db:"category"`
 	Difficulty Difficulty `json:"difficulty" db:"difficulty"`

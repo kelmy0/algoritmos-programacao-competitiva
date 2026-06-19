@@ -2,7 +2,9 @@ CREATE TYPE difficulty_level AS ENUM ('beginner', 'intermediate', 'advanced', 'e
 
 CREATE TABLE algorithms (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(128) UNIQUE NOT NULL,
+    public_id VARCHAR(8) UNIQUE NOT NULL,
+    slug VARCHAR(128) NOT NULL,
+    name VARCHAR(128) NOT NULL,
     category VARCHAR(64) NOT NULL,
     difficulty difficulty_level NOT NULL,
     content TEXT NOT NULL,

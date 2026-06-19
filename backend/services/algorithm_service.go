@@ -8,7 +8,7 @@ import (
 
 type AlgorithmRepository interface {
 	List(ctx context.Context, limit, offset int) ([]models.Algorithm, error)
-	GetById(ctx context.Context, id string) (*models.Algorithm, error)
+	GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error)
 }
 
 type AlgorithmService struct {
@@ -35,6 +35,6 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 }
 
 // Get a specific algorithm by id
-func (s *AlgorithmService) GetAlgorithmById(ctx context.Context, id string) (*models.Algorithm, error) {
-	return s.repo.GetById(ctx, id)
+func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, id string) (*models.Algorithm, error) {
+	return s.repo.GetByPublicID(ctx, id)
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
@@ -37,16 +38,21 @@ func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 
 // Get algorithm by id
 func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
-	id := c.Param("id")
+	//algorithm-slug-publicId
+	slugAndId := c.Param("slugAndId")
 
-	if id == "" {
+	lastHifen := strings.LastIndex(slugAndId, "-")
+
+	if slugAndId == "" || lastHifen == -1 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Id"})
 		return
 	}
 
-	algorithm, err := h.service.GetAlgorithmById(c.Request.Context(), id)
+	public_id := slugAndId[lastHifen+1:]
+
+	algorithm, err := h.service.GetAlgorithmByPublicID(c.Request.Context(), public_id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error geting content"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
