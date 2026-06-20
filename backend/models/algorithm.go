@@ -22,3 +22,12 @@ type Algorithm struct {
 	CreatedAt  time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at" db:"updated_at"`
 }
+
+type NewAlgorithm struct {
+	PublicId   string     `db:"public_id"`
+	Slug       string     `db:"slug"`
+	Name       string     `db:"name"`
+	Category   string     `db:"category"`
+	Difficulty Difficulty `db:"difficulty,oneof=beginner intermediate advanced expert"`
+	Content    string     `db:"content"`
+}

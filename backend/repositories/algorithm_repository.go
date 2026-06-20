@@ -81,3 +81,37 @@ func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string
 
 	return &algo, nil
 }
+
+func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*models.Algorithm, error) {
+	query := `
+		INSERT INTO algorithms (public_id, slug, name, category, difficulty, content) VALUES
+		($1, $2, $3, $4, $5, $6)
+		RETURNING id, public_id, slug, name, category, difficulty, content, created_at, updated_at;
+	`
+
+	var algo models.Algorithm
+	err := r.db.QueryRow(ctx, query,
+		data.PublicId,
+		data.Slug,
+		data.Name,
+		data.Category,
+		data.Difficulty,
+		data.Content,
+	).Scan(
+		&algo.Id,
+		&algo.PublicId,
+		&algo.Slug,
+		&algo.Name,
+		&algo.Category,
+		&algo.Difficulty,
+		&algo.Content,
+		&algo.CreatedAt,
+		&algo.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &algo, nil
+}

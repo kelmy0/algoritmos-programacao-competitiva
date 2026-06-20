@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
@@ -51,6 +52,26 @@ func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 	public_id := slugAndId[lastHifen+1:]
 
 	algorithm, err := h.service.GetAlgorithmByPublicID(c.Request.Context(), public_id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": algorithm,
+	})
+}
+
+func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
+	var requestBody dto.PostAlgorithmRequest
+
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	algorithm, err := h.service.PostAlgorithm(c.Request.Context(), requestBody)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -19,5 +19,10 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool) {
 		api.GET("/ping", handlers.AnswerPing)
 		api.GET("/algorithms", algoHandler.ListAlgorithms)
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
+
+		admin := api.Group("/admin")
+		{
+			admin.POST("/algorithms", algoHandler.PostAlgorithm)
+		}
 	}
 }
