@@ -16,22 +16,16 @@ import (
 
 var DB *pgxpool.Pool
 
-func ConnectDB(reset bool) bool {
-	connStr := os.Getenv("DATABASE_URL")
-	if connStr == "" {
-		log.Println("❌ DATABASE_URL not found.")
-		return false
-	}
-
+func ConnectDB(reset bool, dbURL string) bool {
 	var err error
-	DB, err = pgxpool.New(context.Background(), connStr)
+	DB, err = pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		log.Printf("❌ Error connecting to the database: %v\n", err)
 		return false
 	}
 
 	// Try running the migrations at startup
-	if !runMigrations(connStr, reset) {
+	if !runMigrations(dbURL, reset) {
 		return false
 	}
 
