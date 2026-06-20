@@ -16,7 +16,7 @@ func SetupCORS(cfg *config.Config) gin.HandlerFunc {
 
 		return cors.New(cors.Config{
 			AllowOrigins:     []string{"https://algoritimos-programacao-competitiva.com"},
-			AllowMethods:     []string{"GET", "POST"},
+			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
 			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,
