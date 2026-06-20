@@ -8,7 +8,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-var LippinRegex = regexp.MustCompile(`[^\p{L}\s\-\.]+`)
+var LippinRegex = regexp.MustCompile(`[^\p{L}\s\-\.\d]+`)
 
 func SanitizeName(name string) string {
 	cleanName := LippinRegex.ReplaceAllString(name, "")

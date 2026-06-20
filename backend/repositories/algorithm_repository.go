@@ -142,3 +142,38 @@ func (r *AlgorithmRepository) DeleteAlgorithm(ctx context.Context, publicId stri
 
 	return &algo, nil
 }
+
+func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutAlgorithm) (*models.Algorithm, error) {
+	query := `
+		UPDATE algorithms 
+		SET slug = $1, name = $2, category = $3, difficulty = $4, content = $5
+		WHERE public_id = $6
+		RETURNING id, public_id, slug, name, category, difficulty, content, created_at, updated_at;
+	`
+
+	var algo models.Algorithm
+	err := r.db.QueryRow(ctx, query,
+		data.Slug,
+		data.Name,
+		data.Category,
+		data.Difficulty,
+		data.Content,
+		data.PublicId,
+	).Scan(
+		&algo.Id,
+		&algo.PublicId,
+		&algo.Slug,
+		&algo.Name,
+		&algo.Category,
+		&algo.Difficulty,
+		&algo.Content,
+		&algo.CreatedAt,
+		&algo.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &algo, nil
+}

@@ -14,6 +14,7 @@ type AlgorithmRepository interface {
 	GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error)
 	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*models.Algorithm, error)
 	DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error)
+	PutAlgorithm(ctx context.Context, data models.PutAlgorithm) (*models.Algorithm, error)
 }
 
 type AlgorithmService struct {
@@ -49,8 +50,8 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 	content := utils.SanitizeMarkDown(data.Content)
 	categorySanitized := utils.SanitizeName(data.Category)
 
-	if nameSanitized == "" || content == "" {
-		return nil, errors.New("Invalid name or content!")
+	if nameSanitized == "" || content == "" || categorySanitized == "" {
+		return nil, errors.New("Invalid name, content or category!")
 	}
 
 	publicId, err := utils.GeneratePublicID()
@@ -59,12 +60,6 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 	}
 
 	slug := utils.Slug(nameSanitized)
-
-	println(publicId)
-	println(nameSanitized)
-	println(slug)
-	println(data.Difficulty)
-	println(content)
 
 	algorithm := &models.NewAlgorithm{
 		PublicId:   publicId,
@@ -80,4 +75,28 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 
 func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error) {
 	return s.repo.DeleteAlgorithm(ctx, publicId)
+}
+
+func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest) (*models.Algorithm, error) {
+	nameSanitized := utils.SanitizeName(data.Name)
+	content := utils.SanitizeMarkDown(data.Content)
+	categorySanitized := utils.SanitizeName(data.Category)
+
+	if nameSanitized == "" || content == "" || categorySanitized == "" {
+		return nil, errors.New("Invalid name, content or category!")
+	}
+
+	slug := utils.Slug(nameSanitized)
+	publicId := utils.SanitizeName(data.PublicId)
+
+	algorithm := &models.PutAlgorithm{
+		PublicId:   publicId,
+		Name:       nameSanitized,
+		Slug:       slug,
+		Category:   categorySanitized,
+		Difficulty: data.Difficulty,
+		Content:    content,
+	}
+
+	return s.repo.PutAlgorithm(ctx, *algorithm)
 }

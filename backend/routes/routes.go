@@ -24,6 +24,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool) {
 		{
 			admin.POST("/algorithms", algoHandler.PostAlgorithm)
 			admin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm)
+			admin.PUT("/algorithms", algoHandler.PutAlgorithm)
 		}
 	}
 }

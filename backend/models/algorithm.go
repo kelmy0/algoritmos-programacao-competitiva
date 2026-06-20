@@ -31,3 +31,12 @@ type NewAlgorithm struct {
 	Difficulty Difficulty `db:"difficulty,oneof=beginner intermediate advanced expert"`
 	Content    string     `db:"content"`
 }
+
+type PutAlgorithm struct {
+	PublicId   string     `db:"public_id"`
+	Slug       string     `db:"slug"`
+	Name       string     `db:"name"`
+	Category   string     `db:"category"`
+	Difficulty Difficulty `db:"difficulty,oneof=beginner intermediate advanced expert"`
+	Content    string     `db:"content"`
+}
