@@ -16,6 +16,11 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	algoService := services.NewAlgorithmService(algoRepo)
 	algoHandler := handlers.NewAlgorithmHandler(algoService)
 
+	//Admin
+	authAdminRepo := repositories.NewAuthAdminRepository(db)
+	authAdminService := services.NewAuthAdminService(authAdminRepo)
+	authAdminHandler := handlers.NewAuthAdminHandler(authAdminService)
+
 	api := router.Group("/api")
 	{
 		api.GET("/ping", handlers.AnswerPing)
@@ -24,6 +29,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 
 		admin := api.Group("/admin", middleware.Fake404Middleware(cfg.AdminHash))
 		{
+			admin.POST("/auth", authAdminHandler.Auth)
 			admin.POST("/algorithms", algoHandler.PostAlgorithm)
 			admin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm)
 			admin.PUT("/algorithms", algoHandler.PutAlgorithm)
