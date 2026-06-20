@@ -115,3 +115,30 @@ func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.New
 
 	return &algo, nil
 }
+
+func (r *AlgorithmRepository) DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error) {
+	query := `
+		DELETE FROM algorithms 
+		WHERE public_id = $1
+		RETURNING id, public_id, slug, name, category, difficulty, content, created_at, updated_at;
+	`
+
+	var algo models.Algorithm
+	err := r.db.QueryRow(ctx, query, publicId).Scan(
+		&algo.Id,
+		&algo.PublicId,
+		&algo.Slug,
+		&algo.Name,
+		&algo.Category,
+		&algo.Difficulty,
+		&algo.Content,
+		&algo.CreatedAt,
+		&algo.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &algo, nil
+}

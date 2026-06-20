@@ -13,6 +13,7 @@ type AlgorithmRepository interface {
 	List(ctx context.Context, limit, offset int) ([]models.Algorithm, error)
 	GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error)
 	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*models.Algorithm, error)
+	DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error)
 }
 
 type AlgorithmService struct {
@@ -39,8 +40,8 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 }
 
 // Get a specific algorithm by id
-func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, id string) (*models.Algorithm, error) {
-	return s.repo.GetByPublicID(ctx, id)
+func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error) {
+	return s.repo.GetByPublicID(ctx, publicId)
 }
 
 func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest) (*models.Algorithm, error) {
@@ -75,4 +76,8 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 	}
 
 	return s.repo.PostAlgorithm(ctx, *algorithm)
+}
+
+func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error) {
+	return s.repo.DeleteAlgorithm(ctx, publicId)
 }

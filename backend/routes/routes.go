@@ -23,6 +23,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool) {
 		admin := api.Group("/admin")
 		{
 			admin.POST("/algorithms", algoHandler.PostAlgorithm)
+			admin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm)
 		}
 	}
 }
