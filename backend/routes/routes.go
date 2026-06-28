@@ -19,7 +19,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 
 	//Auth
 	authRepo := repositories.NewAuthRepository(db)
-	authService := services.NewAuthService(authRepo, cfg.JwtSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	authService := services.NewAuthService(authRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	authAdminHandler := handlers.NewAuthAdminHandler(authService, isProd)
 
 	api := router.Group("/api")
@@ -27,13 +27,18 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 		api.GET("/ping", handlers.AnswerPing)
 		api.GET("/algorithms", algoHandler.ListAlgorithms)
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
+		api.POST("/auth", handlers.AnswerPing)
 
 		admin := api.Group("/admin", middleware.Fake404Middleware(cfg.AdminHash))
 		{
 			admin.POST("/auth", authAdminHandler.Auth)
-			admin.POST("/algorithms", algoHandler.PostAlgorithm)
-			admin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm)
-			admin.PUT("/algorithms", algoHandler.PutAlgorithm)
+
+			protectedAdmin := admin.Group("/protected", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
+			{
+				protectedAdmin.POST("/algorithms", algoHandler.PostAlgorithm)
+				protectedAdmin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm)
+				protectedAdmin.PUT("/algorithms", algoHandler.PutAlgorithm)
+			}
 		}
 	}
 }

@@ -14,7 +14,8 @@ type Config struct {
 	Port                    string
 	DatabaseURL             string
 	AdminHash               string
-	JwtSecret               string
+	JwtAccessSecret         string
+	JwtRefreshSecret        string
 	JwtAccessExpiresMinutes int
 	JwtRefreshExpiresDays   int
 }
@@ -54,20 +55,25 @@ func LoadConfig() *Config {
 		log.Fatal("❌ ADMIN_SECRET_HASH is required.")
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		log.Fatal("❌ JWT_SECRET is required.")
+	jwtAccessSecret := os.Getenv("JWT_ACCESS_SECRET")
+	if jwtAccessSecret == "" {
+		log.Fatal("❌ JWT_ACCESS_SECRET is required.")
+	}
+
+	jwtRefreshSecret := os.Getenv("JWT_REFRESH_SECRET")
+	if jwtRefreshSecret == "" {
+		log.Fatal("❌ JWT_REFRESH_SECRET is required.")
 	}
 
 	jwtAccessExpiresMinutes := os.Getenv("JWT_ACCESS_EXPIRES_MINUTES")
 	aToMinutes, err := strconv.Atoi(jwtAccessExpiresMinutes)
-	if jwtAccessExpiresMinutes == "" || err != nil {
+	if jwtAccessExpiresMinutes == "" || err != nil || aToMinutes == 0 {
 		log.Fatal("❌ JWT_ACCESS_EXPIRES_MINUTES is required.")
 	}
 
 	jwtRefreshExpiresDays := os.Getenv("JWT_REFRESH_EXPIRES_DAYS")
 	rToDays, err := strconv.Atoi(jwtRefreshExpiresDays)
-	if jwtRefreshExpiresDays == "" || err != nil {
+	if jwtRefreshExpiresDays == "" || err != nil || rToDays == 0 {
 		log.Fatal("❌ JWT_REFRESH_EXPIRES_DAYS is required.")
 	}
 
@@ -77,7 +83,8 @@ func LoadConfig() *Config {
 		Port:                    port,
 		DatabaseURL:             dbURL,
 		AdminHash:               adminHash,
-		JwtSecret:               jwtSecret,
+		JwtAccessSecret:         jwtAccessSecret,
+		JwtRefreshSecret:        jwtRefreshSecret,
 		JwtAccessExpiresMinutes: aToMinutes,
 		JwtRefreshExpiresDays:   rToDays,
 	}
