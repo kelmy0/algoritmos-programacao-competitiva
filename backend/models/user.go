@@ -22,4 +22,5 @@ type User struct {
 	CreatedAt               time.Time  `db:"created_at"`
 	UpdatedAt               time.Time  `db:"updated_at"`
 	Role                    Role       `db:"role"`
+	Permissions             []string   `db:"permissions"`
 }

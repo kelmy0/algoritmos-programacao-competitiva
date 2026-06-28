@@ -34,9 +34,10 @@ func AuthMiddleware(accessSecretKey, issuer string) gin.HandlerFunc {
 		}
 
 		c.Set("userId", claims.Subject)
-		c.Set("roleId", claims.RoleId)
+		c.Set("permissions", claims.Permissions)
 		c.Set("username", claims.Username)
 		c.Set("email", claims.Email)
+		c.Set("isEmployee", claims.IsEmployee)
 		c.Next()
 	}
 }

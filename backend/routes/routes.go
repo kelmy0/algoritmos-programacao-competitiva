@@ -35,9 +35,11 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 
 			protectedAdmin := admin.Group("/protected", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 			{
-				protectedAdmin.POST("/algorithms", algoHandler.PostAlgorithm)
-				protectedAdmin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm)
-				protectedAdmin.PUT("/algorithms", algoHandler.PutAlgorithm)
+				protectedAdmin.Use(middleware.EmployeeMiddleware())
+				protectedAdmin.GET("/ping", handlers.AnswerPing)
+				protectedAdmin.POST("/algorithms", algoHandler.PostAlgorithm, middleware.PermissionMiddleware("create:algorithms"))
+				protectedAdmin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm, middleware.PermissionMiddleware("delete:algorithms"))
+				protectedAdmin.PUT("/algorithms", algoHandler.PutAlgorithm, middleware.PermissionMiddleware("update:algorithms"))
 			}
 		}
 	}

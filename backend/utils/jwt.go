@@ -8,14 +8,15 @@ import (
 )
 
 type Claims struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	RoleId   int    `json:"role_id"`
+	Username    string   `json:"username"`
+	Email       string   `json:"email"`
+	Permissions []string `json:"permissions"`
+	IsEmployee  bool     `json:"is_employee"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userId, username, email string, roleId int, secretKey, issuer string, expire_time time.Time) (string, error) {
-	if userId == "" || username == "" || email == "" || secretKey == "" || issuer == "" || expire_time.IsZero() || roleId <= 0 {
+func GenerateToken(userId, username, email string, permissions []string, secretKey, issuer string, isEmployee bool, expire_time time.Time) (string, error) {
+	if userId == "" || username == "" || email == "" || secretKey == "" || issuer == "" || expire_time.IsZero() {
 		return "", errors.New("invalid token parameters: fields cannot be empty or zero")
 	}
 
@@ -25,9 +26,10 @@ func GenerateToken(userId, username, email string, roleId int, secretKey, issuer
 	}
 
 	claimsRefresh := Claims{
-		Username: username,
-		Email:    email,
-		RoleId:   roleId,
+		Username:    username,
+		Email:       email,
+		Permissions: permissions,
+		IsEmployee:  isEmployee,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        tokenId,
 			Subject:   userId,

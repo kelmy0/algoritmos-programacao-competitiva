@@ -51,13 +51,13 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest, restrict b
 	}
 
 	// Minutes
-	accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.RoleId, s.JwtAccessSecret, s.AppName, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
+	accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 	if err != nil {
 		return nil, "", 0, errors.New("Error generating Token.")
 	}
 
 	// Days
-	refreshToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.RoleId, s.JwtRefreshSecret, s.AppName, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
+	refreshToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtRefreshSecret, s.AppName, user.Role.IsEmployee, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
 		return nil, "", 0, errors.New("Error generating Token.")
 	}

@@ -31,6 +31,19 @@ CREATE TABLE roles (
     is_employee BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+CREATE TABLE permissions (
+    id SERIAL PRIMARY KEY,
+    slug VARCHAR(64) NOT NULL UNIQUE
+);
+
+CREATE TABLE role_permissions (
+    role_id INT NOT NULL,
+    permission_id INT NOT NULL,
+    PRIMARY KEY (role_id, permission_id),
+    CONSTRAINT fk_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_permission FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+);
+
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(128) NOT NULL,
