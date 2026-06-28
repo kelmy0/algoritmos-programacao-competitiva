@@ -68,3 +68,27 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest, restrict b
 
 	return response, refreshToken, s.JwtRefreshExpiration, nil
 }
+
+func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString string) (string, error) {
+	claims, err := utils.ValidadeToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	if err != nil {
+		return "", errors.New("invalid or expired refresh token")
+	}
+
+	user, err := s.Repo.GetUserByEmail(ctx, claims.Email)
+	if err != nil {
+		return "", errors.New("user not found")
+	}
+
+	if !user.Enable {
+		return "", errors.New("user account is disabled")
+	}
+
+	accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
+
+	if err != nil {
+		return "", errors.New("error generating new access token")
+	}
+
+	return accessToken, nil
+}

@@ -21,6 +21,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	authRepo := repositories.NewAuthRepository(db)
 	authService := services.NewAuthService(authRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	authAdminHandler := handlers.NewAuthAdminHandler(authService, isProd)
+	authHandler := handlers.NewAuthHandler(authService, isProd)
 
 	api := router.Group("/api")
 	{
@@ -28,6 +29,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 		api.GET("/algorithms", algoHandler.ListAlgorithms)
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
 		api.POST("/auth", handlers.AnswerPing)
+		api.POST("/auth/refresh", authHandler.Refresh)
 
 		admin := api.Group("/admin", middleware.Fake404Middleware(cfg.AdminHash))
 		{

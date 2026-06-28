@@ -8,7 +8,7 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 )
 
-func AuthMiddleware(accessSecretKey, issuer string) gin.HandlerFunc {
+func AuthMiddleware(secretKey, issuer string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -26,7 +26,7 @@ func AuthMiddleware(accessSecretKey, issuer string) gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
-		claims, err := utils.ValidadeToken(tokenString, accessSecretKey, issuer)
+		claims, err := utils.ValidadeToken(tokenString, secretKey, issuer)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 			c.Abort()
