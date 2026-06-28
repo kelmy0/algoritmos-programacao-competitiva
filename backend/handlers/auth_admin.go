@@ -9,11 +9,12 @@ import (
 )
 
 type AuthAdminHandler struct {
-	service *services.AuthService
+	service   *services.AuthService
+	isProduce bool
 }
 
-func NewAuthAdminHandler(service *services.AuthService) *AuthAdminHandler {
-	return &AuthAdminHandler{service: service}
+func NewAuthAdminHandler(service *services.AuthService, isProduce bool) *AuthAdminHandler {
+	return &AuthAdminHandler{service: service, isProduce: isProduce}
 }
 
 func (h *AuthAdminHandler) Auth(c *gin.Context) {
@@ -22,14 +23,22 @@ func (h *AuthAdminHandler) Auth(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	admin, err := h.service.Auth(c.Request.Context(), requestBody, true)
+	loginResponse, refreshToken, refreshDuration, err := h.service.Auth(c.Request.Context(), requestBody, true)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": admin,
-	})
+	c.SetCookie(
+		"refresh_token",
+		refreshToken,
+		60*60*24*refreshDuration, // Age in seconds converted to days
+		"/",
+		"",
+		h.isProduce, // Secure Https only
+		true,
+	)
+
+	c.JSON(http.StatusOK, loginResponse)
 }

@@ -11,6 +11,7 @@ import (
 )
 
 func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
+	isProd := cfg.AppEnv == "production"
 	// Algorithm Handlers and Services
 	algoRepo := repositories.NewAlgorithmRepository(db)
 	algoService := services.NewAlgorithmService(algoRepo)
@@ -18,8 +19,8 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 
 	//Auth
 	authRepo := repositories.NewAuthRepository(db)
-	authService := services.NewAuthService(authRepo)
-	authAdminHandler := handlers.NewAuthAdminHandler(authService)
+	authService := services.NewAuthService(authRepo, cfg.JwtSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	authAdminHandler := handlers.NewAuthAdminHandler(authService, isProd)
 
 	api := router.Group("/api")
 	{

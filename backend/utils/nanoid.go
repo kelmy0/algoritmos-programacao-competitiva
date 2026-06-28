@@ -11,3 +11,11 @@ func GeneratePublicID() (string, error) {
 	}
 	return id, nil
 }
+
+func GenerateCustomId(size int) (string, error) {
+	id, err := gonanoid.Generate(alphabet, size)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}

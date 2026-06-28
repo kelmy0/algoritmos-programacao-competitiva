@@ -1,49 +1,39 @@
 package utils
 
 import (
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type Claims struct {
-	UserId string `json:"user_id"`
-	Email  string `json:"email"`
-	RoleId int    `json:"role_id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	RoleId   int    `json:"role_id"`
 	jwt.RegisteredClaims
 }
 
-func GenerateAcessToken(userId string, email string, roleId int, secretKey string, issuer string) (string, error) {
-	claimsAccess := Claims{
-		UserId: userId,
-		Email:  email,
-		RoleId: roleId,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)), // 15 minutes
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    issuer, // por um NAME no .env depois
-		},
+func GenerateToken(userId, username, email string, roleId int, secretKey, issuer string, expire_time time.Time) (string, error) {
+	tokenId, err := GenerateCustomId(32)
+
+	if err != nil {
+		return "", errors.New("Error generating id token")
 	}
 
-	secretByte := []byte(secretKey)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsAccess)
-	return token.SignedString(secretByte)
-}
-
-func GenerateRefreshToken(userId string, email string, roleId int, secretKey string, issuer string) (string, error) {
 	claimsRefresh := Claims{
-		UserId: userId,
-		Email:  email,
-		RoleId: roleId,
+		Username: username,
+		Email:    email,
+		RoleId:   roleId,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(0, 0, 7)), // 7 days
+			ID:        tokenId,
+			Subject:   userId,
+			ExpiresAt: jwt.NewNumericDate(expire_time),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    issuer, // por um NAME no .env depois
+			Issuer:    issuer,
 		},
 	}
-
 	secretByte := []byte(secretKey)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRefresh)
 	return token.SignedString(secretByte)

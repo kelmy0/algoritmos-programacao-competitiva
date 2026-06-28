@@ -3,16 +3,20 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	AppEnv      string
-	Port        string
-	DatabaseURL string
-	AdminHash   string
-	JwtSecret   string
+	AppName                 string
+	AppEnv                  string
+	Port                    string
+	DatabaseURL             string
+	AdminHash               string
+	JwtSecret               string
+	JwtAccessExpiresMinutes int
+	JwtRefreshExpiresDays   int
 }
 
 func LoadConfig() *Config {
@@ -21,8 +25,13 @@ func LoadConfig() *Config {
 		log.Println("⚠️ Warning: .env not found. Using environmental variables.")
 	}
 
+	appName := os.Getenv("APP_NAME")
+	if appName == "" {
+		log.Fatal("❌ APP_NAME is required.")
+	}
+
 	env := os.Getenv("APP_ENV")
-	if env == "" {
+	if env != "production" && env != "development" {
 		log.Fatal("❌ APP_ENV is required.")
 	}
 
@@ -50,11 +59,26 @@ func LoadConfig() *Config {
 		log.Fatal("❌ JWT_SECRET is required.")
 	}
 
+	jwtAccessExpiresMinutes := os.Getenv("JWT_ACCESS_EXPIRES_MINUTES")
+	aToMinutes, err := strconv.Atoi(jwtAccessExpiresMinutes)
+	if jwtAccessExpiresMinutes == "" || err != nil {
+		log.Fatal("❌ JWT_ACCESS_EXPIRES_MINUTES is required.")
+	}
+
+	jwtRefreshExpiresDays := os.Getenv("JWT_REFRESH_EXPIRES_DAYS")
+	rToDays, err := strconv.Atoi(jwtRefreshExpiresDays)
+	if jwtRefreshExpiresDays == "" || err != nil {
+		log.Fatal("❌ JWT_REFRESH_EXPIRES_DAYS is required.")
+	}
+
 	return &Config{
-		AppEnv:      env,
-		Port:        port,
-		DatabaseURL: dbURL,
-		AdminHash:   adminHash,
-		JwtSecret:   jwtSecret,
+		AppName:                 appName,
+		AppEnv:                  env,
+		Port:                    port,
+		DatabaseURL:             dbURL,
+		AdminHash:               adminHash,
+		JwtSecret:               jwtSecret,
+		JwtAccessExpiresMinutes: aToMinutes,
+		JwtRefreshExpiresDays:   rToDays,
 	}
 }
