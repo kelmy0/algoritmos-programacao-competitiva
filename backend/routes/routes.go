@@ -16,10 +16,10 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	algoService := services.NewAlgorithmService(algoRepo)
 	algoHandler := handlers.NewAlgorithmHandler(algoService)
 
-	//Admin
-	authAdminRepo := repositories.NewAuthAdminRepository(db)
-	authAdminService := services.NewAuthAdminService(authAdminRepo)
-	authAdminHandler := handlers.NewAuthAdminHandler(authAdminService)
+	//Auth
+	authRepo := repositories.NewAuthRepository(db)
+	authService := services.NewAuthService(authRepo)
+	authAdminHandler := handlers.NewAuthAdminHandler(authService)
 
 	api := router.Group("/api")
 	{

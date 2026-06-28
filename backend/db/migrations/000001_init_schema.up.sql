@@ -25,9 +25,16 @@ BEFORE UPDATE ON algorithms
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at();
 
-CREATE TABLE administrators (
+CREATE TABLE roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(16) NOT NULL UNIQUE,
+    is_employee BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(128) NOT NULL,
+    username VARCHAR(32) NOT NULL,
     email VARCHAR(128) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     enable BOOLEAN NOT NULL DEFAULT TRUE,
@@ -40,8 +47,9 @@ CREATE TABLE administrators (
     two_factor_secret VARCHAR(255),
     last_login TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_role_id FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
 );
 
-CREATE INDEX idx_admins_email ON administrators(email);
-CREATE INDEX idx_admins_recovery_token ON administrators(recovery_token) WHERE recovery_token IS NOT NULL;
+CREATE INDEX idx_users_recovery_token ON users(recovery_token) WHERE recovery_token IS NOT NULL;
+CREATE INDEX idx_users_role_id ON users(role_id);

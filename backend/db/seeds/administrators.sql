@@ -1,2 +1,0 @@
-INSERT INTO administrators(name, email, password_hash, role_id) VALUES
-('Adm teste', 'teste@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$RKCxwjgfKfv+/1CDNn39Qg$dWA+Ijh6T0f/kvT18NMoiOSYszW31chyL5e71cj81x0', 1)

@@ -9,20 +9,20 @@ import (
 )
 
 type AuthAdminHandler struct {
-	service *services.AuthAdminService
+	service *services.AuthService
 }
 
-func NewAuthAdminHandler(service *services.AuthAdminService) *AuthAdminHandler {
+func NewAuthAdminHandler(service *services.AuthService) *AuthAdminHandler {
 	return &AuthAdminHandler{service: service}
 }
 
 func (h *AuthAdminHandler) Auth(c *gin.Context) {
-	var requestBody dto.AuthAdminRequest
+	var requestBody dto.AuthRequest
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	admin, err := h.service.AuthAdmin(c.Request.Context(), requestBody)
+	admin, err := h.service.Auth(c.Request.Context(), requestBody, true)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
