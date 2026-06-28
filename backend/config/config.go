@@ -12,6 +12,7 @@ type Config struct {
 	Port        string
 	DatabaseURL string
 	AdminHash   string
+	JwtSecret   string
 }
 
 func LoadConfig() *Config {
@@ -44,10 +45,16 @@ func LoadConfig() *Config {
 		log.Fatal("❌ ADMIN_SECRET_HASH is required.")
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("❌ JWT_SECRET is required.")
+	}
+
 	return &Config{
 		AppEnv:      env,
 		Port:        port,
 		DatabaseURL: dbURL,
 		AdminHash:   adminHash,
+		JwtSecret:   jwtSecret,
 	}
 }
