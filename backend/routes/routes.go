@@ -20,7 +20,6 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	//Auth
 	authRepo := repositories.NewAuthRepository(db)
 	authService := services.NewAuthService(authRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
-	authAdminHandler := handlers.NewAuthAdminHandler(authService, isProd)
 	authHandler := handlers.NewAuthHandler(authService, isProd)
 
 	api := router.Group("/api")
@@ -28,21 +27,18 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 		api.GET("/ping", handlers.AnswerPing)
 		api.GET("/algorithms", algoHandler.ListAlgorithms)
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
-		api.POST("/auth", handlers.AnswerPing)
+		api.POST("/auth", authHandler.Auth)
 		api.POST("/auth/refresh", authHandler.Refresh)
 
-		admin := api.Group("/admin", middleware.Fake404Middleware(cfg.AdminHash))
+		admin := api.Group("/admin")
 		{
-			admin.POST("/auth", authAdminHandler.Auth)
-
-			protectedAdmin := admin.Group("/protected", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
-			{
-				protectedAdmin.Use(middleware.EmployeeMiddleware())
-				protectedAdmin.GET("/ping", handlers.AnswerPing)
-				protectedAdmin.POST("/algorithms", algoHandler.PostAlgorithm, middleware.PermissionMiddleware("create:algorithms"))
-				protectedAdmin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm, middleware.PermissionMiddleware("delete:algorithms"))
-				protectedAdmin.PUT("/algorithms", algoHandler.PutAlgorithm, middleware.PermissionMiddleware("update:algorithms"))
-			}
+			admin.Use(middleware.Fake404Middleware(cfg.AdminHash))
+			admin.Use(middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
+			admin.Use(middleware.EmployeeMiddleware())
+			admin.GET("/ping", handlers.AnswerPing)
+			admin.POST("/algorithms", algoHandler.PostAlgorithm, middleware.PermissionMiddleware("create:algorithms"))
+			admin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm, middleware.PermissionMiddleware("delete:algorithms"))
+			admin.PUT("/algorithms", algoHandler.PutAlgorithm, middleware.PermissionMiddleware("update:algorithms"))
 		}
 	}
 }

@@ -35,18 +35,14 @@ func NewAuthService(repo AuthRepository, jwtAccessSecret, jwtRefreshSecret, appN
 }
 
 // Returns access token, Refresh token, errors
-func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest, restrict bool) (*dto.LoginResponse, string, int, error) {
+func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*dto.LoginResponse, string, int, error) {
 	user, err := s.Repo.GetUserByEmail(ctx, data.Email)
-	if err != nil {
+	if err != nil || !user.Enable {
 		return nil, "", 0, errors.New("invalid email or password")
 	}
 
 	isValid, err := utils.VerifyPassword(data.Password, user.PasswordHash)
 	if err != nil || !isValid {
-		return nil, "", 0, errors.New("invalid email or password")
-	}
-
-	if restrict && !user.Role.IsEmployee {
 		return nil, "", 0, errors.New("invalid email or password")
 	}
 
