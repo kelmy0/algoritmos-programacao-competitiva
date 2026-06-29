@@ -2,6 +2,9 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
@@ -45,4 +48,38 @@ func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	}
 
 	return &user, nil
+}
+
+func (r *AuthRepository) SaveRefreshToken(ctx context.Context, idToken, idUser string, expiresAt time.Time) error {
+	query := `
+		INSERT INTO refresh_tokens (id, user_id, expires_at) VALUES 
+		($1, $2, $3);
+	`
+	_, err := r.db.Exec(ctx, query, idToken, idUser, expiresAt)
+	return err
+}
+
+func (r *AuthRepository) GetRefreshTokenById(ctx context.Context, id string) (*models.RefreshToken, error) {
+	query := `
+        SELECT id, user_id, expires_at, created_at 
+        FROM refresh_tokens 
+        WHERE id = $1;
+    `
+
+	var token models.RefreshToken
+	err := r.db.QueryRow(ctx, query, id).Scan(
+		&token.Id,
+		&token.UserId,
+		&token.ExpiresAt,
+		&token.CreatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &token, nil
 }

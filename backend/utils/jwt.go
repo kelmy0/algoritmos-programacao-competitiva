@@ -15,14 +15,14 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userId, username, email string, permissions []string, secretKey, issuer string, isEmployee bool, expire_time time.Time) (string, error) {
+func GenerateToken(userId, username, email string, permissions []string, secretKey, issuer string, isEmployee bool, expire_time time.Time) (string, string, error) {
 	if userId == "" || username == "" || email == "" || secretKey == "" || issuer == "" || expire_time.IsZero() {
-		return "", errors.New("invalid token parameters: fields cannot be empty or zero")
+		return "", "", errors.New("invalid token parameters: fields cannot be empty or zero")
 	}
 
 	tokenId, err := GenerateCustomId(32)
 	if err != nil {
-		return "", errors.New("Error generating id token")
+		return "", "", errors.New("Error generating id token")
 	}
 
 	claimsRefresh := Claims{
@@ -41,7 +41,8 @@ func GenerateToken(userId, username, email string, permissions []string, secretK
 	}
 	secretByte := []byte(secretKey)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRefresh)
-	return token.SignedString(secretByte)
+	tokenString, err := token.SignedString(secretByte)
+	return tokenId, tokenString, err
 }
 
 func ValidadeToken(tokenString, secretKey, expectedIssuer string) (*Claims, error) {

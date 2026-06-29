@@ -66,3 +66,12 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_recovery_token ON users(recovery_token) WHERE recovery_token IS NOT NULL;
 CREATE INDEX idx_users_role_id ON users(role_id);
+
+CREATE TABLE refresh_tokens (
+    id CHAR(32) PRIMARY KEY,
+    user_id UUID NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);

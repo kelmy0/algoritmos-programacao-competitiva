@@ -12,6 +12,8 @@ import (
 
 type AuthRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	SaveRefreshToken(ctx context.Context, idToken, idUser string, expiresAt time.Time) error
+	GetRefreshTokenById(ctx context.Context, id string) (*models.RefreshToken, error)
 }
 
 type AuthService struct {
@@ -47,13 +49,18 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*dto.Logi
 	}
 
 	// Minutes
-	accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
+	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 	if err != nil {
 		return nil, "", 0, errors.New("Error generating Token.")
 	}
 
 	// Days
-	refreshToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtRefreshSecret, s.AppName, user.Role.IsEmployee, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
+	idToken, refreshToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtRefreshSecret, s.AppName, user.Role.IsEmployee, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
+	if err != nil {
+		return nil, "", 0, errors.New("Error generating Token.")
+	}
+
+	err = s.Repo.SaveRefreshToken(ctx, idToken, user.Id, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
 		return nil, "", 0, errors.New("Error generating Token.")
 	}
@@ -71,6 +78,11 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 		return "", errors.New("invalid or expired refresh token")
 	}
 
+	tokenExists, err := s.Repo.GetRefreshTokenById(ctx, claims.ID)
+	if err != nil || tokenExists == nil {
+		return "", errors.New("invalid or expired refresh token")
+	}
+
 	user, err := s.Repo.GetUserByEmail(ctx, claims.Email)
 	if err != nil {
 		return "", errors.New("user not found")
@@ -80,7 +92,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 		return "", errors.New("user account is disabled")
 	}
 
-	accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
+	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 
 	if err != nil {
 		return "", errors.New("error generating new access token")
