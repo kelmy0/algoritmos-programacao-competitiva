@@ -62,3 +62,17 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		"access_token": accessToken,
 	})
 }
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		c.Abort()
+		return
+	}
+	id := userId.(string)
+
+	c.JSON(http.StatusOK, gin.H{
+		"user_id": id,
+	})
+}

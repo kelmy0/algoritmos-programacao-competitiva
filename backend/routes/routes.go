@@ -29,6 +29,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
 		api.POST("/auth", authHandler.Auth)
 		api.POST("/auth/refresh", authHandler.Refresh)
+		api.POST("/auth/logout", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName), authHandler.Logout)
 
 		admin := api.Group("/admin")
 		{
@@ -36,9 +37,9 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 			admin.Use(middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 			admin.Use(middleware.EmployeeMiddleware())
 			admin.GET("/ping", handlers.AnswerPing)
-			admin.POST("/algorithms", algoHandler.PostAlgorithm, middleware.PermissionMiddleware("create:algorithms"))
-			admin.DELETE("/algorithms/:slugAndId", algoHandler.DeleteAlgorithm, middleware.PermissionMiddleware("delete:algorithms"))
-			admin.PUT("/algorithms", algoHandler.PutAlgorithm, middleware.PermissionMiddleware("update:algorithms"))
+			admin.POST("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.PostAlgorithm)
+			admin.DELETE("/algorithms/:slugAndId", middleware.PermissionMiddleware("delete:algorithms"), algoHandler.DeleteAlgorithm)
+			admin.PUT("/algorithms", middleware.PermissionMiddleware("update:algorithms"), algoHandler.PutAlgorithm)
 		}
 	}
 }
