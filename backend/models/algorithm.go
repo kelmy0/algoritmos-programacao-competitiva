@@ -12,15 +12,15 @@ const (
 )
 
 type Algorithm struct {
-	Id         string     `json:"id" db:"id"`
-	PublicId   string     `json:"public_id" db:"public_id"`
-	Slug       string     `json:"slug" db:"slug"`
-	Name       string     `json:"name" db:"name"`
-	Category   string     `json:"category" db:"category"`
-	Difficulty Difficulty `json:"difficulty" db:"difficulty"`
-	Content    string     `json:"content" db:"content"`
-	CreatedAt  time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at" db:"updated_at"`
+	Id         string     `db:"id"`
+	PublicId   string     `db:"public_id"`
+	Slug       string     `db:"slug"`
+	Name       string     `db:"name"`
+	Category   string     `db:"category"`
+	Difficulty Difficulty `db:"difficulty"`
+	Content    string     `db:"content"`
+	CreatedAt  time.Time  `db:"created_at"`
+	UpdatedAt  time.Time  `db:"updated_at"`
 }
 
 type NewAlgorithm struct {
