@@ -11,10 +11,11 @@ import (
 type AuthHandler struct {
 	service   *services.AuthService
 	isProduce bool
+	appDomain string
 }
 
-func NewAuthHandler(service *services.AuthService, isProduce bool) *AuthHandler {
-	return &AuthHandler{service: service, isProduce: isProduce}
+func NewAuthHandler(service *services.AuthService, isProduce bool, appDomain string) *AuthHandler {
+	return &AuthHandler{service: service, isProduce: isProduce, appDomain: appDomain}
 }
 
 func (h *AuthHandler) Auth(c *gin.Context) {
@@ -35,7 +36,7 @@ func (h *AuthHandler) Auth(c *gin.Context) {
 		refreshToken,
 		60*60*24*refreshDuration, // Age in seconds converted to days
 		"/",
-		"",
+		h.appDomain,
 		h.isProduce, // Secure Https only
 		true,
 	)
@@ -86,6 +87,32 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", "", -1, "/", "", h.isProduce, true)
+	c.SetCookie("refresh_token", "", -1, "/", h.appDomain, h.isProduce, true)
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
+}
+
+func (h *AuthHandler) LogoutAll(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		c.Abort()
+		return
+	}
+
+	id := userId.(string)
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token cookie is required"})
+		c.Abort()
+		return
+	}
+
+	err = h.service.LogoutAll(c.Request.Context(), id, refreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out from all devices"})
 }

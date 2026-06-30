@@ -99,3 +99,12 @@ func (r *AuthRepository) DeleteRefreshTokenById(ctx context.Context, userId, tok
 	}
 	return nil
 }
+
+func (r *AuthRepository) DeleteAllRefreshToken(ctx context.Context, userId, tokenId string) error {
+	query := `
+		DELETE FROM refresh_tokens
+		WHERE user_id = $1 AND id != $2;
+	`
+	_, err := r.db.Exec(ctx, query, userId, tokenId)
+	return err
+}

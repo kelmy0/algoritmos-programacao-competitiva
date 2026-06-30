@@ -15,6 +15,7 @@ type AuthRepository interface {
 	SaveRefreshToken(ctx context.Context, tokenId, userId string, expiresAt time.Time) error
 	GetRefreshTokenById(ctx context.Context, id string) (*models.RefreshToken, error)
 	DeleteRefreshTokenById(ctx context.Context, userId, tokenId string) error
+	DeleteAllRefreshToken(ctx context.Context, userId, tokenId string) error
 }
 
 type AuthService struct {
@@ -84,6 +85,10 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 		return "", errors.New("invalid or expired refresh token")
 	}
 
+	if tokenExists.UserId != claims.Subject {
+		return "", errors.New("token metadata mismatch: security violation")
+	}
+
 	user, err := s.Repo.GetUserByEmail(ctx, claims.Email)
 	if err != nil {
 		return "", errors.New("user not found")
@@ -109,4 +114,17 @@ func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString str
 	}
 
 	return s.Repo.DeleteRefreshTokenById(ctx, userId, claims.ID)
+}
+
+func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString string) error {
+	claims, err := utils.ValidadeToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	if err != nil {
+		return errors.New("invalid or expired refresh token")
+	}
+
+	if claims.Subject != userId {
+		return errors.New("token mismatch: security violation")
+	}
+
+	return s.Repo.DeleteAllRefreshToken(ctx, userId, claims.ID)
 }

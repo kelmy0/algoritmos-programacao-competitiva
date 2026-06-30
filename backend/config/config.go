@@ -11,6 +11,7 @@ import (
 type Config struct {
 	AppName                 string
 	AppEnv                  string
+	AppDomain               string
 	Port                    string
 	DatabaseURL             string
 	AdminHash               string
@@ -77,9 +78,15 @@ func LoadConfig() *Config {
 		log.Fatal("❌ JWT_REFRESH_EXPIRES_DAYS is required.")
 	}
 
+	appDomain := os.Getenv("APP_DOMAIN")
+	if appDomain == "" {
+		log.Fatal("❌ APP_DOMAIN is required.")
+	}
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
+		AppDomain:               appDomain,
 		Port:                    port,
 		DatabaseURL:             dbURL,
 		AdminHash:               adminHash,

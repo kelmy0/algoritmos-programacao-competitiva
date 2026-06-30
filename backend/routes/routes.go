@@ -20,7 +20,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	//Auth
 	authRepo := repositories.NewAuthRepository(db)
 	authService := services.NewAuthService(authRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
-	authHandler := handlers.NewAuthHandler(authService, isProd)
+	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain)
 
 	api := router.Group("/api")
 	{
@@ -29,12 +29,15 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
 		api.POST("/auth", authHandler.Auth)
 		api.POST("/auth/refresh", authHandler.Refresh)
-		api.POST("/auth/logout", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName), authHandler.Logout)
+
+		// Routes that requires Auth
+		api.Use(middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
+		api.POST("/auth/logout", authHandler.Logout)
+		api.POST("/auth/logout/all", authHandler.LogoutAll)
 
 		admin := api.Group("/admin")
 		{
 			admin.Use(middleware.Fake404Middleware(cfg.AdminHash))
-			admin.Use(middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 			admin.Use(middleware.EmployeeMiddleware())
 			admin.GET("/ping", handlers.AnswerPing)
 			admin.POST("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.PostAlgorithm)
