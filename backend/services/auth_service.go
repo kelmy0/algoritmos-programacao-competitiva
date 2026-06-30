@@ -12,8 +12,9 @@ import (
 
 type AuthRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
-	SaveRefreshToken(ctx context.Context, idToken, idUser string, expiresAt time.Time) error
+	SaveRefreshToken(ctx context.Context, tokenId, userId string, expiresAt time.Time) error
 	GetRefreshTokenById(ctx context.Context, id string) (*models.RefreshToken, error)
+	DeleteRefreshTokenById(ctx context.Context, userId, tokenId string) error
 }
 
 type AuthService struct {
@@ -99,4 +100,13 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 	}
 
 	return accessToken, nil
+}
+
+func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString string) error {
+	claims, err := utils.ValidadeToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	if err != nil {
+		return errors.New("invalid or expired refresh token")
+	}
+
+	return s.Repo.DeleteRefreshTokenById(ctx, userId, claims.ID)
 }

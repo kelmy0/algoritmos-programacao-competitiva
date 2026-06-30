@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 )
@@ -50,12 +50,12 @@ func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	return &user, nil
 }
 
-func (r *AuthRepository) SaveRefreshToken(ctx context.Context, idToken, idUser string, expiresAt time.Time) error {
+func (r *AuthRepository) SaveRefreshToken(ctx context.Context, tokenId, userId string, expiresAt time.Time) error {
 	query := `
 		INSERT INTO refresh_tokens (id, user_id, expires_at) VALUES 
 		($1, $2, $3);
 	`
-	_, err := r.db.Exec(ctx, query, idToken, idUser, expiresAt)
+	_, err := r.db.Exec(ctx, query, tokenId, userId, expiresAt)
 	return err
 }
 
@@ -75,11 +75,27 @@ func (r *AuthRepository) GetRefreshTokenById(ctx context.Context, id string) (*m
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
 
 	return &token, nil
+}
+
+func (r *AuthRepository) DeleteRefreshTokenById(ctx context.Context, userId, tokenId string) error {
+	query := `
+		DELETE FROM refresh_tokens
+		WHERE id = $1 AND user_id = $2;
+	`
+	result, err := r.db.Exec(ctx, query, tokenId, userId)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return errors.New("refresh token not found or already revoked")
+	}
+	return nil
 }

@@ -70,9 +70,22 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	id := userId.(string)
 
-	c.JSON(http.StatusOK, gin.H{
-		"user_id": id,
-	})
+	id := userId.(string)
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token cookie is required"})
+		c.Abort()
+		return
+	}
+
+	err = h.service.Logout(c.Request.Context(), id, refreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	c.SetCookie("refresh_token", "", -1, "/", "", h.isProduce, true)
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }
