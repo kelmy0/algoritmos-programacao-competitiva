@@ -43,7 +43,7 @@ func runMigrations(connStr string, shouldReset bool) bool {
 		return false
 	}
 
-	m.Force(1)
+	//m.Force(1)
 	if shouldReset {
 		log.Println("🗑️ Dropping all tables and types...")
 		if err := m.Down(); err != nil && err != migrate.ErrNoChange {

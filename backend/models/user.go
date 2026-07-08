@@ -10,7 +10,7 @@ type User struct {
 	Username                string     `db:"username"`
 	Email                   string     `db:"email"`
 	PasswordHash            string     `db:"password_hash"`
-	RecoveryToken           *string    `db:"recovery_token"`
+	RecoveryTokenHash       *string    `db:"recovery_token_hash"`
 	RecoveryTokenExpiresAt  *time.Time `db:"recovery_token_expires_at"`
 	Enable                  bool       `db:"enable"`
 	TwoFactorAuthentication bool       `db:"two_factor_authentication"`

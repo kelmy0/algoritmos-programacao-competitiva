@@ -52,7 +52,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     enable BOOLEAN NOT NULL DEFAULT TRUE,
     role_id INT NOT NULL,
-    recovery_token VARCHAR(64),
+    recovery_token_hash VARCHAR(64),
     recovery_token_expires_at TIMESTAMP WITH TIME ZONE,
     failed_attempts INT NOT NULL DEFAULT 0,
     blocked_until TIMESTAMP WITH TIME ZONE,
@@ -64,7 +64,7 @@ CREATE TABLE users (
     CONSTRAINT fk_role_id FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
 );
 
-CREATE INDEX idx_users_recovery_token ON users(recovery_token) WHERE recovery_token IS NOT NULL;
+CREATE INDEX idx_users_recovery_token ON users(recovery_token_hash) WHERE recovery_token_hash IS NOT NULL;
 CREATE INDEX idx_users_role_id ON users(role_id);
 
 CREATE TABLE refresh_tokens (

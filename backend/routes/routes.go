@@ -22,6 +22,13 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	authService := services.NewAuthService(authRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain)
 
+	//User
+	userRepo := repositories.NewUserRepository(db)
+
+	//TwoFactor
+	twoFactorService := services.NewTwoFactorService(userRepo)
+	twoFactorHandler := handlers.NewTwoFactorHandler(twoFactorService)
+
 	api := router.Group("/api")
 	{
 		api.GET("/ping", handlers.AnswerPing)
@@ -34,6 +41,17 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 		api.Use(middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 		api.POST("/auth/logout", authHandler.Logout)
 		api.POST("/auth/logout/all", authHandler.LogoutAll)
+
+		// USERS
+		users := api.Group("/users")
+		{
+			me := users.Group("/me")
+			{
+				me.POST("/2fa/generate", twoFactorHandler.Generate2FA)
+				me.POST("/2fa/enable", twoFactorHandler.Enable2FA)
+				me.POST("/2fa/disable", twoFactorHandler.Disable2FA)
+			}
+		}
 
 		admin := api.Group("/admin")
 		{
