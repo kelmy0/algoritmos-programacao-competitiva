@@ -15,21 +15,44 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-func HashPassword(password string) (string, error) {
-	salt := make([]byte, 16)
+type ArgonParams struct {
+	Memory      uint32
+	Iterations  uint32
+	Parallelism uint8
+	SaltLength  uint32
+	KeyLength   uint32
+}
+
+var DefaultParams = ArgonParams{
+	Memory:      64 * 1024,
+	Iterations:  3,
+	Parallelism: 4,
+	SaltLength:  16,
+	KeyLength:   32,
+}
+
+func HashPassword(password string, p ArgonParams) (string, error) {
+	salt := make([]byte, p.SaltLength)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	hash := argon2.IDKey([]byte(password), salt, 3, 64*1024, 4, 32)
+	hash := argon2.IDKey([]byte(password), salt, p.Iterations, p.Memory, p.Parallelism, p.KeyLength)
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
-	return fmt.Sprintf("$argon2id$v=19$m=65536,t=3,p=4$%s$%s", b64Salt, b64Hash), nil
+	hashedPassword := fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", p.Memory, p.Iterations, p.Parallelism, b64Salt, b64Hash)
+	return hashedPassword, nil
 }
 
 func VerifyPassword(password, hashedPassword string) (bool, error) {
 	parts := strings.Split(hashedPassword, "$")
 	if len(parts) != 6 {
 		return false, errors.New("Invalid Hash format")
+	}
+
+	var p ArgonParams
+	_, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &p.Memory, &p.Iterations, &p.Parallelism)
+	if err != nil {
+		return false, err
 	}
 
 	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
@@ -42,7 +65,9 @@ func VerifyPassword(password, hashedPassword string) (bool, error) {
 		return false, err
 	}
 
-	comparisonHash := argon2.IDKey([]byte(password), salt, 3, 64*1024, 4, 32)
+	p.KeyLength = uint32(len(originalHash))
+
+	comparisonHash := argon2.IDKey([]byte(password), salt, p.Iterations, p.Memory, p.Parallelism, p.KeyLength)
 
 	if subtle.ConstantTimeCompare(originalHash, comparisonHash) == 1 {
 		return true, nil
