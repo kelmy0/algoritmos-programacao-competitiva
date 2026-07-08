@@ -56,7 +56,7 @@ func (h *TwoFactorHandler) Enable2FA(c *gin.Context) {
 
 	var req dto.TwoFactorEnableRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload. Code must be 6 digits."})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload. Code must be 6 digits"})
 		return
 	}
 	err := h.service.Enable2FA(c.Request.Context(), id, req.Code)
@@ -67,4 +67,29 @@ func (h *TwoFactorHandler) Enable2FA(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication enabled successfully"})
 }
 
-func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {}
+func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
+	userIdContext, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication data missing"})
+		return
+	}
+
+	id, ok := userIdContext.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal error processing user ID"})
+		return
+	}
+
+	var req dto.TwoFactorDisableRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+
+		return
+	}
+	err := h.service.Disable2FA(c.Request.Context(), id, req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication disabled successfully"})
+}

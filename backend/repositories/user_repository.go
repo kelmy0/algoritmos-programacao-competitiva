@@ -11,23 +11,24 @@ type UserRepository struct {
 	db *pgxpool.Pool
 }
 
-type User2FAData struct {
-	IsEnabled bool
-	Secret    string
+type UserAuthData struct {
+	IsEnabled    bool
+	Secret       string
+	PasswordHash string
 }
 
 func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) Get2FAData(ctx context.Context, userId string) (*User2FAData, error) {
+func (r *UserRepository) GetAuthData(ctx context.Context, userId string) (*UserAuthData, error) {
 	query := `
-        SELECT two_factor_authentication, COALESCE(two_factor_secret, '') 
+        SELECT two_factor_authentication, COALESCE(two_factor_secret, ''), password_hash
         FROM users
         WHERE id = $1;`
 
-	var data User2FAData
-	err := r.db.QueryRow(ctx, query, userId).Scan(&data.IsEnabled, &data.Secret)
+	var data UserAuthData
+	err := r.db.QueryRow(ctx, query, userId).Scan(&data.IsEnabled, &data.Secret, &data.PasswordHash)
 	if err != nil {
 		return nil, err
 	}

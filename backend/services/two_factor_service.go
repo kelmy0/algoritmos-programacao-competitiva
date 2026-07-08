@@ -14,7 +14,7 @@ type UserRepository interface {
 	Save2FASecret(ctx context.Context, userId, secret string) error
 	Enable2FA(ctx context.Context, userId string) error
 	Disable2FA(ctx context.Context, userId string) error
-	Get2FAData(ctx context.Context, userId string) (*repositories.User2FAData, error)
+	GetAuthData(ctx context.Context, userId string) (*repositories.UserAuthData, error)
 }
 
 type TwoFactorService struct {
@@ -28,7 +28,7 @@ func NewTwoFactorService(repo UserRepository, encryptSecret, appName string) *Tw
 }
 
 func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string) (*dto.TwoFactorGenerateResponse, error) {
-	twoFactorData, err := s.Repo.Get2FAData(ctx, userId)
+	twoFactorData, err := s.Repo.GetAuthData(ctx, userId)
 	if err != nil {
 		return nil, errors.New("Error retrieving 2FA data")
 	}
@@ -63,7 +63,7 @@ func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string
 }
 
 func (s *TwoFactorService) Enable2FA(ctx context.Context, userId, code string) error {
-	twoFactorData, err := s.Repo.Get2FAData(ctx, userId)
+	twoFactorData, err := s.Repo.GetAuthData(ctx, userId)
 	if err != nil {
 		return errors.New("Error retrieving 2FA data")
 	}
@@ -94,4 +94,26 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, userId, code string) e
 	return nil
 }
 
-func (s *TwoFactorService) Disable2FA(userId, password string) {}
+func (s *TwoFactorService) Disable2FA(ctx context.Context, userId, password string) error {
+	twoFactorData, err := s.Repo.GetAuthData(ctx, userId)
+
+	if err != nil {
+		return errors.New("Error retrieving 2FA data")
+	}
+
+	if !twoFactorData.IsEnabled {
+		return errors.New("2FA already disabled")
+	}
+
+	isValid, err := utils.VerifyPassword(password, twoFactorData.PasswordHash)
+	if err != nil || !isValid {
+		return errors.New("Invalid password")
+	}
+
+	err = s.Repo.Disable2FA(ctx, userId)
+	if err != nil {
+		return errors.New("Error disabling 2FA")
+	}
+
+	return nil
+}
