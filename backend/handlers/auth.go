@@ -9,13 +9,14 @@ import (
 )
 
 type AuthHandler struct {
-	service   *services.AuthService
-	isProduce bool
-	appDomain string
+	service             *services.AuthService
+	isProduce           bool
+	appDomain           string
+	refreshDurationDays int
 }
 
-func NewAuthHandler(service *services.AuthService, isProduce bool, appDomain string) *AuthHandler {
-	return &AuthHandler{service: service, isProduce: isProduce, appDomain: appDomain}
+func NewAuthHandler(service *services.AuthService, isProduce bool, appDomain string, refreshDurationDays int) *AuthHandler {
+	return &AuthHandler{service: service, isProduce: isProduce, appDomain: appDomain, refreshDurationDays: refreshDurationDays}
 }
 
 func (h *AuthHandler) Auth(c *gin.Context) {
@@ -24,24 +25,37 @@ func (h *AuthHandler) Auth(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	loginResponse, refreshToken, refreshDuration, err := h.service.Auth(c.Request.Context(), requestBody)
 
+	result, err := h.service.Auth(c.Request.Context(), requestBody)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.SetCookie(
-		"refresh_token",
-		refreshToken,
-		60*60*24*refreshDuration, // Age in seconds converted to days
-		"/",
-		h.appDomain,
-		h.isProduce, // Secure Https only
-		true,
-	)
+	if result.LoginResponse.Requires2FA {
+		c.JSON(http.StatusOK, result.LoginResponse)
+		return
+	}
 
-	c.JSON(http.StatusOK, loginResponse)
+	c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.refreshDurationDays, "/", h.appDomain, h.isProduce, true)
+	c.JSON(http.StatusOK, result.LoginResponse)
+}
+
+func (h *AuthHandler) Verify2FA(c *gin.Context) {
+	var requestBody dto.Verify2FARequest
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.service.VerifyLogin2FA(c.Request.Context(), requestBody)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.refreshDurationDays, "/", h.appDomain, h.isProduce, true)
+	c.JSON(http.StatusOK, result.LoginResponse)
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {

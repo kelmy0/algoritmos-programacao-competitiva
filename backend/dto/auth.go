@@ -6,5 +6,12 @@ type AuthRequest struct {
 }
 
 type LoginResponse struct {
-	AcessToken string `json:"access_token"`
+	AccessToken  string `json:"access_token,omitempty"`
+	Requires2FA  bool   `json:"requires_2fa"`
+	PreAuthToken string `json:"pre_auth_token,omitempty"`
+}
+
+type Verify2FARequest struct {
+	PreAuthToken string `json:"pre_auth_token" binding:"required"`
+	Code         string `json:"code" binding:"required,len=6"`
 }

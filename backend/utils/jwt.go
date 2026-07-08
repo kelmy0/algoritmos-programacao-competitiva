@@ -16,7 +16,7 @@ type Claims struct {
 }
 
 func GenerateToken(userId, username, email string, permissions []string, secretKey, issuer string, isEmployee bool, expire_time time.Time) (string, string, error) {
-	if userId == "" || username == "" || email == "" || secretKey == "" || issuer == "" || expire_time.IsZero() {
+	if userId == "" || secretKey == "" || issuer == "" || expire_time.IsZero() {
 		return "", "", errors.New("invalid token parameters: fields cannot be empty or zero")
 	}
 

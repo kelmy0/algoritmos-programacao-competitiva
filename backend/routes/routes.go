@@ -17,13 +17,13 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	algoService := services.NewAlgorithmService(algoRepo)
 	algoHandler := handlers.NewAlgorithmHandler(algoService)
 
-	//Auth
-	authRepo := repositories.NewAuthRepository(db)
-	authService := services.NewAuthService(authRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
-	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain)
-
 	//User
 	userRepo := repositories.NewUserRepository(db)
+
+	//Auth
+	authRepo := repositories.NewAuthRepository(db)
+	authService := services.NewAuthService(authRepo, userRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain, cfg.JwtRefreshExpiresDays)
 
 	//TwoFactor
 	twoFactorService := services.NewTwoFactorService(userRepo, cfg.EncryptSecretKey, cfg.AppName)
@@ -34,8 +34,13 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 		api.GET("/ping", handlers.AnswerPing)
 		api.GET("/algorithms", algoHandler.ListAlgorithms)
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
-		api.POST("/auth", authHandler.Auth)
-		api.POST("/auth/refresh", authHandler.Refresh)
+
+		auth := api.Group("/auth")
+		{
+			auth.POST("/login", authHandler.Auth)
+			auth.POST("/verify-2fa", authHandler.Verify2FA)
+			auth.POST("/refresh", authHandler.Refresh)
+		}
 
 		// Routes that requires Auth
 		api.Use(middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))

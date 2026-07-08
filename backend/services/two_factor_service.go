@@ -5,12 +5,15 @@ import (
 	"errors"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/repositories"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"github.com/pquerna/otp/totp"
 )
 
 type UserRepository interface {
+	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	GetUserById(ctx context.Context, id string) (*models.User, error)
 	Save2FASecret(ctx context.Context, userId, secret string) error
 	Enable2FA(ctx context.Context, userId string) error
 	Disable2FA(ctx context.Context, userId string) error
