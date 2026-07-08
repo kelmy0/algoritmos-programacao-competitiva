@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -20,8 +21,16 @@ func (r *UserRepository) Save2FASecret(ctx context.Context, userId, secret strin
 		SET two_factor_secret = $1
 		WHERE id = $2;
 	`
-	_, err := r.db.Exec(ctx, query, secret, userId)
-	return err
+	res, err := r.db.Exec(ctx, query, secret, userId)
+	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		return errors.New("User not found")
+	}
+
+	return nil
 }
 
 func (r *UserRepository) Enable2FA(ctx context.Context, userId string) error {

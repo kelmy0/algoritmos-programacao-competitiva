@@ -1,11 +1,15 @@
 package utils
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -45,4 +49,63 @@ func VerifyPassword(password, hashedPassword string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func Encrypt(plainText, key string) (string, error) {
+	keyBytes, err := hex.DecodeString(key)
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher(keyBytes)
+	if err != nil {
+		return "", err
+	}
+
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, aesGCM.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := aesGCM.Seal(nonce, nonce, []byte(plainText), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func Decrypt(cryptoText, key string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(cryptoText)
+	if err != nil {
+		return "", err
+	}
+
+	keyBytes, err := hex.DecodeString(key)
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher(keyBytes)
+	if err != nil {
+		return "", err
+	}
+
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := aesGCM.NonceSize()
+	if len(decoded) < nonceSize {
+		return "", errors.New("Crypted text is invalid")
+	}
+
+	nonce, realCypherText := decoded[:nonceSize], decoded[nonceSize:]
+	plainText, err := aesGCM.Open(nil, nonce, realCypherText, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(plainText), nil
 }

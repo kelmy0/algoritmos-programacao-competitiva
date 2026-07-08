@@ -19,6 +19,7 @@ type Config struct {
 	JwtRefreshSecret        string
 	JwtAccessExpiresMinutes int
 	JwtRefreshExpiresDays   int
+	EncryptSecretKey        string
 }
 
 func LoadConfig() *Config {
@@ -83,6 +84,11 @@ func LoadConfig() *Config {
 		log.Fatal("❌ APP_DOMAIN is required.")
 	}
 
+	encryptSecretKey := os.Getenv("ENCRYPT_SECRET_KEY")
+	if encryptSecretKey == "" {
+		log.Fatal("❌ ENCRYPT_SECRET_KEY is required.")
+	}
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -94,5 +100,6 @@ func LoadConfig() *Config {
 		JwtRefreshSecret:        jwtRefreshSecret,
 		JwtAccessExpiresMinutes: aToMinutes,
 		JwtRefreshExpiresDays:   rToDays,
+		EncryptSecretKey:        encryptSecretKey,
 	}
 }

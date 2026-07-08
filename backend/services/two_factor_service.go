@@ -1,6 +1,13 @@
 package services
 
-import "context"
+import (
+	"context"
+	"errors"
+
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
+	"github.com/pquerna/otp/totp"
+)
 
 type UserRepository interface {
 	Save2FASecret(ctx context.Context, userId, secret string) error
@@ -9,14 +16,40 @@ type UserRepository interface {
 }
 
 type TwoFactorService struct {
-	Repo UserRepository
+	Repo          UserRepository
+	EncryptSecret string
+	AppName       string
 }
 
-func NewTwoFactorService(repo UserRepository) *TwoFactorService {
-	return &TwoFactorService{Repo: repo}
+func NewTwoFactorService(repo UserRepository, encryptSecret, appName string) *TwoFactorService {
+	return &TwoFactorService{Repo: repo, EncryptSecret: encryptSecret, AppName: appName}
 }
 
-func (s *TwoFactorService) Generate2FA(userId string) {}
+func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string) (*dto.TwoFactorGenerateResponse, error) {
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      s.AppName,
+		AccountName: email,
+		SecretSize:  32,
+	})
+	if err != nil {
+		return nil, errors.New("Error generating TOTP")
+	}
+
+	encryptedSecret, err := utils.Encrypt(key.Secret(), s.EncryptSecret)
+	if err != nil {
+		return nil, errors.New("Error encrypting TOTP")
+	}
+
+	err = s.Repo.Save2FASecret(ctx, userId, encryptedSecret)
+	if err != nil {
+		return nil, errors.New("Error saving TOTP")
+	}
+
+	return &dto.TwoFactorGenerateResponse{
+		Secret: key.Secret(),
+		QRCode: key.URL(),
+	}, nil
+}
 
 func (s *TwoFactorService) Enable2FA(userId, code string) {}
 

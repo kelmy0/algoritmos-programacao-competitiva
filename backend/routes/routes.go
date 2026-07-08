@@ -26,7 +26,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	userRepo := repositories.NewUserRepository(db)
 
 	//TwoFactor
-	twoFactorService := services.NewTwoFactorService(userRepo)
+	twoFactorService := services.NewTwoFactorService(userRepo, cfg.EncryptSecretKey, cfg.AppName)
 	twoFactorHandler := handlers.NewTwoFactorHandler(twoFactorService)
 
 	api := router.Group("/api")
