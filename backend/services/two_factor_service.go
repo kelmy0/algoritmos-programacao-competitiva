@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/repositories"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"github.com/pquerna/otp/totp"
 )
@@ -13,6 +14,7 @@ type UserRepository interface {
 	Save2FASecret(ctx context.Context, userId, secret string) error
 	Enable2FA(ctx context.Context, userId string) error
 	Disable2FA(ctx context.Context, userId string) error
+	Get2FAData(ctx context.Context, userId string) (*repositories.User2FAData, error)
 }
 
 type TwoFactorService struct {
@@ -26,6 +28,15 @@ func NewTwoFactorService(repo UserRepository, encryptSecret, appName string) *Tw
 }
 
 func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string) (*dto.TwoFactorGenerateResponse, error) {
+	twoFactorData, err := s.Repo.Get2FAData(ctx, userId)
+	if err != nil {
+		return nil, errors.New("Error retrieving 2FA data")
+	}
+
+	if twoFactorData.IsEnabled {
+		return nil, errors.New("2FA already enabled")
+	}
+
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      s.AppName,
 		AccountName: email,
@@ -51,6 +62,36 @@ func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string
 	}, nil
 }
 
-func (s *TwoFactorService) Enable2FA(userId, code string) {}
+func (s *TwoFactorService) Enable2FA(ctx context.Context, userId, code string) error {
+	twoFactorData, err := s.Repo.Get2FAData(ctx, userId)
+	if err != nil {
+		return errors.New("Error retrieving 2FA data")
+	}
+
+	if twoFactorData.IsEnabled {
+		return errors.New("2FA already enabled")
+	}
+
+	if twoFactorData.Secret == "" {
+		return errors.New("2FA setup has not been initiated for this user")
+	}
+
+	decryptedSecret, err := utils.Decrypt(twoFactorData.Secret, s.EncryptSecret)
+	if err != nil {
+		return errors.New("Error processing authentication security")
+	}
+
+	isValid := totp.Validate(code, decryptedSecret)
+	if !isValid {
+		return errors.New("2FA code is invalid or expired")
+	}
+
+	err = s.Repo.Enable2FA(ctx, userId)
+	if err != nil {
+		return errors.New("Error activating 2FA")
+	}
+
+	return nil
+}
 
 func (s *TwoFactorService) Disable2FA(userId, password string) {}
