@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -20,6 +21,23 @@ type Config struct {
 	JwtAccessExpiresMinutes int
 	JwtRefreshExpiresDays   int
 	EncryptSecretKey        string
+	Memory                  uint32
+	Iterations              uint32
+	Parallelism             uint8
+	SaltLength              uint32
+	KeyLength               uint32
+}
+
+func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
+	var memory, iterations, saltLength, keyLength uint32
+	var parallelism uint8
+	_, err := fmt.Sscanf(paramStr, "m=%d,t=%d,p=%d,sl=%d,kl=%d",
+		&memory, &iterations, &parallelism, &saltLength, &keyLength)
+	if err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+
+	return memory, iterations, parallelism, saltLength, keyLength, nil
 }
 
 func LoadConfig() *Config {
@@ -89,6 +107,16 @@ func LoadConfig() *Config {
 		log.Fatal("❌ ENCRYPT_SECRET_KEY is required.")
 	}
 
+	argonParamsEnv := os.Getenv("ARGON_PARAMS")
+	if argonParamsEnv == "" {
+		log.Fatal("❌ ARGON_PARAMS is required in .env")
+	}
+
+	memory, iterations, parallelism, saltLength, keyLength, err := parseArgonParams(argonParamsEnv)
+	if err != nil {
+		log.Fatal("❌ ARGON_PARAMS format is invalid. Expected format: m=65536,t=3,p=4,sl=16,kl=32")
+	}
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -101,5 +129,10 @@ func LoadConfig() *Config {
 		JwtAccessExpiresMinutes: aToMinutes,
 		JwtRefreshExpiresDays:   rToDays,
 		EncryptSecretKey:        encryptSecretKey,
+		Memory:                  memory,
+		Iterations:              iterations,
+		Parallelism:             parallelism,
+		SaltLength:              saltLength,
+		KeyLength:               keyLength,
 	}
 }

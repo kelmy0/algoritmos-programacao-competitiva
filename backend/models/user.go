@@ -9,7 +9,9 @@ type User struct {
 	Name                    string     `db:"name"`
 	Username                string     `db:"username"`
 	Email                   string     `db:"email"`
-	PasswordHash            string     `db:"password_hash"`
+	PasswordHash            *string    `db:"password_hash"`
+	SsoProvider             *string    `db:"sso_provider"`
+	SsoUserId               *string    `db:"sso_user_id"`
 	RecoveryTokenHash       *string    `db:"recovery_token_hash"`
 	RecoveryTokenExpiresAt  *time.Time `db:"recovery_token_expires_at"`
 	Enable                  bool       `db:"enable"`

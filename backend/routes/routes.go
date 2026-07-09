@@ -25,6 +25,13 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	authService := services.NewAuthService(authRepo, userRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain, cfg.JwtRefreshExpiresDays)
 
+	//Sign up
+	signUpService := services.NewSignUpService(userRepo, authRepo,
+		cfg.Parallelism, cfg.Memory, cfg.Iterations, cfg.SaltLength,
+		cfg.KeyLength, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName,
+		cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	signUpHandler := handlers.NewSignUpHandler(signUpService, cfg.JwtRefreshExpiresDays, cfg.AppName, isProd)
+
 	//TwoFactor
 	twoFactorService := services.NewTwoFactorService(userRepo, cfg.EncryptSecretKey, cfg.AppName)
 	twoFactorHandler := handlers.NewTwoFactorHandler(twoFactorService)
@@ -34,6 +41,8 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 		api.GET("/ping", handlers.AnswerPing)
 		api.GET("/algorithms", algoHandler.ListAlgorithms)
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
+
+		api.POST("/sign-up", signUpHandler.SignUp)
 
 		auth := api.Group("/auth")
 		{

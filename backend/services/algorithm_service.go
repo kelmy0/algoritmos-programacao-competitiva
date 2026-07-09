@@ -46,9 +46,9 @@ func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId 
 }
 
 func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest) (*models.Algorithm, error) {
-	nameSanitized := utils.SanitizeName(data.Name)
+	nameSanitized := utils.SanitizeTitle(data.Name)
 	content := utils.SanitizeMarkDown(data.Content)
-	categorySanitized := utils.SanitizeName(data.Category)
+	categorySanitized := utils.SanitizeTitle(data.Category)
 
 	if nameSanitized == "" || content == "" || categorySanitized == "" {
 		return nil, errors.New("Invalid name, content or category!")
@@ -78,16 +78,16 @@ func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, publicId string)
 }
 
 func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest) (*models.Algorithm, error) {
-	nameSanitized := utils.SanitizeName(data.Name)
+	nameSanitized := utils.SanitizeTitle(data.Name)
 	content := utils.SanitizeMarkDown(data.Content)
-	categorySanitized := utils.SanitizeName(data.Category)
+	categorySanitized := utils.SanitizeTitle(data.Category)
 
 	if nameSanitized == "" || content == "" || categorySanitized == "" {
 		return nil, errors.New("Invalid name, content or category!")
 	}
 
 	slug := utils.Slug(nameSanitized)
-	publicId := utils.SanitizeName(data.PublicId)
+	publicId := utils.SanitizeTitle(data.PublicId)
 
 	algorithm := &models.PutAlgorithm{
 		PublicId:   publicId,

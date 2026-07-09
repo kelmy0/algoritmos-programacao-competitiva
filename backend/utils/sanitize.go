@@ -1,20 +1,25 @@
 package utils
 
 import (
-	"html"
 	"regexp"
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
 )
 
-var LippinRegex = regexp.MustCompile(`[^\p{L}\s\-\.\d]+`)
+var HumanNameRegex = regexp.MustCompile(`[^\p{L}\s\-\.\']+`)
+var TitleRegex = regexp.MustCompile(`[^\p{L}\s\-\.\'\d\+\#\&]+`)
 
-func SanitizeName(name string) string {
-	cleanName := LippinRegex.ReplaceAllString(name, "")
-	fields := strings.Fields(cleanName)
-	finalName := strings.Join(fields, " ")
-	return html.EscapeString(finalName)
+func SanitizeHumanName(name string) string {
+	clean := HumanNameRegex.ReplaceAllString(name, "")
+	fields := strings.Fields(clean)
+	return strings.Join(fields, " ")
+}
+
+func SanitizeTitle(title string) string {
+	clean := TitleRegex.ReplaceAllString(title, "")
+	fields := strings.Fields(clean)
+	return strings.Join(fields, " ")
 }
 
 func SanitizeMarkDown(text string) string {

@@ -18,6 +18,8 @@ type UserRepository interface {
 	Enable2FA(ctx context.Context, userId string) error
 	Disable2FA(ctx context.Context, userId string) error
 	GetAuthData(ctx context.Context, userId string) (*repositories.UserAuthData, error)
+	CheckUserExists(ctx context.Context, email string) (bool, error)
+	CreateUser(ctx context.Context, name, username, email, passwordHash string) (string, error)
 }
 
 type TwoFactorService struct {

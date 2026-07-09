@@ -46,10 +46,12 @@ CREATE TABLE role_permissions (
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(128) NOT NULL,
-    username VARCHAR(32) NOT NULL,
+    name VARCHAR(128) NOT NULL CHECK (char_length(name) >= 6),
+    username VARCHAR(32) NOT NULL (char_length(username) >= 6),
     email VARCHAR(128) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),
+    sso_provider VARCHAR(255),
+    sso_user_id VARCHAR(255),
     enable BOOLEAN NOT NULL DEFAULT TRUE,
     role_id INT NOT NULL,
     recovery_token_hash VARCHAR(64),
@@ -66,6 +68,8 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_recovery_token ON users(recovery_token_hash) WHERE recovery_token_hash IS NOT NULL;
 CREATE INDEX idx_users_role_id ON users(role_id);
+CREATE INDEX idx_users_username ON users(username);
+CREATE UNIQUE INDEX idx_users_sso_provider_user_id ON users(sso_provider, sso_user_id) WHERE sso_provider IS NOT NULL AND sso_user_id IS NOT NULL;
 
 CREATE TABLE refresh_tokens (
     id CHAR(32) PRIMARY KEY,

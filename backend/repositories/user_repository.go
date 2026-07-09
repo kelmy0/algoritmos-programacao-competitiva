@@ -34,7 +34,7 @@ func (r *UserRepository) GetUserById(ctx context.Context, id string) (*models.Us
 func (r *UserRepository) getUserBy(ctx context.Context, value, field string) (*models.User, error) {
 	query := fmt.Sprintf(`
         SELECT 
-            u.id, u.name, u.username, u.email, u.password_hash, u.recovery_token_hash, 
+            u.id, u.name, u.username, u.email, u.password_hash, u.sso_provider, u.sso_user_id, u.recovery_token_hash, 
             u.recovery_token_expires_at, u.enable, u.two_factor_authentication, 
             u.two_factor_secret, u.role_id, u.failed_attempts, u.last_login, 
             u.blocked_until, u.created_at, u.updated_at, r.is_employee,
@@ -49,7 +49,7 @@ func (r *UserRepository) getUserBy(ctx context.Context, value, field string) (*m
 
 	var user models.User
 	err := r.db.QueryRow(ctx, query, value).Scan(
-		&user.Id, &user.Name, &user.Username, &user.Email, &user.PasswordHash, &user.RecoveryTokenHash,
+		&user.Id, &user.Name, &user.Username, &user.Email, &user.PasswordHash, &user.SsoProvider, &user.SsoUserId, &user.RecoveryTokenHash,
 		&user.RecoveryTokenExpiresAt, &user.Enable, &user.TwoFactorAuthentication,
 		&user.TwoFactorSecret, &user.Role.Id, &user.FailedAttempts, &user.LastLogin,
 		&user.BlockedUntil, &user.CreatedAt, &user.UpdatedAt,
@@ -115,4 +115,31 @@ func (r *UserRepository) Disable2FA(ctx context.Context, userId string) error {
 	`
 	_, err := r.db.Exec(ctx, query, userId)
 	return err
+}
+
+func (r *UserRepository) CheckUserExists(ctx context.Context, email string) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`
+
+	var exists bool
+	err := r.db.QueryRow(ctx, query, email).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func (r *UserRepository) CreateUser(ctx context.Context, name, username, email, passwordHash string) (string, error) {
+	query := `
+		INSERT INTO users(name, username, email, password_hash, role_id) VALUES
+		($1, $2, $3, $4, 1)
+		RETURNING id;
+	`
+	var insertedID string
+
+	err := r.db.QueryRow(ctx, query, name, username, email, passwordHash).Scan(&insertedID)
+	if err != nil {
+		return "", err
+	}
+	return insertedID, nil
 }
