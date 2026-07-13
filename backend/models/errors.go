@@ -22,7 +22,9 @@ var (
 	ErrInvalidOrExpiredRefresh    = &AppError{StatusCode: http.StatusUnauthorized, Code: "AUTH_INVALID_REFRESH_TOKEN", Message: "Invalid or expired refresh token."}
 	ErrTokenMetadataMisMatch      = &AppError{StatusCode: http.StatusForbidden, Code: "AUTH_SECURITY_VIOLATION", Message: "Token metadata mismatch: Security violation."}
 	ErrPasswordChangeFailed       = &AppError{StatusCode: http.StatusInternalServerError, Code: "USER_PASSWORD_CHANGE_FAILED", Message: "Failed to change password."}
+	ErrPasswordSetFailed          = &AppError{StatusCode: http.StatusInternalServerError, Code: "USER_PASSWORD_SET_FAILED", Message: "Failed to set password."}
 	ErrPasswordNotSet             = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORD_NOT_SET", Message: "Password not set before."}
+	ErrPasswordSet                = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORD_ALREADY_SET", Message: "Password already set before."}
 	ErrAlgorithmNotFound          = &AppError{StatusCode: http.StatusNotFound, Code: "ALGORITHM_NOT_FOUND", Message: "Algorithm not found."}
 	ErrFailQueryingAlgorithm      = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_QUERY_FAILED", Message: "Failed to query algorithm."}
 	ErrInvalidNameCategoryContent = &AppError{StatusCode: http.StatusBadRequest, Code: "ALGORITHM_INVALID_NAME_CATEGORY_CONTENT", Message: "Invalid name, content or category."}
@@ -46,4 +48,5 @@ var (
 )
 
 var ErrPasswordChangeButNotLogout = errors.New("password changed, but failed to log out other devices.")
+var ErrPasswordSetButNotLogout = errors.New("password setted, but failed to log out other devices.")
 var ErrAccountCreatedButTokenFailed = errors.New("account created successfully, but auto-login failed")

@@ -252,7 +252,24 @@ func (r *UserRepository) ChangePassword(ctx context.Context, id, newPassword str
 	query := `
         UPDATE users
         SET password_hash = $1
-        WHERE id = $2
+        WHERE id = $2;
+    `
+
+	res, err := r.db.Exec(ctx, query, newPassword, id)
+	if err != nil {
+		return fmt.Errorf("failed to change password: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return models.ErrUserNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) DefinePassword(ctx context.Context, id, newPassword string) error {
+	query := `
+        UPDATE users
+        SET password_hash = $1
+        WHERE id = $2 AND password_hash IS NULL;
     `
 
 	res, err := r.db.Exec(ctx, query, newPassword, id)

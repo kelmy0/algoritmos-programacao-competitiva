@@ -11,6 +11,7 @@ import (
 type UserConfigRepo interface {
 	GetUserByIdForAuth(ctx context.Context, id string) (*models.User, error)
 	ChangePassword(ctx context.Context, id, newPassword string) error
+	DefinePassword(ctx context.Context, id, newPassword string) error
 }
 
 type AuthConfigRepo interface {
@@ -41,25 +42,9 @@ func (s *UserConfigService) ChangePassword(ctx context.Context, userIdContext, r
 		return models.ErrPasswordsDontMatch
 	}
 
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	user, token, err := s.validateUserSession(ctx, userIdContext, refreshTokenString)
 	if err != nil {
-		return models.ErrInvalidOrExpiredRefresh
-	}
-
-	tokenExists, err := s.AuthRepo.GetRefreshTokenById(ctx, claims.ID)
-	if err != nil || tokenExists == nil {
-		return models.ErrInvalidOrExpiredRefresh
-	}
-
-	if tokenExists.UserId != claims.Subject || userIdContext != claims.Subject {
-		return models.ErrTokenMetadataMisMatch
-	}
-
-	userId := claims.Subject
-
-	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
-	if err != nil {
-		return models.ErrUserNotFound
+		return err
 	}
 
 	if user.PasswordHash == nil {
@@ -76,15 +61,70 @@ func (s *UserConfigService) ChangePassword(ctx context.Context, userIdContext, r
 		return models.ErrPasswordChangeFailed
 	}
 
-	err = s.UserRepo.ChangePassword(ctx, userId, newPasswordHash)
+	err = s.UserRepo.ChangePassword(ctx, user.Id, newPasswordHash)
 	if err != nil {
 		return models.ErrPasswordChangeFailed
 	}
 
-	err = s.AuthRepo.DeleteAllRefreshToken(ctx, userId, tokenExists.Id)
+	err = s.AuthRepo.DeleteAllRefreshToken(ctx, user.Id, token.Id)
 	if err != nil {
 		return models.ErrPasswordChangeButNotLogout
 	}
 
 	return nil
+}
+
+func (s *UserConfigService) DefinePassword(ctx context.Context, userIdContext, refreshTokenString string, data dto.DefinePasswordRequest) error {
+	if data.NewPassword != data.ConfirmNewPassword {
+		return models.ErrPasswordsDontMatch
+	}
+
+	user, token, err := s.validateUserSession(ctx, userIdContext, refreshTokenString)
+	if err != nil {
+		return err
+	}
+
+	if user.PasswordHash != nil {
+		return models.ErrPasswordSet
+	}
+
+	newPasswordHash, err := utils.HashPassword(data.NewPassword, s.ArgonParams)
+	if err != nil {
+		return models.ErrPasswordSetFailed
+	}
+
+	err = s.UserRepo.DefinePassword(ctx, user.Id, newPasswordHash)
+	if err != nil {
+		return models.ErrPasswordSetFailed
+	}
+
+	err = s.AuthRepo.DeleteAllRefreshToken(ctx, user.Id, token.Id)
+	if err != nil {
+		return models.ErrPasswordSetButNotLogout
+	}
+
+	return nil
+}
+
+func (s *UserConfigService) validateUserSession(ctx context.Context, userIdContext, refreshTokenString string) (*models.User, *models.RefreshToken, error) {
+	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	if err != nil {
+		return nil, nil, models.ErrInvalidOrExpiredRefresh
+	}
+
+	tokenExists, err := s.AuthRepo.GetRefreshTokenById(ctx, claims.ID)
+	if err != nil || tokenExists == nil {
+		return nil, nil, models.ErrInvalidOrExpiredRefresh
+	}
+
+	if tokenExists.UserId != claims.Subject || userIdContext != claims.Subject {
+		return nil, nil, models.ErrTokenMetadataMisMatch
+	}
+
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, claims.Subject)
+	if err != nil {
+		return nil, nil, models.ErrUserNotFound
+	}
+
+	return user, tokenExists, nil
 }

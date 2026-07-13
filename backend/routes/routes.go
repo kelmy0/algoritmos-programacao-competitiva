@@ -72,6 +72,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 				authenticatedAuth.POST("/logout", authHandler.Logout)
 				authenticatedAuth.POST("/logout/all", authHandler.LogoutAll)
 				authenticatedAuth.POST("/change-password", userConfigHandler.ChangePassword)
+				authenticatedAuth.POST("/set-password", userConfigHandler.DefinePassword)
 			}
 		}
 

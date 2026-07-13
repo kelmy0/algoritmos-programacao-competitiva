@@ -19,30 +19,8 @@ func NewUserConfigHandler(service *services.UserConfigService) *UserConfigHandle
 }
 
 func (h *UserConfigHandler) ChangePassword(c *gin.Context) {
-	userIdContext, existsId := c.Get("userId")
-	if !existsId {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeMissingUserIdContext,
-			dto.MsgMissingDataFromContext,
-		))
-		return
-	}
-
-	refreshToken, err := c.Cookie("refresh_token")
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
-			dto.CodeMissingCookie,
-			dto.MsgMissingRefreshCookie,
-		))
-		return
-	}
-
-	id, ok := userIdContext.(string)
+	id, refreshToken, ok := h.getAuthCredentials(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError,
-			dto.MsgUnexpectedError,
-		))
 		return
 	}
 
@@ -55,7 +33,7 @@ func (h *UserConfigHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	err = h.service.ChangePassword(c.Request.Context(), id, refreshToken, requestBody)
+	err := h.service.ChangePassword(c.Request.Context(), id, refreshToken, requestBody)
 	if errors.Is(err, models.ErrPasswordChangeButNotLogout) {
 		c.JSON(http.StatusOK, dto.ChangePasswordResponse{
 			Code:                   "PASSWORD_CHANGED_WITH_WARNING",
@@ -66,12 +44,7 @@ func (h *UserConfigHandler) ChangePassword(c *gin.Context) {
 	}
 
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -80,4 +53,72 @@ func (h *UserConfigHandler) ChangePassword(c *gin.Context) {
 		Message:                "Password changed successfully and all other sessions were terminated.",
 		OthersDevicesLoggedOut: true,
 	})
+}
+
+func (h *UserConfigHandler) DefinePassword(c *gin.Context) {
+	id, refreshToken, ok := h.getAuthCredentials(c)
+	if !ok {
+		return
+	}
+
+	var requestBody dto.DefinePasswordRequest
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			err.Error(),
+		))
+		return
+	}
+
+	err := h.service.DefinePassword(c.Request.Context(), id, refreshToken, requestBody)
+	if errors.Is(err, models.ErrPasswordSetButNotLogout) {
+		c.JSON(http.StatusOK, dto.ChangePasswordResponse{
+			Code:                   "PASSWORD_SETTED_WITH_WARNING",
+			Message:                "Password set successfully, but we couldn't terminate other active sessions.",
+			OthersDevicesLoggedOut: false,
+		})
+		return
+	}
+
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ChangePasswordResponse{
+		Code:                   "PASSWORD_SETTED_SUCCESS",
+		Message:                "Password set successfully and all other sessions were terminated.",
+		OthersDevicesLoggedOut: true,
+	})
+}
+
+func (h *UserConfigHandler) getAuthCredentials(c *gin.Context) (string, string, bool) {
+	userIdContext, existsId := c.Get("userId")
+	if !existsId {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeMissingUserIdContext,
+			dto.MsgMissingDataFromContext,
+		))
+		return "", "", false
+	}
+
+	id, ok := userIdContext.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeInternalError,
+			dto.MsgUnexpectedError,
+		))
+		return "", "", false
+	}
+
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeMissingCookie,
+			dto.MsgMissingRefreshCookie,
+		))
+		return "", "", false
+	}
+
+	return id, refreshToken, true
 }
