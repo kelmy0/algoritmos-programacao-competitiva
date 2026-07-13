@@ -2,8 +2,10 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 )
@@ -76,7 +78,10 @@ func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string
 	)
 
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		return nil, models.ErrFailQueryingAlgorithm
 	}
 
 	return &algo, nil
@@ -137,7 +142,10 @@ func (r *AlgorithmRepository) DeleteAlgorithm(ctx context.Context, publicId stri
 	)
 
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		return nil, models.ErrFailQueryingAlgorithm
 	}
 
 	return &algo, nil
@@ -172,7 +180,10 @@ func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutA
 	)
 
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		return nil, models.ErrFailQueryingAlgorithm
 	}
 
 	return &algo, nil

@@ -12,3 +12,7 @@ type TwoFactorEnableRequest struct {
 type TwoFactorDisableRequest struct {
 	Password string `json:"password" binding:"required,min=8"`
 }
+
+type TwoFactorEnableResponse struct {
+	Message string `json:"message"`
+}

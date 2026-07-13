@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 )
 
@@ -12,7 +13,10 @@ func AuthMiddleware(secretKey, issuer string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
+			c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+				dto.CodeMissingHeader,
+				"Authorization header is required.",
+			))
 			c.Abort()
 			return
 		}
@@ -20,7 +24,10 @@ func AuthMiddleware(secretKey, issuer string) gin.HandlerFunc {
 		// Verify bearer <token> format
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header format must be Bearer {token}"})
+			c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+				dto.CodeInvalidHeaderFormat,
+				"Authorization header format must be Bearer {token}.",
+			))
 			c.Abort()
 			return
 		}
@@ -28,7 +35,10 @@ func AuthMiddleware(secretKey, issuer string) gin.HandlerFunc {
 		tokenString := parts[1]
 		claims, err := utils.ValidateToken(tokenString, secretKey, issuer)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+				dto.CodeInvalidAccessToken,
+				"Invalid or expired access token.",
+			))
 			c.Abort()
 			return
 		}

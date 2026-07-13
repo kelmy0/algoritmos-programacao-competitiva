@@ -5,30 +5,25 @@ import (
 	"errors"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/repositories"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"github.com/pquerna/otp/totp"
 )
 
-type UserRepository interface {
-	GetUserByEmailForAuth(ctx context.Context, email string) (*models.User, error)
-	GetUserByIdForAuth(ctx context.Context, id string) (*models.User, error)
+type TwoFactorUserRepository interface {
 	Save2FASecret(ctx context.Context, userId, secret string) error
 	Enable2FA(ctx context.Context, userId string) error
 	Disable2FA(ctx context.Context, userId string) error
 	GetAuthData(ctx context.Context, userId string) (*repositories.UserAuthData, error)
-	CheckUserExists(ctx context.Context, email string) (bool, error)
-	CreateUser(ctx context.Context, data models.NewUser) (string, error)
 }
 
 type TwoFactorService struct {
-	Repo          UserRepository
+	Repo          TwoFactorUserRepository
 	EncryptSecret string
 	AppName       string
 }
 
-func NewTwoFactorService(repo UserRepository, encryptSecret, appName string) *TwoFactorService {
+func NewTwoFactorService(repo TwoFactorUserRepository, encryptSecret, appName string) *TwoFactorService {
 	return &TwoFactorService{Repo: repo, EncryptSecret: encryptSecret, AppName: appName}
 }
 

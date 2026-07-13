@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
@@ -22,13 +24,21 @@ func NewAuthHandler(service *services.AuthService, isProduce bool, appDomain str
 func (h *AuthHandler) Auth(c *gin.Context) {
 	var requestBody dto.AuthRequest
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			err.Error(),
+		))
 		return
 	}
 
 	result, err := h.service.Auth(c.Request.Context(), requestBody)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 
@@ -46,13 +56,21 @@ func (h *AuthHandler) Auth(c *gin.Context) {
 func (h *AuthHandler) Verify2FA(c *gin.Context) {
 	var requestBody dto.Verify2FARequest
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			err.Error(),
+		))
 		return
 	}
 
 	result, err := h.service.VerifyLogin2FA(c.Request.Context(), requestBody)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 
@@ -63,72 +81,114 @@ func (h *AuthHandler) Verify2FA(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token cookie is required"})
-		c.Abort()
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeMissingCookie,
+			dto.MsgMissingRefreshCookie,
+		))
 		return
 	}
 
 	accessToken, err := h.service.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		c.Abort()
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"access_token": accessToken,
+	c.JSON(http.StatusOK, &dto.RefreshResponse{
+		AccessToken: accessToken,
 	})
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		c.Abort()
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeMissingUserIdContext,
+			dto.MsgMissingDataFromContext,
+		))
 		return
 	}
 
-	id := userId.(string)
+	id, ok := userId.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeInternalError,
+			dto.MsgUnexpectedError,
+		))
+		return
+	}
+
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token cookie is required"})
-		c.Abort()
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeMissingCookie,
+			dto.MsgMissingRefreshCookie,
+		))
 		return
 	}
 
 	err = h.service.Logout(c.Request.Context(), id, refreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		c.Abort()
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 
 	c.SetCookie("refresh_token", "", -1, "/", h.appDomain, h.isProduce, true)
-	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
+	c.JSON(http.StatusOK, dto.LogoutResponse{
+		Message: "Successfully logged out.",
+	})
 }
 
 func (h *AuthHandler) LogoutAll(c *gin.Context) {
 	userId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		c.Abort()
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeMissingUserIdContext,
+			dto.MsgMissingDataFromContext,
+		))
 		return
 	}
 
-	id := userId.(string)
+	id, ok := userId.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeInternalError,
+			dto.MsgUnexpectedError,
+		))
+		return
+	}
+
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token cookie is required"})
-		c.Abort()
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeMissingCookie,
+			dto.MsgMissingRefreshCookie,
+		))
 		return
 	}
 
 	err = h.service.LogoutAll(c.Request.Context(), id, refreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		c.Abort()
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out from all devices"})
+	c.JSON(http.StatusOK, dto.LogoutResponse{
+		Message: "Successfully logged out from all devices.",
+	})
 }

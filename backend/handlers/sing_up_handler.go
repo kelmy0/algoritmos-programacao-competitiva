@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
@@ -28,13 +29,16 @@ func NewSignUpHandler(service *services.SignUpService, refreshDurationDays int, 
 func (h *SignUpHandler) SignUp(c *gin.Context) {
 	var requestBody dto.SignUpRequest
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInternalError,
+			err.Error(),
+		))
 		return
 	}
 
 	result, err := h.Service.SignUp(c.Request.Context(), requestBody)
 	if err != nil {
-		if errors.Is(err, services.ErrAccountCreatedButTokenFailed) {
+		if errors.Is(err, models.ErrAccountCreatedButTokenFailed) {
 			c.JSON(http.StatusCreated, dto.SignUpResponse{
 				Success:   true,
 				AutoLogin: false,
@@ -42,7 +46,12 @@ func (h *SignUpHandler) SignUp(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 

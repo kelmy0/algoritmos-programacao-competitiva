@@ -73,12 +73,12 @@ func (s *UserConfigService) ChangePassword(ctx context.Context, userIdContext, r
 
 	newPasswordHash, err := utils.HashPassword(data.NewPassword, s.ArgonParams)
 	if err != nil {
-		return models.ErrFailChangingPassword
+		return models.ErrPasswordChangeFailed
 	}
 
 	err = s.UserRepo.ChangePassword(ctx, userId, newPasswordHash)
 	if err != nil {
-		return models.ErrFailChangingPassword
+		return models.ErrPasswordChangeFailed
 	}
 
 	err = s.AuthRepo.DeleteAllRefreshToken(ctx, userId, tokenExists.Id)

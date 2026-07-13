@@ -2,7 +2,7 @@ package services
 
 import (
 	"context"
-	"errors"
+	"unicode/utf8"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
@@ -46,31 +46,30 @@ func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId 
 }
 
 func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest) (*models.Algorithm, error) {
-	nameSanitized := utils.SanitizeTitle(data.Name)
-	content := utils.SanitizeMarkDown(data.Content)
-	categorySanitized := utils.SanitizeTitle(data.Category)
-
-	if nameSanitized == "" || content == "" || categorySanitized == "" {
-		return nil, errors.New("Invalid name, content or category!")
+	name, category, content, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
+	if err != nil {
+		return nil, err
 	}
 
 	publicId, err := utils.GeneratePublicID()
 	if err != nil {
-		return nil, errors.New("Error to generate public id")
+		return nil, models.ErrFailGeneratePublicId
 	}
-
-	slug := utils.Slug(nameSanitized)
 
 	algorithm := &models.NewAlgorithm{
 		PublicId:   publicId,
-		Name:       nameSanitized,
-		Slug:       slug,
-		Category:   categorySanitized,
+		Name:       name,
+		Slug:       utils.Slug(name),
+		Category:   category,
 		Difficulty: data.Difficulty,
 		Content:    content,
 	}
 
-	return s.repo.PostAlgorithm(ctx, *algorithm)
+	res, err := s.repo.PostAlgorithm(ctx, *algorithm)
+	if err != nil {
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+	return res, nil
 }
 
 func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error) {
@@ -78,25 +77,36 @@ func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, publicId string)
 }
 
 func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest) (*models.Algorithm, error) {
-	nameSanitized := utils.SanitizeTitle(data.Name)
-	content := utils.SanitizeMarkDown(data.Content)
-	categorySanitized := utils.SanitizeTitle(data.Category)
-
-	if nameSanitized == "" || content == "" || categorySanitized == "" {
-		return nil, errors.New("Invalid name, content or category!")
+	name, category, content, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
+	if err != nil {
+		return nil, err
 	}
 
-	slug := utils.Slug(nameSanitized)
 	publicId := utils.SanitizeTitle(data.PublicId)
 
 	algorithm := &models.PutAlgorithm{
 		PublicId:   publicId,
-		Name:       nameSanitized,
-		Slug:       slug,
-		Category:   categorySanitized,
+		Name:       name,
+		Slug:       utils.Slug(name),
+		Category:   category,
 		Difficulty: data.Difficulty,
 		Content:    content,
 	}
 
 	return s.repo.PutAlgorithm(ctx, *algorithm)
+}
+
+func validateAndSanitizeAlgorithmFields(name, category, content string) (string, string, string, error) {
+	nameSanitized := utils.SanitizeTitle(name)
+	categorySanitized := utils.SanitizeTitle(category)
+	contentSanitized := utils.SanitizeMarkDown(content)
+
+	if nameSanitized == "" || contentSanitized == "" || categorySanitized == "" ||
+		utf8.RuneCountInString(nameSanitized) < 3 ||
+		utf8.RuneCountInString(categorySanitized) < 3 ||
+		utf8.RuneCountInString(contentSanitized) < 10 {
+		return "", "", "", models.ErrInvalidNameCategoryContent
+	}
+
+	return nameSanitized, categorySanitized, contentSanitized, nil
 }

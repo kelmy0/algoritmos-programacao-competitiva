@@ -7,6 +7,7 @@ type ChangePasswordRequest struct {
 }
 
 type ChangePasswordResponse struct {
+	Code                   string `json:"code"`
 	Message                string `json:"message"`
 	OthersDevicesLoggedOut bool   `json:"others_devices_logged_out"`
 }

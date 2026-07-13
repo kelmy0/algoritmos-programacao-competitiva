@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
@@ -21,20 +23,31 @@ func (h *TwoFactorHandler) Generate2FA(c *gin.Context) {
 	userEmailContext, existsEmail := c.Get("email")
 
 	if !existsId || !existsEmail {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication data missing from the context"})
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeMissingUserIdContext,
+			dto.MsgMissingDataFromContext,
+		))
 		return
 	}
 
 	id, okId := userIdContext.(string)
 	email, okEmail := userEmailContext.(string)
 	if !okId || !okEmail {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing user data"})
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeInternalError,
+			dto.MsgUnexpectedError,
+		))
 		return
 	}
 
 	response, err := h.service.Generate2FA(c.Request.Context(), id, email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 
@@ -44,52 +57,84 @@ func (h *TwoFactorHandler) Generate2FA(c *gin.Context) {
 func (h *TwoFactorHandler) Enable2FA(c *gin.Context) {
 	userIdContext, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication data missing"})
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeMissingUserIdContext,
+			dto.MsgMissingDataFromContext,
+		))
 		return
 	}
 
 	id, ok := userIdContext.(string)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal error processing user ID"})
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeInternalError,
+			dto.MsgUnexpectedError,
+		))
 		return
 	}
 
 	var req dto.TwoFactorEnableRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload. Code must be 6 digits"})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			"Code must be 6 digits.",
+		))
 		return
 	}
 	err := h.service.Enable2FA(c.Request.Context(), id, req.Code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication enabled successfully"})
+
+	c.JSON(http.StatusOK, dto.TwoFactorEnableResponse{
+		Message: "Two-factor authentication enabled successfully",
+	})
 }
 
 func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
 	userIdContext, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication data missing"})
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeMissingUserIdContext,
+			dto.MsgMissingDataFromContext,
+		))
 		return
 	}
 
 	id, ok := userIdContext.(string)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal error processing user ID"})
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeInternalError,
+			dto.MsgUnexpectedError,
+		))
 		return
 	}
 
 	var req dto.TwoFactorDisableRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
-
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			err.Error(),
+		))
 		return
 	}
 	err := h.service.Disable2FA(c.Request.Context(), id, req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication disabled successfully"})
+	c.JSON(http.StatusOK, dto.TwoFactorEnableResponse{
+		Message: "Two-factor authentication disabled successfully",
+	})
 }

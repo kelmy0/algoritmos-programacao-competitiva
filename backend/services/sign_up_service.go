@@ -13,11 +13,18 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 )
 
-var ErrAccountCreatedButTokenFailed = errors.New("account created successfully, but auto-login failed")
+type SignUpUserRepository interface {
+	CheckUserExists(ctx context.Context, email string) (bool, error)
+	CreateUser(ctx context.Context, data models.NewUser) (string, error)
+}
+
+type SignUpAuthRepository interface {
+	SaveRefreshToken(ctx context.Context, tokenId, userId string, expiresAt time.Time) error
+}
 
 type SignUpService struct {
-	UserRepo             UserRepository
-	AuthRepo             AuthRepository
+	UserRepo             SignUpUserRepository
+	AuthRepo             SignUpAuthRepository
 	ArgonParams          utils.ArgonParams
 	JwtAccessSecret      string
 	JwtRefreshSecret     string
@@ -31,7 +38,7 @@ type SignUpResult struct {
 	RefreshToken   string
 }
 
-func NewSignUpService(userRepo UserRepository, authRepo AuthRepository, parallelism uint8, memory, iterarions, saltLength, keyLength uint32, jwtAccessSecret, jwtRefreshSecret, appName string, jwtAccessExpiration int, jwtRefreshExpiration int) *SignUpService {
+func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthRepository, parallelism uint8, memory, iterarions, saltLength, keyLength uint32, jwtAccessSecret, jwtRefreshSecret, appName string, jwtAccessExpiration int, jwtRefreshExpiration int) *SignUpService {
 	return &SignUpService{
 		UserRepo: userRepo,
 		AuthRepo: authRepo,
@@ -52,7 +59,7 @@ func NewSignUpService(userRepo UserRepository, authRepo AuthRepository, parallel
 
 func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*SignUpResult, error) {
 	if data.Password != data.ConfirmPassword {
-		return nil, errors.New("passwords do not match")
+		return nil, models.ErrPasswordsDontMatch
 	}
 
 	sanitizedData := dto.SignUpRequest{
@@ -63,26 +70,26 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 	}
 
 	if sanitizedData.Name == "" || sanitizedData.Username == "" || utf8.RuneCountInString(sanitizedData.Name) < 6 || utf8.RuneCountInString(sanitizedData.Username) < 6 {
-		return nil, errors.New("Invalid name or username")
+		return nil, models.ErrInvalidRegistrationFields
 	}
 
 	_, err := mail.ParseAddress(sanitizedData.Email)
 	if err != nil || !strings.Contains(sanitizedData.Email, "@") || strings.LastIndex(sanitizedData.Email, ".") < strings.LastIndex(sanitizedData.Email, "@") {
-		return nil, errors.New("Invalid email format")
+		return nil, models.ErrInvalidEmailFormat
 	}
 
 	userExists, err := s.UserRepo.CheckUserExists(ctx, sanitizedData.Email)
 	if err != nil {
-		return nil, errors.New("Error verifing email")
+		return nil, models.ErrFailQueryUser
 	}
 
 	if userExists {
-		return nil, errors.New("Email already used")
+		return nil, models.ErrUserAlreadyExists
 	}
 
 	passwordHash, err := utils.HashPassword(sanitizedData.Password, s.ArgonParams)
 	if err != nil {
-		return nil, errors.New("Error hashing password")
+		return nil, models.ErrUserRegistrationFailed
 	}
 
 	dataUser := models.NewUser{
@@ -91,26 +98,28 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		Email:        sanitizedData.Email,
 		PasswordHash: passwordHash,
 	}
-	//Creating account
+
 	userId, err := s.UserRepo.CreateUser(ctx, dataUser)
 	if err != nil {
-		println(err.Error())
-		return nil, errors.New("Error creating account")
+		if errors.Is(err, models.ErrUserAlreadyExists) {
+			return nil, models.ErrUserAlreadyExists
+		}
+		return nil, models.ErrUserRegistrationFailed
 	}
 
 	_, accessToken, err := utils.GenerateToken(userId, sanitizedData.Username, sanitizedData.Email, []string{}, s.JwtAccessSecret, s.AppName, false, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 	if err != nil {
-		return nil, ErrAccountCreatedButTokenFailed
+		return nil, models.ErrAccountCreatedButTokenFailed
 	}
 
 	idToken, refreshToken, err := utils.GenerateToken(userId, sanitizedData.Username, sanitizedData.Email, []string{}, s.JwtRefreshSecret, s.AppName, false, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
-		return nil, ErrAccountCreatedButTokenFailed
+		return nil, models.ErrAccountCreatedButTokenFailed
 	}
 
 	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, userId, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
-		return nil, ErrAccountCreatedButTokenFailed
+		return nil, models.ErrAccountCreatedButTokenFailed
 	}
 
 	response := &dto.SignUpResponse{

@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"golang.org/x/oauth2"
@@ -32,7 +35,8 @@ func NewAuthGoogleHandler(service *services.AuthService, googleConfig *oauth2.Co
 func (h *AuthGoogleHandler) GoogleLogin(c *gin.Context) {
 	state, err := utils.GenerateCustomId(32)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal error while generating session"})
+		c.JSON(http.StatusInternalServerError,
+			dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 
@@ -46,49 +50,62 @@ func (h *AuthGoogleHandler) GoogleCallback(c *gin.Context) {
 	urlState := c.Query("state")
 	cookieState, err := c.Cookie("oauth_google_state")
 	if err != nil || urlState != cookieState {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Session expired"})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeSessionExpired, dto.MsgSessionExpired,
+		))
 		return
 	}
 	c.SetCookie("oauth_google_state", "", -1, "/", h.AppDomain, h.IsProduce, true)
 
 	code := c.Query("code")
 	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing Google code"})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeMissingOAuthCode, "Missing Google exchange code.",
+		))
 		return
 	}
 
 	token, err := h.GoogleConfig.Exchange(c.Request.Context(), code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to exchange code for token"})
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeInternalError, "Failed to exchange code for token.",
+		))
 		return
 	}
 
 	idTokenStr, ok := token.Extra("id_token").(string)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Id Token not found"})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeMissingTokenID, "Missing Google id token.",
+		))
 		return
 	}
 
 	payload, err := idtoken.Validate(c.Request.Context(), idTokenStr, h.GoogleConfig.ClientID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Google token"})
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeInvalidGoogleToken, "Invalid Google token.",
+		))
 		return
 	}
 
 	email, ok := payload.Claims["email"].(string)
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Email is missing from Google token"})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeMissingGoogleEmail, "Missing email from Google token.",
+		))
 		return
 	}
 
 	emailVerified, ok := payload.Claims["email_verified"].(bool)
 	if !ok || !emailVerified {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Your Google account email is not verified"})
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeUnverifiedGoogleEmail, "Your Google account email is not verified.",
+		))
 		return
 	}
 
 	socialUserId := payload.Subject
-
 	name, ok := payload.Claims["name"].(string)
 
 	if !ok || name == "" {
@@ -110,14 +127,19 @@ func (h *AuthGoogleHandler) GoogleCallback(c *gin.Context) {
 	}
 
 	result, err := h.Service.AuthWithGoogle(c.Request.Context(), "google", socialUserId, email, name)
-
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if appErr, ok := errors.AsType[*models.AppError](err); ok {
+			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
 		return
 	}
 
 	if result.RefreshToken != "" {
 		c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.RefreshDurationDays, "/", h.AppDomain, h.IsProduce, true)
 	}
+
 	c.JSON(http.StatusOK, result.LoginResponse)
 }

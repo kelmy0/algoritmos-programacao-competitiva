@@ -15,3 +15,11 @@ type Verify2FARequest struct {
 	PreAuthToken string `json:"pre_auth_token" binding:"required"`
 	Code         string `json:"code" binding:"required,len=6"`
 }
+
+type RefreshResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+type LogoutResponse struct {
+	Message string `json:"message"`
+}
