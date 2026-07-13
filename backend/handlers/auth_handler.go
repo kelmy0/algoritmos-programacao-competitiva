@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
@@ -33,12 +31,7 @@ func (h *AuthHandler) Auth(c *gin.Context) {
 
 	result, err := h.service.Auth(c.Request.Context(), requestBody)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -65,12 +58,7 @@ func (h *AuthHandler) Verify2FA(c *gin.Context) {
 
 	result, err := h.service.VerifyLogin2FA(c.Request.Context(), requestBody)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -90,12 +78,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	accessToken, err := h.service.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -134,12 +117,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 	err = h.service.Logout(c.Request.Context(), id, refreshToken)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -179,12 +157,7 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 
 	err = h.service.LogoutAll(c.Request.Context(), id, refreshToken)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 

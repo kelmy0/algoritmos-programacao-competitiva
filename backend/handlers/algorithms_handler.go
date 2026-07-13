@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
@@ -50,12 +48,7 @@ func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 
 	algorithm, err := h.Service.GetAlgorithmByPublicID(c.Request.Context(), publicId)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -76,12 +69,7 @@ func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
 
 	algorithm, err := h.Service.PostAlgorithm(c.Request.Context(), requestBody)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -98,12 +86,7 @@ func (h *AlgorithmHandler) DeleteAlgorithm(c *gin.Context) {
 
 	algorithm, err := h.Service.DeleteAlgorithm(c.Request.Context(), publicId)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -124,12 +107,7 @@ func (h *AlgorithmHandler) PutAlgorithm(c *gin.Context) {
 
 	algorithm, err := h.Service.PutAlgorithm(c.Request.Context(), requestBody)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 

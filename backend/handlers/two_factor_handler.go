@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
@@ -42,12 +40,7 @@ func (h *TwoFactorHandler) Generate2FA(c *gin.Context) {
 
 	response, err := h.service.Generate2FA(c.Request.Context(), id, email)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -83,12 +76,7 @@ func (h *TwoFactorHandler) Enable2FA(c *gin.Context) {
 	}
 	err := h.service.Enable2FA(c.Request.Context(), id, req.Code)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -126,12 +114,7 @@ func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
 	}
 	err := h.service.Disable2FA(c.Request.Context(), id, req.Password)
 	if err != nil {
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		HandleAPIError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, dto.TwoFactorEnableResponse{
