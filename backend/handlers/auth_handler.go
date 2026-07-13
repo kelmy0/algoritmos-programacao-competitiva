@@ -37,7 +37,9 @@ func (h *AuthHandler) Auth(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.refreshDurationDays, "/", h.appDomain, h.isProduce, true)
+	if result.RefreshToken != "" {
+		c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.refreshDurationDays, "/", h.appDomain, h.isProduce, true)
+	}
 	c.JSON(http.StatusOK, result.LoginResponse)
 }
 

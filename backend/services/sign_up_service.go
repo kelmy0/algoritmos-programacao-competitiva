@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 )
 
@@ -84,8 +85,14 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		return nil, errors.New("Error hashing password")
 	}
 
+	dataUser := models.NewUser{
+		Name:         sanitizedData.Name,
+		Username:     sanitizedData.Username,
+		Email:        sanitizedData.Email,
+		PasswordHash: passwordHash,
+	}
 	//Creating account
-	userId, err := s.UserRepo.CreateUser(ctx, sanitizedData.Name, sanitizedData.Username, sanitizedData.Email, passwordHash)
+	userId, err := s.UserRepo.CreateUser(ctx, dataUser)
 	if err != nil {
 		println(err.Error())
 		return nil, errors.New("Error creating account")

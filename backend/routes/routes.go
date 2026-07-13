@@ -8,9 +8,10 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/middleware"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/repositories"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
+	"golang.org/x/oauth2"
 )
 
-func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
+func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, googleConfig *oauth2.Config) {
 	isProd := cfg.AppEnv == "production"
 	// Algorithm Handlers and Services
 	algoRepo := repositories.NewAlgorithmRepository(db)
@@ -24,6 +25,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 	authRepo := repositories.NewAuthRepository(db)
 	authService := services.NewAuthService(authRepo, userRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain, cfg.JwtRefreshExpiresDays)
+	authGoogleHandler := handlers.NewAuthGoogleHandler(authService, googleConfig, cfg.AppDomain, isProd, cfg.JwtRefreshExpiresDays)
 
 	//Sign up
 	signUpService := services.NewSignUpService(userRepo, authRepo,
@@ -49,6 +51,8 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config) {
 			auth.POST("/login", authHandler.Auth)
 			auth.POST("/verify-2fa", authHandler.Verify2FA)
 			auth.POST("/refresh", authHandler.Refresh)
+			auth.GET("/google", authGoogleHandler.GoogleLogin)
+			auth.GET("/google/callback", authGoogleHandler.GoogleCallback)
 		}
 
 		// Routes that requires Auth

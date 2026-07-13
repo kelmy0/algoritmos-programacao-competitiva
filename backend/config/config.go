@@ -26,6 +26,9 @@ type Config struct {
 	Parallelism             uint8
 	SaltLength              uint32
 	KeyLength               uint32
+	GoogleClientId          string
+	GoogleClientSecret      string
+	GoogleRedirectURL       string
 }
 
 func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
@@ -53,7 +56,7 @@ func LoadConfig() *Config {
 
 	env := os.Getenv("APP_ENV")
 	if env != "production" && env != "development" {
-		log.Fatal("❌ APP_ENV is required.")
+		log.Fatal("❌ APP_ENV is required. [production || development]")
 	}
 
 	port := os.Getenv("PORT")
@@ -98,7 +101,7 @@ func LoadConfig() *Config {
 	}
 
 	appDomain := os.Getenv("APP_DOMAIN")
-	if appDomain == "" {
+	if appDomain == "" && env == "production" {
 		log.Fatal("❌ APP_DOMAIN is required.")
 	}
 
@@ -109,12 +112,27 @@ func LoadConfig() *Config {
 
 	argonParamsEnv := os.Getenv("ARGON_PARAMS")
 	if argonParamsEnv == "" {
-		log.Fatal("❌ ARGON_PARAMS is required in .env")
+		log.Fatal("❌ ARGON_PARAMS is required.")
 	}
 
 	memory, iterations, parallelism, saltLength, keyLength, err := parseArgonParams(argonParamsEnv)
 	if err != nil {
 		log.Fatal("❌ ARGON_PARAMS format is invalid. Expected format: m=65536,t=3,p=4,sl=16,kl=32")
+	}
+
+	googleClientId := os.Getenv("GOOGLE_CLIENT_ID")
+	if googleClientId == "" {
+		log.Fatal("❌ GOOGLE_CLIENT_ID is required.")
+	}
+
+	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	if googleClientSecret == "" {
+		log.Fatal("❌ GOOGLE_CLIENT_SECRET is required.")
+	}
+
+	googleRedirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+	if googleRedirectURL == "" {
+		log.Fatal("❌ GOOGLE_REDIRECT_URL is required.")
 	}
 
 	return &Config{
@@ -134,5 +152,8 @@ func LoadConfig() *Config {
 		Parallelism:             parallelism,
 		SaltLength:              saltLength,
 		KeyLength:               keyLength,
+		GoogleClientId:          googleClientId,
+		GoogleClientSecret:      googleClientSecret,
+		GoogleRedirectURL:       googleRedirectURL,
 	}
 }

@@ -12,14 +12,14 @@ import (
 )
 
 type UserRepository interface {
-	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
-	GetUserById(ctx context.Context, id string) (*models.User, error)
+	GetUserByEmailForAuth(ctx context.Context, email string) (*models.User, error)
+	GetUserByIdForAuth(ctx context.Context, id string) (*models.User, error)
 	Save2FASecret(ctx context.Context, userId, secret string) error
 	Enable2FA(ctx context.Context, userId string) error
 	Disable2FA(ctx context.Context, userId string) error
 	GetAuthData(ctx context.Context, userId string) (*repositories.UserAuthData, error)
 	CheckUserExists(ctx context.Context, email string) (bool, error)
-	CreateUser(ctx context.Context, name, username, email, passwordHash string) (string, error)
+	CreateUser(ctx context.Context, data models.NewUser) (string, error)
 }
 
 type TwoFactorService struct {
@@ -35,6 +35,7 @@ func NewTwoFactorService(repo UserRepository, encryptSecret, appName string) *Tw
 func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string) (*dto.TwoFactorGenerateResponse, error) {
 	twoFactorData, err := s.Repo.GetAuthData(ctx, userId)
 	if err != nil {
+		println(err.Error())
 		return nil, errors.New("Error retrieving 2FA data")
 	}
 

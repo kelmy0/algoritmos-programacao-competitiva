@@ -27,3 +27,19 @@ func SanitizeMarkDown(text string) string {
 	p.AllowAttrs("class").OnElements("code")
 	return p.Sanitize(text)
 }
+
+func NormalizeUsername(text string) string {
+	re := regexp.MustCompile(`\s+`)
+	username := re.ReplaceAllString(text, "_")
+	username = strings.Trim(username, "_")
+	username = strings.ToLower(username)
+	return username
+}
+
+func ExtractNameFromEmail(email string) string {
+	parts := strings.Split(email, "@")
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return "Google User"
+}

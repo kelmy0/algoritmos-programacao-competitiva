@@ -24,6 +24,8 @@ func main() {
 			log.Fatalf("❌ Security Error: It's not allowed to use these flags in production.")
 		}
 	}
+	//Google Oauth config
+	googleCfg := config.LoadGoogleOauthConfig(cfg.GoogleClientId, cfg.GoogleClientSecret, "http://localhost:8000/api/auth/google/callback")
 
 	// Database connection
 	if !database.ConnectDB(*resetFlag, cfg.DatabaseURL) {
@@ -47,6 +49,6 @@ func main() {
 	// CORS config
 	router.Use(middleware.SetupCORS(cfg))
 
-	routes.ConfigRoutes(router, database.DB, cfg)
+	routes.ConfigRoutes(router, database.DB, cfg, googleCfg)
 	router.Run(cfg.Port)
 }

@@ -23,21 +23,19 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	return r.getUserBy(ctx, email, "email")
+func (r *UserRepository) GetUserByEmailForAuth(ctx context.Context, email string) (*models.User, error) {
+	return r.getForAuth(ctx, email, "email")
 }
 
-func (r *UserRepository) GetUserById(ctx context.Context, id string) (*models.User, error) {
-	return r.getUserBy(ctx, id, "id")
+func (r *UserRepository) GetUserByIdForAuth(ctx context.Context, id string) (*models.User, error) {
+	return r.getForAuth(ctx, id, "id")
 }
 
-func (r *UserRepository) getUserBy(ctx context.Context, value, field string) (*models.User, error) {
+func (r *UserRepository) getForAuth(ctx context.Context, value, field string) (*models.User, error) {
 	query := fmt.Sprintf(`
         SELECT 
-            u.id, u.name, u.username, u.email, u.password_hash, u.sso_provider, u.sso_user_id, u.recovery_token_hash, 
-            u.recovery_token_expires_at, u.enable, u.two_factor_authentication, 
-            u.two_factor_secret, u.role_id, u.failed_attempts, u.last_login, 
-            u.blocked_until, u.created_at, u.updated_at, r.is_employee,
+            u.id, u.username, u.email, u.password_hash, u.enable, 
+            u.two_factor_authentication, u.two_factor_secret, r.is_employee,
             COALESCE(array_agg(p.slug) FILTER (WHERE p.slug IS NOT NULL), '{}') as permissions
         FROM users u
         INNER JOIN roles r ON u.role_id = r.id
@@ -49,11 +47,8 @@ func (r *UserRepository) getUserBy(ctx context.Context, value, field string) (*m
 
 	var user models.User
 	err := r.db.QueryRow(ctx, query, value).Scan(
-		&user.Id, &user.Name, &user.Username, &user.Email, &user.PasswordHash, &user.SsoProvider, &user.SsoUserId, &user.RecoveryTokenHash,
-		&user.RecoveryTokenExpiresAt, &user.Enable, &user.TwoFactorAuthentication,
-		&user.TwoFactorSecret, &user.Role.Id, &user.FailedAttempts, &user.LastLogin,
-		&user.BlockedUntil, &user.CreatedAt, &user.UpdatedAt,
-		&user.Role.IsEmployee,
+		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.Enable,
+		&user.TwoFactorAuthentication, &user.TwoFactorSecret, &user.Role.IsEmployee,
 		&user.Permissions,
 	)
 	if err != nil {
@@ -129,17 +124,91 @@ func (r *UserRepository) CheckUserExists(ctx context.Context, email string) (boo
 	return exists, nil
 }
 
-func (r *UserRepository) CreateUser(ctx context.Context, name, username, email, passwordHash string) (string, error) {
+func (r *UserRepository) CreateUser(ctx context.Context, data models.NewUser) (string, error) {
 	query := `
 		INSERT INTO users(name, username, email, password_hash, role_id) VALUES
 		($1, $2, $3, $4, 1)
 		RETURNING id;
 	`
-	var insertedID string
+	var insertedId string
 
-	err := r.db.QueryRow(ctx, query, name, username, email, passwordHash).Scan(&insertedID)
+	err := r.db.QueryRow(ctx, query, data.Name, data.Username, data.Email, data.PasswordHash).Scan(&insertedId)
 	if err != nil {
 		return "", err
 	}
-	return insertedID, nil
+	return insertedId, nil
+}
+
+func (r *UserRepository) GetUserBySocialID(ctx context.Context, provider, socialId string) (*models.User, error) {
+	query := `
+        SELECT 
+            u.id, u.username, u.email, u.password_hash, u.enable, 
+            u.two_factor_authentication, u.two_factor_secret, r.is_employee,
+            COALESCE(array_agg(p.slug) FILTER (WHERE p.slug IS NOT NULL), '{}') as permissions
+        FROM users u
+        INNER JOIN user_social_accounts usa ON u.id = usa.user_id
+        INNER JOIN roles r ON u.role_id = r.id
+        LEFT JOIN role_permissions rp ON r.id = rp.role_id
+        LEFT JOIN permissions p ON rp.permission_id = p.id
+        WHERE usa.provider = $1 AND usa.social_user_id = $2
+        GROUP BY u.id, r.id
+    `
+	var user models.User
+	err := r.db.QueryRow(ctx, query, provider, socialId).Scan(
+		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.Enable,
+		&user.TwoFactorAuthentication, &user.TwoFactorSecret, &user.Role.IsEmployee,
+		&user.Permissions,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *UserRepository) CreateSocialUser(ctx context.Context, newUser models.NewUserGoogle, provider, socialId string) (*models.User, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Error starting transaction: %w", err)
+	}
+
+	defer tx.Rollback(ctx)
+	queryUser := `
+        INSERT INTO users (name, username, email, role_id) 
+        VALUES ($1, $2, $3, 1) 
+        RETURNING id
+    `
+	var userID string
+	err = tx.QueryRow(ctx, queryUser, newUser.Name, newUser.Username, newUser.Email).Scan(&userID)
+	if err != nil {
+		return nil, fmt.Errorf("Error inserting user: %w", err)
+	}
+
+	querySocial := `
+        INSERT INTO user_social_accounts (user_id, provider, social_user_id) 
+        VALUES ($1, $2, $3)
+    `
+	_, err = tx.Exec(ctx, querySocial, userID, provider, socialId)
+	if err != nil {
+		return nil, fmt.Errorf("Error inserting social account: %w", err)
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Error committing transaction: %w", err)
+	}
+	return r.GetUserByIdForAuth(ctx, userID)
+}
+
+func (r *UserRepository) CreateSocialLink(ctx context.Context, id, provider, socialUserId string) error {
+	query := `
+        INSERT INTO user_social_accounts (user_id, provider, social_user_id)
+        VALUES ($1, $2, $3)
+    `
+	_, err := r.db.Exec(ctx, query, id, provider, socialUserId)
+	if err != nil {
+		return fmt.Errorf("failed to link social account: %w", err)
+	}
+
+	return nil
 }
