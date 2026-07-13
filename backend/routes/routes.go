@@ -8,11 +8,20 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/middleware"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/repositories"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"golang.org/x/oauth2"
 )
 
 func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, googleConfig *oauth2.Config) {
 	isProd := cfg.AppEnv == "production"
+	argonParams := &utils.ArgonParams{
+		Memory:      cfg.Memory,
+		Iterations:  cfg.Iterations,
+		Parallelism: cfg.Parallelism,
+		SaltLength:  cfg.SaltLength,
+		KeyLength:   cfg.KeyLength,
+	}
+
 	// Algorithm Handlers and Services
 	algoRepo := repositories.NewAlgorithmRepository(db)
 	algoService := services.NewAlgorithmService(algoRepo)
@@ -38,6 +47,10 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	twoFactorService := services.NewTwoFactorService(userRepo, cfg.EncryptSecretKey, cfg.AppName)
 	twoFactorHandler := handlers.NewTwoFactorHandler(twoFactorService)
 
+	//UserConfig
+	userConfigService := services.NewUserConfigService(userRepo, authRepo, *argonParams, cfg.JwtRefreshSecret, cfg.AppName)
+	userConfigHandler := handlers.NewUserConfigHandler(userConfigService)
+
 	api := router.Group("/api")
 	{
 		api.GET("/ping", handlers.AnswerPing)
@@ -53,15 +66,19 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			auth.POST("/refresh", authHandler.Refresh)
 			auth.GET("/google", authGoogleHandler.GoogleLogin)
 			auth.GET("/google/callback", authGoogleHandler.GoogleCallback)
+
+			authenticatedAuth := auth.Group("", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
+			{
+				authenticatedAuth.POST("/logout", authHandler.Logout)
+				authenticatedAuth.POST("/logout/all", authHandler.LogoutAll)
+				authenticatedAuth.POST("/change-password", userConfigHandler.ChangePassword)
+			}
 		}
 
 		// Routes that requires Auth
-		api.Use(middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
-		api.POST("/auth/logout", authHandler.Logout)
-		api.POST("/auth/logout/all", authHandler.LogoutAll)
 
 		// USERS
-		users := api.Group("/users")
+		users := api.Group("/users", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 		{
 			me := users.Group("/me")
 			{
@@ -71,7 +88,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			}
 		}
 
-		admin := api.Group("/admin")
+		admin := api.Group("/admin", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 		{
 			admin.Use(middleware.Fake404Middleware(cfg.AdminHash))
 			admin.Use(middleware.EmployeeMiddleware())

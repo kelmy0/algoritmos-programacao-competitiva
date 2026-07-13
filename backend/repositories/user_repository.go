@@ -212,3 +212,17 @@ func (r *UserRepository) CreateSocialLink(ctx context.Context, id, provider, soc
 
 	return nil
 }
+
+func (r *UserRepository) ChangePassword(ctx context.Context, id, newPassword string) error {
+	query := `
+		UPDATE users
+		SET password_hash = $1
+		WHERE id = $2
+	`
+
+	_, err := r.db.Exec(ctx, query, newPassword, id)
+	if err != nil {
+		return fmt.Errorf("failed to change passoword: %w", err)
+	}
+	return nil
+}

@@ -45,7 +45,7 @@ func GenerateToken(userId, username, email string, permissions []string, secretK
 	return tokenId, tokenString, err
 }
 
-func ValidadeToken(tokenString, secretKey, expectedIssuer string) (*Claims, error) {
+func ValidateToken(tokenString, secretKey, expectedIssuer string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

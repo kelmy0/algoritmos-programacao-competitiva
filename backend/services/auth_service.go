@@ -107,7 +107,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 }
 
 func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
-	claims, err := utils.ValidadeToken(data.PreAuthToken, s.JwtAccessSecret, s.AppName)
+	claims, err := utils.ValidateToken(data.PreAuthToken, s.JwtAccessSecret, s.AppName)
 	if err != nil {
 		return nil, errors.New("session expired. please log in again")
 	}
@@ -159,7 +159,7 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString string) (string, error) {
-	claims, err := utils.ValidadeToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
 	if err != nil {
 		return "", errors.New("invalid or expired refresh token")
 	}
@@ -192,7 +192,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 }
 
 func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString string) error {
-	claims, err := utils.ValidadeToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
 	if err != nil {
 		return errors.New("invalid or expired refresh token")
 	}
@@ -201,7 +201,7 @@ func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString str
 }
 
 func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString string) error {
-	claims, err := utils.ValidadeToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
 	if err != nil {
 		return errors.New("invalid or expired refresh token")
 	}
