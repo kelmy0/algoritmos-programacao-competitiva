@@ -29,6 +29,12 @@ type Config struct {
 	GoogleClientId          string
 	GoogleClientSecret      string
 	GoogleRedirectURL       string
+	HostEmail               string
+	PortEmail               string
+	UserEmail               string
+	PasswordEmail           string
+	FromEmail               string
+	FrontendUrl             string
 }
 
 func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
@@ -135,6 +141,36 @@ func LoadConfig() *Config {
 		log.Fatal("❌ GOOGLE_REDIRECT_URL is required.")
 	}
 
+	hostEmail := os.Getenv("EMAIL_SMTP_HOST")
+	if hostEmail == "" {
+		log.Fatal("❌ EMAIL_SMTP_HOST is required.")
+	}
+
+	portEmail := os.Getenv("EMAIL_SMTP_PORT")
+	if portEmail == "" {
+		log.Fatal("❌ EMAIL_SMTP_PORT is required.")
+	}
+
+	userEmail := os.Getenv("EMAIL_SMTP_USER")
+	if userEmail == "" {
+		log.Println("⚠️ EMAIL_SMTP_USER is empty.")
+	}
+
+	passwordEmail := os.Getenv("EMAIL_SMTP_PASS")
+	if passwordEmail == "" {
+		log.Println("⚠️ EMAIL_SMTP_PASS is empty.")
+	}
+
+	fromEmail := os.Getenv("EMAIL_FROM")
+	if fromEmail == "" {
+		log.Fatal("❌ EMAIL_FROM is required.")
+	}
+
+	frontendUrl := os.Getenv("FRONTEND_URL")
+	if frontendUrl == "" {
+		log.Fatal("❌ FRONTEND_URL is required.")
+	}
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -155,5 +191,11 @@ func LoadConfig() *Config {
 		GoogleClientId:          googleClientId,
 		GoogleClientSecret:      googleClientSecret,
 		GoogleRedirectURL:       googleRedirectURL,
+		HostEmail:               hostEmail,
+		PortEmail:               portEmail,
+		UserEmail:               userEmail,
+		PasswordEmail:           passwordEmail,
+		FromEmail:               fromEmail,
+		FrontendUrl:             frontendUrl,
 	}
 }

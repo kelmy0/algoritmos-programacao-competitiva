@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
@@ -12,6 +13,8 @@ type UserConfigRepo interface {
 	GetUserByIdForAuth(ctx context.Context, id string) (*models.User, error)
 	ChangePassword(ctx context.Context, id, newPassword string) error
 	DefinePassword(ctx context.Context, id, newPassword string) error
+	GetUserByEmailForAuth(ctx context.Context, email string) (*models.User, error)
+	UpdateRecoveryToken(ctx context.Context, userId, tokenHash string, expiresAt time.Time) error
 }
 
 type AuthConfigRepo interface {
@@ -22,15 +25,17 @@ type AuthConfigRepo interface {
 type UserConfigService struct {
 	UserRepo         UserConfigRepo
 	AuthRepo         AuthConfigRepo
+	EmailService     EmailService
 	ArgonParams      utils.ArgonParams
 	JwtRefreshSecret string
 	AppName          string
 }
 
-func NewUserConfigService(userRepo UserConfigRepo, authRepo AuthConfigRepo, argonParams utils.ArgonParams, jwtRSecret, appName string) *UserConfigService {
+func NewUserConfigService(userRepo UserConfigRepo, authRepo AuthConfigRepo, emailService EmailService, argonParams utils.ArgonParams, jwtRSecret, appName string) *UserConfigService {
 	return &UserConfigService{
 		UserRepo:         userRepo,
 		ArgonParams:      argonParams,
+		EmailService:     emailService,
 		AuthRepo:         authRepo,
 		JwtRefreshSecret: jwtRSecret,
 		AppName:          appName,
@@ -102,6 +107,39 @@ func (s *UserConfigService) DefinePassword(ctx context.Context, userIdContext, r
 	if err != nil {
 		return models.ErrPasswordSetButNotLogout
 	}
+
+	return nil
+}
+
+func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) error {
+	user, err := s.UserRepo.GetUserByEmailForAuth(ctx, email)
+	if err != nil {
+		return nil
+	}
+
+	token, err := utils.GenerateCustomId(32)
+	if err != nil {
+		return models.ErrGeneratingToken
+	}
+
+	tokenHash, err := utils.HashPassword(token, s.ArgonParams)
+	if err != nil {
+		return models.ErrGeneratingToken
+	}
+
+	expiresAt := time.Now().Add(15 * time.Minute)
+
+	err = s.UserRepo.UpdateRecoveryToken(ctx, user.Id, tokenHash, expiresAt)
+	if err != nil {
+		println("Chegou aqui")
+		println(err.Error())
+		println(len(tokenHash))
+		return models.ErrGeneratingToken
+	}
+
+	go func() {
+		_ = s.EmailService.SendRecoveryEmail(user.Email, token)
+	}()
 
 	return nil
 }

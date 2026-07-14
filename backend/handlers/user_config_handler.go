@@ -92,6 +92,27 @@ func (h *UserConfigHandler) DefinePassword(c *gin.Context) {
 	})
 }
 
+func (h *UserConfigHandler) ForgotPassword(c *gin.Context) {
+	var requestBody dto.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			err.Error(),
+		))
+		return
+	}
+
+	err := h.service.ForgotPassword(c.Request.Context(), requestBody.Email)
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ForgotPasswordResponse{
+		Message: "Recovery link sent to email.",
+	})
+}
+
 func (h *UserConfigHandler) getAuthCredentials(c *gin.Context) (string, string, bool) {
 	userIdContext, existsId := c.Get("userId")
 	if !existsId {

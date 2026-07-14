@@ -48,7 +48,8 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	twoFactorHandler := handlers.NewTwoFactorHandler(twoFactorService)
 
 	//UserConfig
-	userConfigService := services.NewUserConfigService(userRepo, authRepo, *argonParams, cfg.JwtRefreshSecret, cfg.AppName)
+	emailService := services.NewEmailService(cfg.HostEmail, cfg.PortEmail, cfg.UserEmail, cfg.PasswordEmail, cfg.FromEmail, cfg.FrontendUrl, cfg.AppName)
+	userConfigService := services.NewUserConfigService(userRepo, authRepo, *emailService, *argonParams, cfg.JwtRefreshSecret, cfg.AppName)
 	userConfigHandler := handlers.NewUserConfigHandler(userConfigService)
 
 	api := router.Group("/api")
@@ -66,6 +67,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			auth.POST("/refresh", authHandler.Refresh)
 			auth.GET("/google", authGoogleHandler.GoogleLogin)
 			auth.GET("/google/callback", authGoogleHandler.GoogleCallback)
+			auth.POST("/forgot-password", userConfigHandler.ForgotPassword)
 
 			authenticatedAuth := auth.Group("", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 			{

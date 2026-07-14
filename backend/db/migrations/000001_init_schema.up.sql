@@ -52,7 +52,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255),
     enable BOOLEAN NOT NULL DEFAULT TRUE,
     role_id INT NOT NULL,
-    recovery_token_hash VARCHAR(64),
+    recovery_token_hash VARCHAR(128),
     recovery_token_expires_at TIMESTAMP WITH TIME ZONE,
     failed_attempts INT NOT NULL DEFAULT 0,
     blocked_until TIMESTAMP WITH TIME ZONE,

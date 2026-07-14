@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -275,6 +276,24 @@ func (r *UserRepository) DefinePassword(ctx context.Context, id, newPassword str
 	res, err := r.db.Exec(ctx, query, newPassword, id)
 	if err != nil {
 		return fmt.Errorf("failed to change password: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return models.ErrUserNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) UpdateRecoveryToken(ctx context.Context, userId, tokenHash string, expiresAt time.Time) error {
+	query := `
+        UPDATE users
+        SET recovery_token_hash = $1,
+			recovery_token_expires_at = $2
+        WHERE id = $3;
+    `
+
+	res, err := r.db.Exec(ctx, query, tokenHash, expiresAt, userId)
+	if err != nil {
+		return fmt.Errorf("failed to set recovery token: %w", err)
 	}
 	if res.RowsAffected() == 0 {
 		return models.ErrUserNotFound
