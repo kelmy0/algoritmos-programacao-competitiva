@@ -10,7 +10,6 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"golang.org/x/oauth2"
-	"golang.org/x/time/rate"
 )
 
 func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, googleConfig *oauth2.Config) {
@@ -24,9 +23,9 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	}
 
 	//RATE LIMIT
-	generalLimiter := middleware.NewIPRateLimiter(rate.Limit(5), 10)
-	sensitiveLimiter := middleware.NewIPRateLimiter(rate.Limit(0.2), 3)
-	extremeLimiter := middleware.NewIPRateLimiter(rate.Limit(0.0011), 2)
+	//generalLimiter := middleware.NewIPRateLimiter(rate.Limit(5), 10)
+	//sensitiveLimiter := middleware.NewIPRateLimiter(rate.Limit(0.2), 3)
+	//extremeLimiter := middleware.NewIPRateLimiter(rate.Limit(0.0011), 2)
 
 	// Algorithm Handlers and Services
 	algoRepo := repositories.NewAlgorithmRepository(db)
@@ -58,22 +57,22 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	userConfigService := services.NewUserConfigService(userRepo, authRepo, *emailService, *argonParams, cfg.JwtRefreshSecret, cfg.AppName)
 	userConfigHandler := handlers.NewUserConfigHandler(userConfigService)
 
-	api := router.Group("/api", middleware.RateLimitMiddleware(generalLimiter))
+	api := router.Group("/api")
 	{
 		api.GET("/ping", handlers.AnswerPing)
 		api.GET("/algorithms", algoHandler.ListAlgorithms)
 		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
 
-		auth := api.Group("/auth", middleware.RateLimitMiddleware(sensitiveLimiter))
+		auth := api.Group("/auth", middleware.LimitBodySize(1*1024*1024))
 		{
-			auth.POST("/sign-up", middleware.RateLimitMiddleware(extremeLimiter), signUpHandler.SignUp)
+			auth.POST("/sign-up", signUpHandler.SignUp)
 			auth.POST("/login", authHandler.Auth)
-			auth.POST("/verify-2fa", middleware.RateLimitMiddleware(extremeLimiter), authHandler.Verify2FA)
+			auth.POST("/verify-2fa", authHandler.Verify2FA)
 			auth.POST("/refresh", authHandler.Refresh)
 			auth.GET("/google", authGoogleHandler.GoogleLogin)
 			auth.GET("/google/callback", authGoogleHandler.GoogleCallback)
-			auth.POST("/forgot-password", middleware.RateLimitMiddleware(extremeLimiter), userConfigHandler.ForgotPassword)
-			auth.POST("/reset-password", middleware.RateLimitMiddleware(extremeLimiter), userConfigHandler.ResetPassword)
+			auth.POST("/forgot-password", userConfigHandler.ForgotPassword)
+			auth.POST("/reset-password", userConfigHandler.ResetPassword)
 
 			authenticatedAuth := auth.Group("", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 			{
@@ -88,7 +87,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		{
 			me := users.Group("/me")
 			{
-				twoFa := me.Group("/2fa", middleware.RateLimitMiddleware(sensitiveLimiter))
+				twoFa := me.Group("/2fa", middleware.LimitBodySize(1*1024*1024))
 				{
 					twoFa.POST("/generate", twoFactorHandler.Generate2FA)
 					twoFa.POST("/enable", twoFactorHandler.Enable2FA)
@@ -102,6 +101,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		{
 			admin.Use(middleware.Fake404Middleware(cfg.AdminHash))
 			admin.Use(middleware.EmployeeMiddleware())
+			admin.Use(middleware.LimitBodySize(10 * 1024 * 1024))
 			admin.GET("/ping", handlers.AnswerPing)
 			admin.POST("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.PostAlgorithm)
 			admin.DELETE("/algorithms/:slugAndId", middleware.PermissionMiddleware("delete:algorithms"), algoHandler.DeleteAlgorithm)
