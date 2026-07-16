@@ -42,10 +42,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	authGoogleHandler := handlers.NewAuthGoogleHandler(authService, googleConfig, cfg.AppDomain, isProd, cfg.JwtRefreshExpiresDays)
 
 	//Sign up
-	signUpService := services.NewSignUpService(userRepo, authRepo,
-		cfg.Parallelism, cfg.Memory, cfg.Iterations, cfg.SaltLength,
-		cfg.KeyLength, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName,
-		cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	signUpService := services.NewSignUpService(userRepo, authRepo, *argonParams, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	signUpHandler := handlers.NewSignUpHandler(signUpService, cfg.JwtRefreshExpiresDays, cfg.AppName, isProd)
 
 	//TwoFactor

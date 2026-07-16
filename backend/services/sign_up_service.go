@@ -38,17 +38,11 @@ type SignUpResult struct {
 	RefreshToken   string
 }
 
-func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthRepository, parallelism uint8, memory, iterarions, saltLength, keyLength uint32, jwtAccessSecret, jwtRefreshSecret, appName string, jwtAccessExpiration int, jwtRefreshExpiration int) *SignUpService {
+func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthRepository, argonParams utils.ArgonParams, jwtAccessSecret, jwtRefreshSecret, appName string, jwtAccessExpiration, jwtRefreshExpiration int) *SignUpService {
 	return &SignUpService{
-		UserRepo: userRepo,
-		AuthRepo: authRepo,
-		ArgonParams: utils.ArgonParams{
-			Memory:      memory,
-			Iterations:  iterarions,
-			Parallelism: parallelism,
-			SaltLength:  saltLength,
-			KeyLength:   keyLength,
-		},
+		UserRepo:             userRepo,
+		AuthRepo:             authRepo,
+		ArgonParams:          argonParams,
 		JwtAccessSecret:      jwtAccessSecret,
 		JwtRefreshSecret:     jwtRefreshSecret,
 		JwtAccessExpiration:  jwtAccessExpiration,
