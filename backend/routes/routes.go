@@ -10,6 +10,7 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"golang.org/x/oauth2"
+	"golang.org/x/time/rate"
 )
 
 func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, googleConfig *oauth2.Config) {
@@ -21,11 +22,14 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		SaltLength:  cfg.SaltLength,
 		KeyLength:   cfg.KeyLength,
 	}
+	//BODY SIZE
+	oneMbSize := middleware.LimitBodySize(1 * 1024 * 1024)
+	tenMbSize := middleware.LimitBodySize(10 * 1024 * 1024)
 
 	//RATE LIMIT
-	//generalLimiter := middleware.NewIPRateLimiter(rate.Limit(5), 10)
-	//sensitiveLimiter := middleware.NewIPRateLimiter(rate.Limit(0.2), 3)
-	//extremeLimiter := middleware.NewIPRateLimiter(rate.Limit(0.0011), 2)
+	standardApiLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(5), 10))
+	authFlowLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.2), 3))
+	strictAbuseLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.0055), 2))
 
 	// Algorithm Handlers and Services
 	algoRepo := repositories.NewAlgorithmRepository(db)
@@ -56,22 +60,32 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	api := router.Group("/api")
 	{
-		api.GET("/ping", handlers.AnswerPing)
-		api.GET("/algorithms", algoHandler.ListAlgorithms)
-		api.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
-
-		auth := api.Group("/auth", middleware.LimitBodySize(1*1024*1024))
+		publicStandard := api.Group("", standardApiLimiter)
 		{
-			auth.POST("/sign-up", signUpHandler.SignUp)
-			auth.POST("/login", authHandler.Auth)
-			auth.POST("/verify-2fa", authHandler.Verify2FA)
-			auth.POST("/refresh", authHandler.Refresh)
-			auth.GET("/google", authGoogleHandler.GoogleLogin)
-			auth.GET("/google/callback", authGoogleHandler.GoogleCallback)
-			auth.POST("/forgot-password", userConfigHandler.ForgotPassword)
-			auth.POST("/reset-password", userConfigHandler.ResetPassword)
+			publicStandard.GET("/ping", handlers.AnswerPing)
+			publicStandard.GET("/algorithms", algoHandler.ListAlgorithms)
+			publicStandard.GET("/algorithms/:slugAndId", algoHandler.GetAlgorithm)
+		}
 
-			authenticatedAuth := auth.Group("", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
+		auth := api.Group("/auth", oneMbSize)
+		{
+			authFlow := auth.Group("", authFlowLimiter)
+			{
+				authFlow.POST("/login", authHandler.Auth)
+				authFlow.POST("/refresh", authHandler.Refresh)
+				authFlow.GET("/google", authGoogleHandler.GoogleLogin)
+				authFlow.GET("/google/callback", authGoogleHandler.GoogleCallback)
+			}
+
+			authStrict := auth.Group("", strictAbuseLimiter)
+			{
+				authStrict.POST("/sign-up", signUpHandler.SignUp)
+				authStrict.POST("/forgot-password", userConfigHandler.ForgotPassword)
+				authStrict.POST("/reset-password", userConfigHandler.ResetPassword)
+				authStrict.POST("/verify-2fa", authHandler.Verify2FA)
+			}
+
+			authenticatedAuth := auth.Group("", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName), authFlowLimiter)
 			{
 				authenticatedAuth.POST("/logout", authHandler.Logout)
 				authenticatedAuth.POST("/logout/all", authHandler.LogoutAll)
@@ -84,7 +98,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		{
 			me := users.Group("/me")
 			{
-				twoFa := me.Group("/2fa", middleware.LimitBodySize(1*1024*1024))
+				twoFa := me.Group("/2fa", oneMbSize, authFlowLimiter)
 				{
 					twoFa.POST("/generate", twoFactorHandler.Generate2FA)
 					twoFa.POST("/enable", twoFactorHandler.Enable2FA)
@@ -98,7 +112,9 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		{
 			admin.Use(middleware.Fake404Middleware(cfg.AdminHash))
 			admin.Use(middleware.EmployeeMiddleware())
-			admin.Use(middleware.LimitBodySize(10 * 1024 * 1024))
+			admin.Use(tenMbSize)
+			admin.Use(standardApiLimiter)
+
 			admin.GET("/ping", handlers.AnswerPing)
 			admin.POST("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.PostAlgorithm)
 			admin.DELETE("/algorithms/:slugAndId", middleware.PermissionMiddleware("delete:algorithms"), algoHandler.DeleteAlgorithm)

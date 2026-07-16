@@ -15,18 +15,18 @@ type client struct {
 	lastSeen time.Time
 }
 
-type IPRateLimiter struct {
-	ips map[string]*client
-	mu  sync.RWMutex
-	r   rate.Limit
-	b   int
+type RateLimiter struct {
+	clients map[string]*client
+	mu      sync.RWMutex
+	r       rate.Limit
+	b       int
 }
 
-func NewIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
-	i := &IPRateLimiter{
-		ips: make(map[string]*client),
-		r:   r,
-		b:   b,
+func NewRateLimiter(r rate.Limit, b int) *RateLimiter {
+	i := &RateLimiter{
+		clients: make(map[string]*client),
+		r:       r,
+		b:       b,
 	}
 
 	go i.cleanupClients()
@@ -34,14 +34,14 @@ func NewIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
 	return i
 }
 
-func (i *IPRateLimiter) getLimiter(ip string) *rate.Limiter {
+func (i *RateLimiter) getLimiter(key string) *rate.Limiter {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
-	v, exists := i.ips[ip]
+	v, exists := i.clients[key]
 	if !exists {
 		limiter := rate.NewLimiter(i.r, i.b)
-		i.ips[ip] = &client{limiter: limiter, lastSeen: time.Now()}
+		i.clients[key] = &client{limiter: limiter, lastSeen: time.Now()}
 		return limiter
 	}
 
@@ -49,29 +49,36 @@ func (i *IPRateLimiter) getLimiter(ip string) *rate.Limiter {
 	return v.limiter
 }
 
-func (i *IPRateLimiter) cleanupClients() {
+func (i *RateLimiter) cleanupClients() {
 	for {
 		time.Sleep(10 * time.Minute)
 		i.mu.Lock()
-		for ip, client := range i.ips {
+		for key, client := range i.clients {
 			if time.Since(client.lastSeen) > 30*time.Minute {
-				delete(i.ips, ip)
+				delete(i.clients, key)
 			}
 		}
 		i.mu.Unlock()
 	}
 }
 
-func RateLimitMiddleware(limiterManager *IPRateLimiter) gin.HandlerFunc {
+func RateLimitMiddleware(limiterManager *RateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ip := c.ClientIP()
-		limiter := limiterManager.getLimiter(ip)
+		var key string
 
+		if userId, exists := c.Get("userId"); exists {
+			if idStr, ok := userId.(string); ok && idStr != "" {
+				key = "usr_" + idStr
+			}
+		}
+
+		if key == "" {
+			key = "ip_" + c.ClientIP()
+		}
+
+		limiter := limiterManager.getLimiter(key)
 		if !limiter.Allow() {
-
-			c.JSON(http.StatusTooManyRequests, dto.NewErrorResponse(
-				dto.CodeTooManyRequests, dto.MsgTooManyRequests,
-			))
+			c.JSON(http.StatusTooManyRequests, dto.NewErrorResponse(dto.CodeTooManyRequests, dto.MsgTooManyRequests))
 			c.Abort()
 			return
 		}
