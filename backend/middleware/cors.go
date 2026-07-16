@@ -6,14 +6,11 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/config"
 )
 
-func SetupCORS(cfg *config.Config) gin.HandlerFunc {
-	switch cfg.AppEnv {
+func SetupCORS(env string) gin.HandlerFunc {
+	switch env {
 	case "production":
-		gin.SetMode(gin.ReleaseMode)
-
 		return cors.New(cors.Config{
 			AllowOrigins:     []string{"https://algoritimos-programacao-competitiva.com"},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
@@ -23,8 +20,6 @@ func SetupCORS(cfg *config.Config) gin.HandlerFunc {
 		})
 
 	case "development":
-		gin.SetMode(gin.DebugMode)
-
 		return cors.New(cors.Config{
 			AllowAllOrigins:  true,
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},

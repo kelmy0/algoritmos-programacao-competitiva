@@ -20,12 +20,17 @@ func main() {
 	cfg := config.LoadConfig()
 
 	if cfg.AppEnv == "production" {
+		gin.SetMode(gin.ReleaseMode)
+
 		if *resetFlag || *seedFlag {
 			log.Fatalf("❌ Security Error: It's not allowed to use these flags in production.")
 		}
+	} else {
+		gin.SetMode(gin.DebugMode)
 	}
+
 	//Google Oauth config
-	googleCfg := config.LoadGoogleOauthConfig(cfg.GoogleClientId, cfg.GoogleClientSecret, "http://localhost:8000/api/auth/google/callback")
+	googleCfg := config.LoadGoogleOauthConfig(cfg.GoogleClientId, cfg.GoogleClientSecret, cfg.GoogleCallbackUrl)
 
 	// Database connection
 	if !database.ConnectDB(*resetFlag, cfg.DatabaseURL) {
@@ -46,7 +51,7 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(middleware.SetupRecovery())
-	router.Use(middleware.SetupCORS(cfg))
+	router.Use(middleware.SetupCORS(cfg.AppEnv))
 	router.Use(middleware.SetupSecureHeaders())
 	routes.ConfigRoutes(router, database.DB, cfg, googleCfg)
 	router.Run(cfg.Port)

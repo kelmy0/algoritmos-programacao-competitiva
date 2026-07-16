@@ -35,6 +35,7 @@ type Config struct {
 	PasswordEmail           string
 	FromEmail               string
 	FrontendUrl             string
+	GoogleCallbackUrl       string
 }
 
 func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
@@ -171,6 +172,11 @@ func LoadConfig() *Config {
 		log.Fatal("❌ FRONTEND_URL is required.")
 	}
 
+	googleCallbackUrl := os.Getenv("GOOGLE_CALLBACK_URL")
+	if googleCallbackUrl == "" {
+		log.Fatal("❌ GOOGLE_CALLBACK_URL is required.")
+	}
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -197,5 +203,6 @@ func LoadConfig() *Config {
 		PasswordEmail:           passwordEmail,
 		FromEmail:               fromEmail,
 		FrontendUrl:             frontendUrl,
+		GoogleCallbackUrl:       googleCallbackUrl,
 	}
 }
