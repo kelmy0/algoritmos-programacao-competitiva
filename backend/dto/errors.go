@@ -29,6 +29,7 @@ const (
 	CodeRestrictedArea        = "RESTRICTED_AREA"
 	CodeNoPermission          = "NO_PERMISSION"
 	CodePageNotFound          = "PAGE_NOT_FOUND"
+	CodeTooManyRequests       = "TOO_MANY_REQUESTS"
 )
 
 const (
@@ -39,4 +40,5 @@ const (
 	MsgRestrictedArea         = "Restricted area."
 	MsgPageNotFound           = "Page not found."
 	MsgNoPermission           = "You don't have permission to do it."
+	MsgTooManyRequests        = "Too many requests. Please try again later."
 )

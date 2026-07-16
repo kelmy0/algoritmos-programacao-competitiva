@@ -43,12 +43,11 @@ func main() {
 		return
 	}
 
-	// Port config
-	router := gin.Default()
-
-	// CORS config
+	router := gin.New()
+	router.Use(gin.Logger())
+	router.Use(middleware.SetupRecovery())
 	router.Use(middleware.SetupCORS(cfg))
-
+	router.Use(middleware.SetupSecureHeaders())
 	routes.ConfigRoutes(router, database.DB, cfg, googleCfg)
 	router.Run(cfg.Port)
 }
