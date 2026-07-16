@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -114,12 +115,25 @@ func (s *UserConfigService) DefinePassword(ctx context.Context, userIdContext, r
 
 func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) error {
 	user, err := s.UserRepo.GetUserByEmailForAuth(ctx, email)
-	if err != nil || user == nil {
+	if err != nil || user == nil || !user.Enable {
 		return nil
 	}
 
-	if !user.Enable {
-		return nil
+	if user.RecoveryTokenExpiresAt != nil {
+		now := time.Now()
+
+		if now.Before(*user.RecoveryTokenExpiresAt) {
+			minTimeRemainingForNewSend := 5 * time.Minute
+			timeLeft := user.RecoveryTokenExpiresAt.Sub(now)
+
+			if timeLeft > minTimeRemainingForNewSend {
+				waitTime := timeLeft - minTimeRemainingForNewSend
+
+				log.Printf("[ForgotPassword] Email sending blocked by cooldown for %s. Remaining wait time: %v",
+					email, waitTime.Round(time.Second))
+				return nil
+			}
+		}
 	}
 
 	token, err := utils.GenerateCustomId(32)
