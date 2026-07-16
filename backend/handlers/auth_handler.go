@@ -122,7 +122,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	}
 
 	c.SetCookie("refresh_token", "", -1, "/", h.appDomain, h.isProduce, true)
-	c.JSON(http.StatusOK, dto.LogoutResponse{
+	c.JSON(http.StatusOK, dto.MessageResponse{
 		Message: "Successfully logged out.",
 	})
 }
@@ -161,7 +161,7 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.LogoutResponse{
+	c.JSON(http.StatusOK, dto.MessageResponse{
 		Message: "Successfully logged out from all devices.",
 	})
 }

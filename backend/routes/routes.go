@@ -68,6 +68,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			auth.GET("/google", authGoogleHandler.GoogleLogin)
 			auth.GET("/google/callback", authGoogleHandler.GoogleCallback)
 			auth.POST("/forgot-password", userConfigHandler.ForgotPassword)
+			auth.POST("/reset-password", userConfigHandler.ResetPassword)
 
 			authenticatedAuth := auth.Group("", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName))
 			{

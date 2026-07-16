@@ -19,7 +19,3 @@ type Verify2FARequest struct {
 type RefreshResponse struct {
 	AccessToken string `json:"access_token"`
 }
-
-type LogoutResponse struct {
-	Message string `json:"message"`
-}

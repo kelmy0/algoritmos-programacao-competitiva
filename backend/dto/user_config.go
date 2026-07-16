@@ -21,6 +21,8 @@ type ForgotPasswordRequest struct {
 	Email string `json:"email" binding:"required,min=5"`
 }
 
-type ForgotPasswordResponse struct {
-	Message string `json:"message"`
+type ResetPasswordRequest struct {
+	Token              string `json:"token" binding:"required"`
+	NewPassword        string `json:"new_password" binding:"required,min=8"`
+	ConfirmNewPassword string `json:"confirm_new_password" binding:"required,min=8"`
 }

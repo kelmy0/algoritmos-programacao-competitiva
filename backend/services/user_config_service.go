@@ -15,6 +15,7 @@ type UserConfigRepo interface {
 	DefinePassword(ctx context.Context, id, newPassword string) error
 	GetUserByEmailForAuth(ctx context.Context, email string) (*models.User, error)
 	UpdateRecoveryToken(ctx context.Context, userId, tokenHash string, expiresAt time.Time) error
+	GetUserByRecoveryToken(ctx context.Context, tokenHash string) (*models.User, error)
 }
 
 type AuthConfigRepo interface {
@@ -113,7 +114,11 @@ func (s *UserConfigService) DefinePassword(ctx context.Context, userIdContext, r
 
 func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) error {
 	user, err := s.UserRepo.GetUserByEmailForAuth(ctx, email)
-	if err != nil {
+	if err != nil || user == nil {
+		return nil
+	}
+
+	if !user.Enable {
 		return nil
 	}
 
@@ -122,24 +127,50 @@ func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) er
 		return models.ErrGeneratingToken
 	}
 
-	tokenHash, err := utils.HashPassword(token, s.ArgonParams)
-	if err != nil {
-		return models.ErrGeneratingToken
-	}
-
+	tokenHash := utils.HashSHA512(token)
 	expiresAt := time.Now().Add(15 * time.Minute)
 
 	err = s.UserRepo.UpdateRecoveryToken(ctx, user.Id, tokenHash, expiresAt)
 	if err != nil {
-		println("Chegou aqui")
-		println(err.Error())
-		println(len(tokenHash))
 		return models.ErrGeneratingToken
 	}
 
-	go func() {
+	utils.GoSafe(func() {
 		_ = s.EmailService.SendRecoveryEmail(user.Email, token)
-	}()
+	})
+
+	return nil
+}
+
+func (s *UserConfigService) ResetPassword(ctx context.Context, data dto.ResetPasswordRequest) error {
+	if data.NewPassword != data.ConfirmNewPassword {
+		return models.ErrPasswordsDontMatch
+	}
+
+	hashToken := utils.HashSHA512(data.Token)
+	user, err := s.UserRepo.GetUserByRecoveryToken(ctx, hashToken)
+	if err != nil || user == nil || user.RecoveryTokenExpiresAt == nil || !time.Now().Before(*user.RecoveryTokenExpiresAt) {
+		return models.ErrInvalidOrExpiredToken
+	}
+
+	if !user.Enable {
+		return models.ErrUserNotEnabled
+	}
+
+	newPasswordHash, err := utils.HashPassword(data.NewPassword, s.ArgonParams)
+	if err != nil {
+		return models.ErrPasswordChangeFailed
+	}
+
+	err = s.UserRepo.ChangePassword(ctx, user.Id, newPasswordHash)
+	if err != nil {
+		return models.ErrPasswordChangeFailed
+	}
+
+	err = s.AuthRepo.DeleteAllRefreshToken(ctx, user.Id, "")
+	if err != nil {
+		return models.ErrPasswordChangeButNotLogout
+	}
 
 	return nil
 }

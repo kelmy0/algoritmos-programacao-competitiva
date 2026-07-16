@@ -252,7 +252,9 @@ func (r *UserRepository) CreateSocialLink(ctx context.Context, id, provider, soc
 func (r *UserRepository) ChangePassword(ctx context.Context, id, newPassword string) error {
 	query := `
         UPDATE users
-        SET password_hash = $1
+        SET password_hash = $1,
+		recovery_token_hash = NULL,
+		recovery_token_expires_at = NULL
         WHERE id = $2;
     `
 
@@ -269,7 +271,9 @@ func (r *UserRepository) ChangePassword(ctx context.Context, id, newPassword str
 func (r *UserRepository) DefinePassword(ctx context.Context, id, newPassword string) error {
 	query := `
         UPDATE users
-        SET password_hash = $1
+        SET password_hash = $1,
+		recovery_token_hash = NULL,
+		recovery_token_expires_at = NULL
         WHERE id = $2 AND password_hash IS NULL;
     `
 
@@ -299,4 +303,29 @@ func (r *UserRepository) UpdateRecoveryToken(ctx context.Context, userId, tokenH
 		return models.ErrUserNotFound
 	}
 	return nil
+}
+
+func (r *UserRepository) GetUserByRecoveryToken(ctx context.Context, tokenHash string) (*models.User, error) {
+	query := `
+        SELECT id, enable, recovery_token_hash, recovery_token_expires_at 
+		FROM users
+        WHERE recovery_token_hash = $1;
+    `
+
+	var user models.User
+	err := r.db.QueryRow(ctx, query, tokenHash).Scan(
+		&user.Id,
+		&user.Enable,
+		&user.RecoveryTokenHash,
+		&user.RecoveryTokenExpiresAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("database query failed: %w", err)
+	}
+
+	return &user, nil
 }

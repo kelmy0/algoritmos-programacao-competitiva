@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha512"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
@@ -133,4 +134,9 @@ func Decrypt(cryptoText, key string) (string, error) {
 		return "", err
 	}
 	return string(plainText), nil
+}
+
+func HashSHA512(token string) string {
+	hash := sha512.Sum512([]byte(token))
+	return hex.EncodeToString(hash[:])
 }

@@ -108,8 +108,29 @@ func (h *UserConfigHandler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.ForgotPasswordResponse{
+	c.JSON(http.StatusOK, dto.MessageResponse{
 		Message: "Recovery link sent to email.",
+	})
+}
+
+func (h *UserConfigHandler) ResetPassword(c *gin.Context) {
+	var requestBody dto.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			err.Error(),
+		))
+		return
+	}
+
+	err := h.service.ResetPassword(c.Request.Context(), requestBody)
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.MessageResponse{
+		Message: "Password recovered!",
 	})
 }
 

@@ -80,7 +80,7 @@ func (h *TwoFactorHandler) Enable2FA(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.TwoFactorEnableResponse{
+	c.JSON(http.StatusOK, dto.MessageResponse{
 		Message: "Two-factor authentication enabled successfully",
 	})
 }
@@ -117,7 +117,7 @@ func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
 		HandleAPIError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.TwoFactorEnableResponse{
+	c.JSON(http.StatusOK, dto.MessageResponse{
 		Message: "Two-factor authentication disabled successfully",
 	})
 }

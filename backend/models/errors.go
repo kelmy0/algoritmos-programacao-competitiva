@@ -20,6 +20,7 @@ var (
 	ErrIncorrectPassword          = &AppError{StatusCode: http.StatusBadRequest, Code: "AUTH_INCORRECT_PASSWORD", Message: "Incorrect password."}
 	ErrUserNotFound               = &AppError{StatusCode: http.StatusNotFound, Code: "USER_NOT_FOUND", Message: "User not found."}
 	ErrInvalidOrExpiredRefresh    = &AppError{StatusCode: http.StatusUnauthorized, Code: "AUTH_INVALID_REFRESH_TOKEN", Message: "Invalid or expired refresh token."}
+	ErrInvalidOrExpiredToken      = &AppError{StatusCode: http.StatusUnauthorized, Code: "AUTH_INVALID_TOKEN", Message: "Invalid or expired token."}
 	ErrTokenMetadataMisMatch      = &AppError{StatusCode: http.StatusForbidden, Code: "AUTH_SECURITY_VIOLATION", Message: "Token metadata mismatch: Security violation."}
 	ErrPasswordChangeFailed       = &AppError{StatusCode: http.StatusInternalServerError, Code: "USER_PASSWORD_CHANGE_FAILED", Message: "Failed to change password."}
 	ErrPasswordSetFailed          = &AppError{StatusCode: http.StatusInternalServerError, Code: "USER_PASSWORD_SET_FAILED", Message: "Failed to set password."}
