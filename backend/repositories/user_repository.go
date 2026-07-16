@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 )
 
 type UserRepository struct {
@@ -58,7 +59,12 @@ func (r *UserRepository) getForAuth(ctx context.Context, value, field string) (*
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, models.ErrUserNotFound
 		}
-		return nil, fmt.Errorf("database query failed: %w", err)
+		displayValue := value
+		if field == "email" {
+			displayValue = utils.MaskEmail(value)
+		}
+
+		return nil, fmt.Errorf("failed to scan/query user for auth by %s (%s): %w", field, displayValue, err)
 	}
 
 	return &user, nil
@@ -76,7 +82,7 @@ func (r *UserRepository) GetAuthData(ctx context.Context, userId string) (*UserA
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, models.ErrUserNotFound
 		}
-		return nil, fmt.Errorf("failed to get auth data: %w", err)
+		return nil, fmt.Errorf("failed to get auth data for user (%s): %w", userId, err)
 	}
 
 	return &data, nil
@@ -90,7 +96,7 @@ func (r *UserRepository) Save2FASecret(ctx context.Context, userId, secret strin
 	`
 	res, err := r.db.Exec(ctx, query, secret, userId)
 	if err != nil {
-		return fmt.Errorf("failed to save 2fa secret: %w", err)
+		return fmt.Errorf("failed to save 2fa secret for user (%s): %w", userId, err)
 	}
 
 	if res.RowsAffected() == 0 {
@@ -108,7 +114,7 @@ func (r *UserRepository) Enable2FA(ctx context.Context, userId string) error {
 	`
 	res, err := r.db.Exec(ctx, query, userId)
 	if err != nil {
-		return fmt.Errorf("failed to enable 2fa: %w", err)
+		return fmt.Errorf("failed to enable 2fa for user (%s): %w", userId, err)
 	}
 
 	if res.RowsAffected() == 0 {
@@ -127,7 +133,7 @@ func (r *UserRepository) Disable2FA(ctx context.Context, userId string) error {
 	`
 	res, err := r.db.Exec(ctx, query, userId)
 	if err != nil {
-		return fmt.Errorf("failed to disable 2fa: %w", err)
+		return fmt.Errorf("failed to disable 2fa for user (%s): %w", userId, err)
 	}
 	if res.RowsAffected() == 0 {
 		return models.ErrUserNotFound
@@ -141,7 +147,7 @@ func (r *UserRepository) CheckUserExists(ctx context.Context, email string) (boo
 	var exists bool
 	err := r.db.QueryRow(ctx, query, email).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("failed to check user existence: %w", err)
+		return false, fmt.Errorf("failed to check user existence by email: %w", err)
 	}
 
 	return exists, nil
@@ -157,14 +163,13 @@ func (r *UserRepository) CreateUser(ctx context.Context, data models.NewUser) (s
 
 	err := r.db.QueryRow(ctx, query, data.Name, data.Username, data.Email, data.PasswordHash).Scan(&insertedId)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 			if pgErr.Code == "23505" {
 				return "", models.ErrUserAlreadyExists
 			}
 		}
 
-		return "", fmt.Errorf("failed to create user: %w", err)
+		return "", fmt.Errorf("failed to execute user creation query (email: %s): %w", utils.MaskEmail(data.Email), err)
 	}
 
 	return insertedId, nil
@@ -195,7 +200,7 @@ func (r *UserRepository) GetUserBySocialID(ctx context.Context, provider, social
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, models.ErrUserNotFound
 		}
-		return nil, fmt.Errorf("failed to query social user: %w", err)
+		return nil, fmt.Errorf("failed to get user by social id: %w", err)
 	}
 
 	return &user, nil
@@ -204,7 +209,7 @@ func (r *UserRepository) GetUserBySocialID(ctx context.Context, provider, social
 func (r *UserRepository) CreateSocialUser(ctx context.Context, newUser models.NewUserGoogle, provider, socialId string) (*models.User, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error starting transaction: %w", err)
+		return nil, fmt.Errorf("failed to begin transaction for social user creation: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -216,7 +221,7 @@ func (r *UserRepository) CreateSocialUser(ctx context.Context, newUser models.Ne
 	var userID string
 	err = tx.QueryRow(ctx, queryUser, newUser.Name, newUser.Username, newUser.Email).Scan(&userID)
 	if err != nil {
-		return nil, fmt.Errorf("error inserting user within transaction: %w", err)
+		return nil, fmt.Errorf("failed to write profile inside social transaction: %w", err)
 	}
 
 	querySocial := `
@@ -225,12 +230,12 @@ func (r *UserRepository) CreateSocialUser(ctx context.Context, newUser models.Ne
     `
 	_, err = tx.Exec(ctx, querySocial, userID, provider, socialId)
 	if err != nil {
-		return nil, fmt.Errorf("error inserting social account within transaction: %w", err)
+		return nil, fmt.Errorf("failed to write relation mapping to provider %s in transaction: %w", provider, err)
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error committing social transaction: %w", err)
+		return nil, fmt.Errorf("failed to commit db transaction for social linking (%s): %w", userID, err)
 	}
 
 	return r.GetUserByIdForAuth(ctx, userID)
@@ -243,7 +248,7 @@ func (r *UserRepository) CreateSocialLink(ctx context.Context, id, provider, soc
     `
 	_, err := r.db.Exec(ctx, query, id, provider, socialUserId)
 	if err != nil {
-		return fmt.Errorf("failed to link social account: %w", err)
+		return fmt.Errorf("failed to link %s account for user (%s): %w", provider, id, err)
 	}
 
 	return nil
@@ -260,7 +265,7 @@ func (r *UserRepository) ChangePassword(ctx context.Context, id, newPassword str
 
 	res, err := r.db.Exec(ctx, query, newPassword, id)
 	if err != nil {
-		return fmt.Errorf("failed to change password: %w", err)
+		return fmt.Errorf("failed database update execution for user (%s): %w", id, err)
 	}
 	if res.RowsAffected() == 0 {
 		return models.ErrUserNotFound
@@ -279,7 +284,7 @@ func (r *UserRepository) DefinePassword(ctx context.Context, id, newPassword str
 
 	res, err := r.db.Exec(ctx, query, newPassword, id)
 	if err != nil {
-		return fmt.Errorf("failed to change password: %w", err)
+		return fmt.Errorf("failed to apply defined password query for user (%s): %w", id, err)
 	}
 	if res.RowsAffected() == 0 {
 		return models.ErrUserNotFound
@@ -297,7 +302,7 @@ func (r *UserRepository) UpdateRecoveryToken(ctx context.Context, userId, tokenH
 
 	res, err := r.db.Exec(ctx, query, tokenHash, expiresAt, userId)
 	if err != nil {
-		return fmt.Errorf("failed to set recovery token: %w", err)
+		return fmt.Errorf("failed to update recovery token for user (%s): %w", userId, err)
 	}
 	if res.RowsAffected() == 0 {
 		return models.ErrUserNotFound
@@ -324,7 +329,7 @@ func (r *UserRepository) GetUserByRecoveryToken(ctx context.Context, tokenHash s
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, models.ErrUserNotFound
 		}
-		return nil, fmt.Errorf("database query failed: %w", err)
+		return nil, fmt.Errorf("failed to get user by recovery token: %w", err)
 	}
 
 	return &user, nil

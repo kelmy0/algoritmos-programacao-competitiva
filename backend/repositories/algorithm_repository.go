@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,7 +27,7 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]mo
 
 	rows, err := r.db.Query(ctx, query, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query algorithms: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -37,21 +36,18 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]mo
 		var algo models.Algorithm
 
 		err := rows.Scan(
-			&algo.Id,
-			&algo.PublicId,
-			&algo.Slug,
-			&algo.Name,
-			&algo.Category,
-			&algo.Difficulty,
-			&algo.Content,
-			&algo.CreatedAt,
-			&algo.UpdatedAt,
+			&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+			&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
 		)
 
 		if err != nil {
 			return nil, err
 		}
 		list = append(list, algo)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return list, nil
@@ -66,22 +62,15 @@ func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string
 
 	var algo models.Algorithm
 	err := r.db.QueryRow(ctx, query, publicId).Scan(
-		&algo.Id,
-		&algo.PublicId,
-		&algo.Slug,
-		&algo.Name,
-		&algo.Category,
-		&algo.Difficulty,
-		&algo.Content,
-		&algo.CreatedAt,
-		&algo.UpdatedAt,
+		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
 	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, models.ErrAlgorithmNotFound
 		}
-		return nil, models.ErrFailQueryingAlgorithm
+		return nil, err
 	}
 
 	return &algo, nil
@@ -95,24 +84,11 @@ func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.New
 	`
 
 	var algo models.Algorithm
-	err := r.db.QueryRow(ctx, query,
-		data.PublicId,
-		data.Slug,
-		data.Name,
-		data.Category,
-		data.Difficulty,
-		data.Content,
+	err := r.db.QueryRow(ctx, query, data.PublicId, data.Slug,
+		data.Name, data.Category, data.Difficulty, data.Content,
 	).Scan(
-		&algo.Id,
-		&algo.PublicId,
-		&algo.Slug,
-		&algo.Name,
-		&algo.Category,
-		&algo.Difficulty,
-		&algo.Content,
-		&algo.CreatedAt,
-		&algo.UpdatedAt,
-	)
+		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -130,22 +106,15 @@ func (r *AlgorithmRepository) DeleteAlgorithm(ctx context.Context, publicId stri
 
 	var algo models.Algorithm
 	err := r.db.QueryRow(ctx, query, publicId).Scan(
-		&algo.Id,
-		&algo.PublicId,
-		&algo.Slug,
-		&algo.Name,
-		&algo.Category,
-		&algo.Difficulty,
-		&algo.Content,
-		&algo.CreatedAt,
-		&algo.UpdatedAt,
+		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
 	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, models.ErrAlgorithmNotFound
 		}
-		return nil, models.ErrFailQueryingAlgorithm
+		return nil, err
 	}
 
 	return &algo, nil
@@ -160,30 +129,18 @@ func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutA
 	`
 
 	var algo models.Algorithm
-	err := r.db.QueryRow(ctx, query,
-		data.Slug,
-		data.Name,
-		data.Category,
-		data.Difficulty,
-		data.Content,
-		data.PublicId,
+	err := r.db.QueryRow(ctx, query, data.Slug, data.Name,
+		data.Category, data.Difficulty, data.Content, data.PublicId,
 	).Scan(
-		&algo.Id,
-		&algo.PublicId,
-		&algo.Slug,
-		&algo.Name,
-		&algo.Category,
-		&algo.Difficulty,
-		&algo.Content,
-		&algo.CreatedAt,
-		&algo.UpdatedAt,
+		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
 	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, models.ErrAlgorithmNotFound
 		}
-		return nil, models.ErrFailQueryingAlgorithm
+		return nil, err
 	}
 
 	return &algo, nil

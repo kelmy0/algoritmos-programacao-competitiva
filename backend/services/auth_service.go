@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -57,18 +58,37 @@ func NewAuthService(authRepo AuthRepository, userRepo AuthUserRepository, jwtAcc
 
 func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResult, error) {
 	user, err := s.UserRepo.GetUserByEmailForAuth(ctx, data.Email)
-	if err != nil || !user.Enable || user.PasswordHash == nil {
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return nil, models.ErrInvalidEmailOrPassword
+		}
+		log.Printf("[Auth] database query error for %s: %v", utils.MaskEmail(data.Email), err)
+		return nil, models.ErrInvalidEmailOrPassword
+	}
+
+	if !user.Enable {
+		log.Printf("[Auth] login blocked: account for user %s (%s) is disabled", user.Id, utils.MaskEmail(user.Email))
+		return nil, models.ErrInvalidEmailOrPassword
+	}
+
+	if user.PasswordHash == nil {
+		log.Printf("[Auth] login blocked: user %s (%s) does not have a local password set", user.Id, utils.MaskEmail(user.Email))
 		return nil, models.ErrInvalidEmailOrPassword
 	}
 
 	isValid, err := utils.VerifyPassword(data.Password, *user.PasswordHash)
-	if err != nil || !isValid {
+	if err != nil {
+		log.Printf("[Auth] Argon2 verification failed for user %s: %v", user.Id, err)
+		return nil, models.ErrPasswordVerificationFailed
+	}
+	if !isValid {
 		return nil, models.ErrInvalidEmailOrPassword
 	}
 
 	if user.TwoFactorAuthentication {
 		_, preAuthToken, err := utils.GenerateToken(user.Id, "", "", nil, s.JwtAccessSecret, s.AppName, false, time.Now().Add(5*time.Minute))
 		if err != nil {
+			log.Printf("[Auth] failed to generate 2FA pre-auth token for user %s: %v", user.Id, err)
 			return nil, models.ErrUnexpectedLogin
 		}
 
@@ -86,25 +106,33 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
 	claims, err := utils.ValidateToken(data.PreAuthToken, s.JwtAccessSecret, s.AppName)
 	if err != nil {
+		log.Printf("[VerifyLogin2FA] pre-auth token validation failed: %v", err)
 		return nil, models.ErrSessionExpired
 	}
 
 	userId := claims.Subject
 	if userId == "" {
+		log.Printf("[VerifyLogin2FA] pre-auth token claims missing Subject field")
 		return nil, models.ErrSessionData
 	}
 
 	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
 	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return nil, models.ErrUserNotFound
+		}
+		log.Printf("[VerifyLogin2FA] database query error for user %s: %v", userId, err)
 		return nil, models.ErrUserNotFound
 	}
 
 	if user.TwoFactorSecret == nil || *user.TwoFactorSecret == "" {
+		log.Printf("[VerifyLogin2FA] user %s attempted 2FA verification but has no secret configured", user.Id)
 		return nil, models.Err2FANotInitiated
 	}
 
 	decryptedSecret, err := utils.Decrypt(*user.TwoFactorSecret, s.EncryptSecret)
 	if err != nil {
+		log.Printf("[VerifyLogin2FA] AES decryption of 2FA secret failed for user %s: %v", user.Id, err)
 		return nil, models.ErrUnexpectedLogin
 	}
 
@@ -119,30 +147,42 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString string) (string, error) {
 	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
 	if err != nil {
+		log.Printf("[RefreshToken] refresh token validation failed: %v", err)
 		return "", models.ErrInvalidOrExpiredRefresh
 	}
 
 	tokenExists, err := s.AuthRepo.GetRefreshTokenById(ctx, claims.ID)
-	if err != nil || tokenExists == nil {
+	if err != nil {
+		log.Printf("[RefreshToken] error querying session database for token %s: %v", claims.ID, err)
+		return "", models.ErrInvalidOrExpiredRefresh
+	}
+	if tokenExists == nil {
 		return "", models.ErrInvalidOrExpiredRefresh
 	}
 
 	if tokenExists.UserId != claims.Subject {
+		log.Printf("[RefreshToken] Token integrity warning! DB UserId (%s) does not match token Subject (%s)", tokenExists.UserId, claims.Subject)
 		return "", models.ErrTokenMetadataMisMatch
 	}
 
 	user, err := s.UserRepo.GetUserByEmailForAuth(ctx, claims.Email)
 	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return "", models.ErrUserNotFound
+		}
+		log.Printf("[RefreshToken] error retrieving user %s during refresh session: %v", claims.Subject, err)
 		return "", models.ErrUserNotFound
 	}
 
 	if !user.Enable {
+		log.Printf("[RefreshToken] user %s is disabled. Blocking token generation", user.Id)
 		return "", models.ErrUserNotEnabled
 	}
 
 	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 
 	if err != nil {
+		log.Printf("[RefreshToken] failed to sign new access token for user %s: %v", user.Id, err)
 		return "", models.ErrGeneratingToken
 	}
 
@@ -155,7 +195,12 @@ func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString str
 		return models.ErrInvalidOrExpiredRefresh
 	}
 
-	return s.AuthRepo.DeleteRefreshTokenById(ctx, userId, claims.ID)
+	err = s.AuthRepo.DeleteRefreshTokenById(ctx, userId, claims.ID)
+	if err != nil {
+		log.Printf("[Logout] failed to delete session token %s for user %s: %v", claims.ID, userId, err)
+		return models.ErrUnexpectedLogout
+	}
+	return nil
 }
 
 func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString string) error {
@@ -165,57 +210,72 @@ func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString 
 	}
 
 	if claims.Subject != userId {
+		log.Printf("[LogoutAll] Security mismatch. Subject in token (%s) does not match parameter user (%s)", claims.Subject, userId)
 		return models.ErrTokenMetadataMisMatch
 	}
 
-	return s.AuthRepo.DeleteAllRefreshToken(ctx, userId, claims.ID)
+	err = s.AuthRepo.DeleteAllRefreshToken(ctx, userId, claims.ID)
+	if err != nil {
+		log.Printf("[LogoutAll] database error revoking all tokens for user %s: %v", userId, err)
+		return models.ErrUnexpectedLogout
+	}
+	return nil
 }
 
 func (s *AuthService) AuthWithGoogle(ctx context.Context, provider, socialUserId, email, name string) (*AuthResult, error) {
 	user, err := s.UserRepo.GetUserBySocialID(ctx, provider, socialUserId)
-
 	if err != nil {
-
 		if errors.Is(err, models.ErrUserNotFound) {
 			user, err = s.UserRepo.GetUserByEmailForAuth(ctx, email)
 
 			if err != nil {
-				username := utils.NormalizeUsername(name)
+				if errors.Is(err, models.ErrUserNotFound) {
+					username := utils.NormalizeUsername(name)
 
-				newUser := models.NewUserGoogle{
-					Name:         name,
-					Username:     username,
-					Email:        email,
-					Provider:     "google",
-					SocialUserId: socialUserId,
-				}
+					newUser := models.NewUserGoogle{
+						Name:         name,
+						Username:     username,
+						Email:        email,
+						Provider:     "google",
+						SocialUserId: socialUserId,
+					}
 
-				user, err = s.UserRepo.CreateSocialUser(ctx, newUser, provider, socialUserId)
-				if err != nil {
-					return nil, models.ErrRegisterSocialUser
+					user, err = s.UserRepo.CreateSocialUser(ctx, newUser, provider, socialUserId)
+					if err != nil {
+						log.Printf("[AuthWithGoogle] failed to register social user %s: %v", utils.MaskEmail(email), err)
+						return nil, models.ErrRegisterSocialUser
+					}
+				} else {
+					log.Printf("[AuthWithGoogle] db error while checking email existence for %s: %v", utils.MaskEmail(email), err)
+					return nil, models.ErrFailQueryUser
 				}
 			} else {
 				err = s.UserRepo.CreateSocialLink(ctx, user.Id, provider, socialUserId)
 				if err != nil {
+					log.Printf("[AuthWithGoogle] failed to create social link for user %s: %v", user.Id, err)
 					return nil, models.ErrLinkGoogleAccount
 				}
 
 				user, err = s.UserRepo.GetUserByIdForAuth(ctx, user.Id)
 				if err != nil {
+					log.Printf("[AuthWithGoogle] failed to reload user %s after social link: %v", user.Id, err)
 					return nil, models.ErrReloadUser
 				}
 			}
 		} else {
+			log.Printf("[AuthWithGoogle] db query error on GetUserBySocialID: %v", err)
 			return nil, models.ErrFailQueryUser
 		}
 	}
 	if !user.Enable {
+		log.Printf("[AuthWithGoogle] disabled user %s tried to sign in via Google", user.Id)
 		return nil, models.ErrUserNotEnabled
 	}
 
 	if user.TwoFactorAuthentication {
 		_, preAuthToken, err := utils.GenerateToken(user.Id, "", "", nil, s.JwtAccessSecret, s.AppName, false, time.Now().Add(5*time.Minute))
 		if err != nil {
+			log.Printf("[AuthWithGoogle] failed to generate pre-auth token for user %s: %v", user.Id, err)
 			return nil, models.ErrUnexpectedLogin
 		}
 
@@ -229,16 +289,19 @@ func (s *AuthService) AuthWithGoogle(ctx context.Context, provider, socialUserId
 
 	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 	if err != nil {
+		log.Printf("[AuthWithGoogle] failed to generate access token for user %s: %v", user.Id, err)
 		return nil, models.ErrGeneratingToken
 	}
 
 	idToken, refreshToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtRefreshSecret, s.AppName, user.Role.IsEmployee, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
+		log.Printf("[AuthWithGoogle] failed to generate refresh token for user %s: %v", user.Id, err)
 		return nil, models.ErrGeneratingToken
 	}
 
 	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, user.Id, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
+		log.Printf("[AuthWithGoogle] failed to persist refresh token to database for user %s: %v", user.Id, err)
 		return nil, models.ErrGeneratingToken
 	}
 
@@ -258,6 +321,7 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*Aut
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
+		log.Printf("[issueSession] failed to generate access token for user %s: %v", user.Id, err)
 		return nil, models.ErrGeneratingToken
 	}
 
@@ -268,11 +332,13 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*Aut
 		time.Now().AddDate(0, 0, s.JwtRefreshExpiration),
 	)
 	if err != nil {
+		log.Printf("[issueSession] failed to generate refresh token for user %s: %v", user.Id, err)
 		return nil, models.ErrGeneratingToken
 	}
 
 	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, user.Id, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
+		log.Printf("[issueSession] failed to save refresh token for user %s into database: %v", user.Id, err)
 		return nil, models.ErrGeneratingToken
 	}
 

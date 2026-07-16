@@ -21,12 +21,16 @@ func main() {
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
+		//logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		//slog.SetDefault(logger)
 
 		if *resetFlag || *seedFlag {
 			log.Fatalf("❌ Security Error: It's not allowed to use these flags in production.")
 		}
 	} else {
 		gin.SetMode(gin.DebugMode)
+		//logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		//slog.SetDefault(logger)
 	}
 
 	//Google Oauth config

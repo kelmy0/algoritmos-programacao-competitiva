@@ -2,9 +2,12 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"net/smtp"
 	"strings"
 
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -76,7 +79,8 @@ func (s *EmailService) SendRecoveryEmail(toEmail, token string) error {
 
 	err := smtp.SendMail(addr, auth, s.From, []string{toEmail}, message)
 	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
+		log.Printf("[EmailService] failed to send recovery email to %s via %s: %v", utils.MaskEmail(toEmail), addr, err)
+		return models.ErrFailedToSendEmail
 	}
 
 	return nil

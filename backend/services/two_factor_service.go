@@ -3,8 +3,10 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/repositories"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"github.com/pquerna/otp/totp"
@@ -30,12 +32,16 @@ func NewTwoFactorService(repo TwoFactorUserRepository, encryptSecret, appName st
 func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string) (*dto.TwoFactorGenerateResponse, error) {
 	twoFactorData, err := s.Repo.GetAuthData(ctx, userId)
 	if err != nil {
-		println(err.Error())
-		return nil, errors.New("Error retrieving 2FA data")
+		if errors.Is(err, models.ErrUserNotFound) {
+			return nil, models.ErrUserNotFound
+		}
+
+		log.Printf("[Generate2FA] database query error for user %s: %v", userId, err)
+		return nil, models.ErrFailQueryUser
 	}
 
 	if twoFactorData.IsEnabled {
-		return nil, errors.New("2FA already enabled")
+		return nil, models.Err2FAAlreadyEnabled
 	}
 
 	key, err := totp.Generate(totp.GenerateOpts{
@@ -44,17 +50,20 @@ func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string
 		SecretSize:  32,
 	})
 	if err != nil {
-		return nil, errors.New("Error generating TOTP")
+		log.Printf("[Generate2FA] failed to generate TOTP key for user %s: %v", userId, err)
+		return nil, models.ErrGeneratingToken
 	}
 
 	encryptedSecret, err := utils.Encrypt(key.Secret(), s.EncryptSecret)
 	if err != nil {
-		return nil, errors.New("Error encrypting TOTP")
+		log.Printf("[Generate2FA] AES encryption failed for user %s secret: %v", userId, err)
+		return nil, models.ErrCryptTokenFailed
 	}
 
 	err = s.Repo.Save2FASecret(ctx, userId, encryptedSecret)
 	if err != nil {
-		return nil, errors.New("Error saving TOTP")
+		log.Printf("[Generate2FA] failed to save encrypted 2FA secret to DB for user %s: %v", userId, err)
+		return nil, models.Err2FASaveFailed
 	}
 
 	return &dto.TwoFactorGenerateResponse{
@@ -66,30 +75,37 @@ func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string
 func (s *TwoFactorService) Enable2FA(ctx context.Context, userId, code string) error {
 	twoFactorData, err := s.Repo.GetAuthData(ctx, userId)
 	if err != nil {
-		return errors.New("Error retrieving 2FA data")
+		if errors.Is(err, models.ErrUserNotFound) {
+			return models.ErrUserNotFound
+		}
+
+		log.Printf("[Enable2FA] database query error for user %s: %v", userId, err)
+		return models.Err2FAGetDataFailed
 	}
 
 	if twoFactorData.IsEnabled {
-		return errors.New("2FA already enabled")
+		return models.Err2FAAlreadyEnabled
 	}
 
 	if twoFactorData.Secret == "" {
-		return errors.New("2FA setup has not been initiated for this user")
+		return models.Err2FANotInitiated
 	}
 
 	decryptedSecret, err := utils.Decrypt(twoFactorData.Secret, s.EncryptSecret)
 	if err != nil {
-		return errors.New("Error processing authentication security")
+		log.Printf("[Enable2FA] AES decryption of 2FA secret failed for user %s: %v", userId, err)
+		return models.ErrDecryptTokenFailed
 	}
 
 	isValid := totp.Validate(code, decryptedSecret)
 	if !isValid {
-		return errors.New("2FA code is invalid or expired")
+		return models.Err2FAInvalid
 	}
 
 	err = s.Repo.Enable2FA(ctx, userId)
 	if err != nil {
-		return errors.New("Error activating 2FA")
+		log.Printf("[Enable2FA] failed to update 2FA status to enabled in DB for user %s: %v", userId, err)
+		return models.Err2FAUpdateFailed
 	}
 
 	return nil
@@ -97,23 +113,29 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, userId, code string) e
 
 func (s *TwoFactorService) Disable2FA(ctx context.Context, userId, password string) error {
 	twoFactorData, err := s.Repo.GetAuthData(ctx, userId)
-
 	if err != nil {
-		return errors.New("Error retrieving 2FA data")
+		log.Printf("[Disable2FA] database query error for user %s: %v", userId, err)
+		return models.Err2FAGetDataFailed
 	}
 
 	if !twoFactorData.IsEnabled {
-		return errors.New("2FA already disabled")
+		return models.Err2FAAlreadyDisabled
 	}
 
 	isValid, err := utils.VerifyPassword(password, twoFactorData.PasswordHash)
-	if err != nil || !isValid {
-		return errors.New("Invalid password")
+	if err != nil {
+		log.Printf("[Disable2FA] Argon2 verification system error for user %s: %v", userId, err)
+		return models.ErrPasswordVerificationFailed
+	}
+
+	if !isValid {
+		return models.ErrIncorrectPassword
 	}
 
 	err = s.Repo.Disable2FA(ctx, userId)
 	if err != nil {
-		return errors.New("Error disabling 2FA")
+		log.Printf("[Disable2FA] failed to update 2FA status to disabled (clean secret/enable flag) in DB for user %s: %v", userId, err)
+		return models.Err2FAUpdateFailed
 	}
 
 	return nil

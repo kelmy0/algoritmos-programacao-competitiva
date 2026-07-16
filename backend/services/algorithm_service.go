@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"errors"
+	"log"
 	"unicode/utf8"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -25,7 +27,6 @@ func NewAlgorithmService(repo AlgorithmRepository) *AlgorithmService {
 	return &AlgorithmService{repo: repo}
 }
 
-// List some Algorithms
 func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.Algorithm, int, error) {
 	if page < 1 {
 		page = 1
@@ -37,12 +38,24 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 	offset := (page - 1) * limit
 
 	data, err := s.repo.List(ctx, limit, offset)
+	if err != nil {
+		log.Printf("[AlgorithmService.List] failed to retrieve algorithms (page: %d, limit: %d): %v", page, limit, err)
+		return nil, page, models.ErrFailQueryingAlgorithm
+	}
+
 	return data, page, err
 }
 
-// Get a specific algorithm by id
 func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error) {
-	return s.repo.GetByPublicID(ctx, publicId)
+	algo, err := s.repo.GetByPublicID(ctx, publicId)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmNotFound) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		log.Printf("[AlgorithmService.GetAlgorithmByPublicID] database error for public_id %s: %v", publicId, err)
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+	return algo, nil
 }
 
 func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest) (*models.Algorithm, error) {
@@ -53,6 +66,7 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 
 	publicId, err := utils.GeneratePublicID()
 	if err != nil {
+		log.Printf("[AlgorithmService.PostAlgorithm] failed to generate secure public ID: %v", err)
 		return nil, models.ErrFailGeneratePublicId
 	}
 
@@ -67,13 +81,22 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 
 	res, err := s.repo.PostAlgorithm(ctx, *algorithm)
 	if err != nil {
+		log.Printf("[AlgorithmService.PostAlgorithm] repository failed to save algorithm (slug: %s): %v", algorithm.Slug, err)
 		return nil, models.ErrFailQueryingAlgorithm
 	}
 	return res, nil
 }
 
 func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error) {
-	return s.repo.DeleteAlgorithm(ctx, publicId)
+	algo, err := s.repo.DeleteAlgorithm(ctx, publicId)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmNotFound) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		log.Printf("[AlgorithmService.DeleteAlgorithm] database error during deletion of %s: %v", publicId, err)
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+	return algo, nil
 }
 
 func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest) (*models.Algorithm, error) {
@@ -93,7 +116,16 @@ func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorit
 		Content:    content,
 	}
 
-	return s.repo.PutAlgorithm(ctx, *algorithm)
+	res, err := s.repo.PutAlgorithm(ctx, *algorithm)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmNotFound) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		log.Printf("[AlgorithmService.PutAlgorithm] database error during update of %s: %v", publicId, err)
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+
+	return res, nil
 }
 
 func validateAndSanitizeAlgorithmFields(name, category, content string) (string, string, string, error) {

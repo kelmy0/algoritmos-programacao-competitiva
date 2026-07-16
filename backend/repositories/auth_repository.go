@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -24,7 +25,10 @@ func (r *AuthRepository) SaveRefreshToken(ctx context.Context, tokenId, userId s
 		($1, $2, $3);
 	`
 	_, err := r.db.Exec(ctx, query, tokenId, userId, expiresAt)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save refresh token (id: %s, user_id: %s): %w", tokenId, userId, err)
+	}
+	return nil
 }
 
 func (r *AuthRepository) GetRefreshTokenById(ctx context.Context, id string) (*models.RefreshToken, error) {
@@ -46,7 +50,7 @@ func (r *AuthRepository) GetRefreshTokenById(ctx context.Context, id string) (*m
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to query refresh token by id (%s): %w", id, err)
 	}
 
 	return &token, nil
@@ -59,11 +63,11 @@ func (r *AuthRepository) DeleteRefreshTokenById(ctx context.Context, userId, tok
 	`
 	result, err := r.db.Exec(ctx, query, tokenId, userId)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute delete query for refresh token (id: %s, user_id: %s): %w", tokenId, userId, err)
 	}
 
 	if result.RowsAffected() == 0 {
-		return errors.New("refresh token not found or already revoked")
+		return models.ErrTokenNotFound
 	}
 	return nil
 }
@@ -74,5 +78,8 @@ func (r *AuthRepository) DeleteAllRefreshToken(ctx context.Context, userId, toke
 		WHERE user_id = $1 AND id != $2;
 	`
 	_, err := r.db.Exec(ctx, query, userId, tokenId)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to revoke other refresh tokens for user (%s) keeping current token (%s): %w", userId, tokenId, err)
+	}
+	return nil
 }
