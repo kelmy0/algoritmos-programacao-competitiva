@@ -319,10 +319,7 @@ func (r *UserRepository) GetUserByRecoveryToken(ctx context.Context, tokenHash s
 
 	var user models.User
 	err := r.db.QueryRow(ctx, query, tokenHash).Scan(
-		&user.Id,
-		&user.Enable,
-		&user.RecoveryTokenHash,
-		&user.RecoveryTokenExpiresAt,
+		&user.Id, &user.Enable, &user.RecoveryTokenHash, &user.RecoveryTokenExpiresAt,
 	)
 
 	if err != nil {
@@ -330,6 +327,29 @@ func (r *UserRepository) GetUserByRecoveryToken(ctx context.Context, tokenHash s
 			return nil, models.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by recovery token: %w", err)
+	}
+
+	return &user, nil
+}
+
+func (r *UserRepository) GetCredentialsUser(ctx context.Context, id string) (*models.User, error) {
+	query := `
+		SELECT id, name, username, email, role_id, last_login, created_at, updated_at
+		FROM users
+		WHERE id = $1;
+	`
+
+	var user models.User
+	err := r.db.QueryRow(ctx, query, id).Scan(
+		&user.Id, &user.Name, &user.Username, &user.Email,
+		&user.RoleId, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user credentials: %w", err)
 	}
 
 	return &user, nil

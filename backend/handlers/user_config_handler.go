@@ -134,14 +134,28 @@ func (h *UserConfigHandler) ResetPassword(c *gin.Context) {
 	})
 }
 
-func (h *UserConfigHandler) getAuthCredentials(c *gin.Context) (string, string, bool) {
+func (h *UserConfigHandler) GetMyCredentials(c *gin.Context) {
+	id, ok := h.getCredentials(c)
+	if !ok {
+		return
+	}
+
+	user, err := h.service.GetMyCredentials(c.Request.Context(), id)
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, user)
+}
+
+func (h *UserConfigHandler) getCredentials(c *gin.Context) (string, bool) {
 	userIdContext, existsId := c.Get("userId")
 	if !existsId {
 		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
 			dto.CodeMissingUserIdContext,
 			dto.MsgMissingDataFromContext,
 		))
-		return "", "", false
+		return "", false
 	}
 
 	id, ok := userIdContext.(string)
@@ -150,6 +164,15 @@ func (h *UserConfigHandler) getAuthCredentials(c *gin.Context) (string, string, 
 			dto.CodeInternalError,
 			dto.MsgUnexpectedError,
 		))
+		return "", false
+	}
+
+	return id, true
+}
+
+func (h *UserConfigHandler) getAuthCredentials(c *gin.Context) (string, string, bool) {
+	id, success := h.getCredentials(c)
+	if !success {
 		return "", "", false
 	}
 
@@ -162,5 +185,5 @@ func (h *UserConfigHandler) getAuthCredentials(c *gin.Context) (string, string, 
 		return "", "", false
 	}
 
-	return id, refreshToken, true
+	return id, refreshToken, success
 }

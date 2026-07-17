@@ -91,8 +91,6 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			{
 				authenticatedAuth.POST("/logout", authHandler.Logout)
 				authenticatedAuth.POST("/logout/all", authHandler.LogoutAll)
-				authenticatedAuth.POST("/change-password", userConfigHandler.ChangePassword)
-				authenticatedAuth.POST("/set-password", userConfigHandler.DefinePassword)
 			}
 		}
 
@@ -100,6 +98,14 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		{
 			me := users.Group("/me")
 			{
+				me.GET("", authFlowLimiter, userConfigHandler.GetMyCredentials)
+
+				password := me.Group("/password", oneMbSize, authFlowLimiter)
+				{
+					password.POST("/set", userConfigHandler.DefinePassword)
+					password.POST("/change", userConfigHandler.ChangePassword)
+				}
+
 				twoFa := me.Group("/2fa", oneMbSize, authFlowLimiter)
 				{
 					twoFa.POST("/generate", twoFactorHandler.Generate2FA)

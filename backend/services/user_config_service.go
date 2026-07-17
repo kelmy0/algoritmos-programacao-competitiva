@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -19,6 +20,7 @@ type UserConfigRepo interface {
 	GetUserByEmailForAuth(ctx context.Context, email string) (*models.User, error)
 	UpdateRecoveryToken(ctx context.Context, userId, tokenHash string, expiresAt time.Time) error
 	GetUserByRecoveryToken(ctx context.Context, tokenHash string) (*models.User, error)
+	GetCredentialsUser(ctx context.Context, id string) (*models.User, error)
 }
 
 type AuthConfigRepo interface {
@@ -221,6 +223,31 @@ func (s *UserConfigService) ResetPassword(ctx context.Context, data dto.ResetPas
 	}
 
 	return nil
+}
+
+func (s *UserConfigService) GetMyCredentials(ctx context.Context, id string) (*dto.GetMyCredentialsResponse, error) {
+	user, err := s.UserRepo.GetCredentialsUser(ctx, id)
+
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return nil, models.ErrUserNotFound
+		}
+		slog.Error("database query error fetching user by ID", "id", id, "error", err)
+		return nil, models.ErrFailQueryUser
+	}
+
+	response := &dto.GetMyCredentialsResponse{
+		Id:        user.Id,
+		Name:      user.Name,
+		Username:  user.Username,
+		Email:     user.Email,
+		RoleId:    user.RoleId,
+		LastLogin: user.LastLogin,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+
+	return response, nil
 }
 
 func (s *UserConfigService) validateUserSession(ctx context.Context, userIdContext, refreshTokenString string) (*models.User, *models.RefreshToken, error) {
