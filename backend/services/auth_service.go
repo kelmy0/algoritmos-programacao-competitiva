@@ -307,6 +307,42 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 	return &AuthResult{response, refreshToken}, nil
 }
 
+func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, provider, socialUserId, email string) error {
+	existingUser, err := s.UserRepo.GetUserBySocialID(ctx, provider, socialUserId)
+	if err == nil && existingUser != nil {
+		slog.Warn("social ID already linked to another account", "socialUserId", socialUserId, "provider", provider)
+		return models.ErrSocialAccountAlreadyLinked
+	}
+
+	if err != nil && !errors.Is(err, models.ErrUserNotFound) {
+		slog.Error("database error checking social ID existence during linking", "provider", provider, "error", err)
+		return models.ErrFailQueryUser
+	}
+
+	currentUser, err := s.UserRepo.GetUserByIdForAuth(ctx, currentUserId)
+	if err != nil {
+		slog.Error("failed to find current user for linking", "userId", currentUserId, "error", err)
+		return models.ErrUserNotFound
+	}
+
+	if currentUser.Email != email {
+		slog.Warn("email mismatch during social link attempt",
+			"userId", currentUserId,
+			"accountEmail", utils.MaskEmail(currentUser.Email),
+			"socialEmail", utils.MaskEmail(email),
+		)
+		return models.ErrEmailMismatchForSocialLink
+	}
+
+	err = s.UserRepo.CreateSocialLink(ctx, currentUser.Id, provider, socialUserId)
+	if err != nil {
+		slog.Error("failed to create social link for logged user", "userId", currentUser.Id, "provider", provider, "error", err)
+		return models.ErrLinkSocialAccount
+	}
+
+	return nil
+}
+
 func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*AuthResult, error) {
 	// Access Token
 	_, accessToken, err := utils.GenerateToken(

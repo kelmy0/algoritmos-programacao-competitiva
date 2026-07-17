@@ -57,6 +57,8 @@ var (
 	ErrCryptTokenFailed           = &AppError{StatusCode: http.StatusInternalServerError, Code: "TOKEN_CRYPT_FAILED", Message: "Failed to crypt token."}
 	ErrDecryptTokenFailed         = &AppError{StatusCode: http.StatusInternalServerError, Code: "TOKEN_DECRYPT_FAILED", Message: "Failed to decrypt token."}
 	ErrFailedToSendEmail          = &AppError{StatusCode: http.StatusInternalServerError, Code: "EMAIL_SEND_FAILED", Message: "Failed to send email."}
+	ErrSocialAccountAlreadyLinked = &AppError{StatusCode: http.StatusConflict, Code: "SOCIAL_ACCOUNT_ALREADY_LINKED", Message: "This social account is already linked to another account."}
+	ErrEmailMismatchForSocialLink = &AppError{StatusCode: http.StatusUnauthorized, Code: "EMAIL_MISMATCH_SOCIAL_LINK", Message: "Email mismatch during social link attempt."}
 )
 
 var ErrPasswordChangeButNotLogout = errors.New("password changed, but failed to log out other devices.")

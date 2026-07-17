@@ -113,6 +113,12 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 					twoFa.POST("/disable", twoFactorHandler.Disable2FA)
 				}
 
+				linkSocial := me.Group("/link-social", oneMbSize, authFlowLimiter)
+				{
+					linkSocial.GET("/google", authSocialHandler.GoogleLinkAccount)
+					linkSocial.GET("/github", authSocialHandler.GithubLinkAccount)
+				}
+
 			}
 		}
 

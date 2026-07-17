@@ -83,6 +83,20 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 			googleUser.Name = utils.ExtractNameFromEmail(googleUser.Email)
 		}
 	}
+	linkedUserID, err := c.Cookie("oauth_google_link_user")
+
+	if err == nil && linkedUserID != "" {
+		c.SetCookie("oauth_google_link_user", "", -1, "/", h.AppDomain, h.IsProduce, true)
+
+		err := h.Service.LinkSocialAccount(c.Request.Context(), linkedUserID, "google", googleUser.Subject, googleUser.Email)
+		if err != nil {
+			HandleAPIError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.MessageResponse{Message: "Google account successfully linked!"})
+		return
+	}
 
 	result, err := h.Service.AuthWithSocialProvider(c.Request.Context(), "google", googleUser.Subject, googleUser.Email, googleUser.Name)
 	if err != nil {
@@ -95,6 +109,10 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result.LoginResponse)
+}
+
+func (h *AuthSocialHandler) GoogleLinkAccount(c *gin.Context) {
+	h.linkSocialAccount(c, "oauth_google_link_user", "oauth_google_state", h.GoogleConfig)
 }
 
 func (h *AuthSocialHandler) GithubLogin(c *gin.Context) {
@@ -175,6 +193,20 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 		name = ghUser.Login
 	}
 
+	linkedUserID, err := c.Cookie("oauth_github_link_user")
+	if err == nil && linkedUserID != "" {
+		c.SetCookie("oauth_github_link_user", "", -1, "/", h.AppDomain, h.IsProduce, true)
+
+		err := h.Service.LinkSocialAccount(c.Request.Context(), linkedUserID, "github", socialUserId, email)
+		if err != nil {
+			HandleAPIError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.MessageResponse{Message: "Github account successfully linked!"})
+		return
+	}
+
 	result, err := h.Service.AuthWithSocialProvider(c.Request.Context(), "github", socialUserId, email, name)
 	if err != nil {
 		HandleAPIError(c, err)
@@ -187,6 +219,10 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 
 	c.JSON(http.StatusOK, result.LoginResponse)
 
+}
+
+func (h *AuthSocialHandler) GithubLinkAccount(c *gin.Context) {
+	h.linkSocialAccount(c, "oauth_github_link_user", "oauth_github_state", h.GithubConfig)
 }
 
 func (h *AuthSocialHandler) startSocialLogin(c *gin.Context, cookieName string, config *oauth2.Config) {
@@ -235,4 +271,22 @@ func (h *AuthSocialHandler) fetchGoogleNameFallback(ctx context.Context, token *
 		return googleProfile.Name
 	}
 	return ""
+}
+
+func (h *AuthSocialHandler) linkSocialAccount(c *gin.Context, linkCookieName, cookieName string, oauthConfig *oauth2.Config) {
+	rawUserId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		return
+	}
+
+	userId, ok := rawUserId.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, dto.MsgUnexpectedError))
+		return
+	}
+
+	c.SetCookie(linkCookieName, userId, 300, "/", h.AppDomain, h.IsProduce, true)
+
+	h.startSocialLogin(c, cookieName, oauthConfig)
 }
