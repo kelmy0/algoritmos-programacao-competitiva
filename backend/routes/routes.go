@@ -13,7 +13,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, googleConfig *oauth2.Config) {
+func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, googleConfig, githubConfig *oauth2.Config) {
 	isProd := cfg.AppEnv == "production"
 	argonParams := &utils.ArgonParams{
 		Memory:      cfg.Memory,
@@ -43,7 +43,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	authRepo := repositories.NewAuthRepository(db)
 	authService := services.NewAuthService(authRepo, userRepo, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain, cfg.JwtRefreshExpiresDays)
-	authGoogleHandler := handlers.NewAuthGoogleHandler(authService, googleConfig, cfg.AppDomain, isProd, cfg.JwtRefreshExpiresDays)
+	authSocialHandler := handlers.NewAuthSocialHandler(authService, googleConfig, githubConfig, cfg.AppDomain, isProd, cfg.JwtRefreshExpiresDays)
 
 	//Sign up
 	signUpService := services.NewSignUpService(userRepo, authRepo, *argonParams, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
@@ -73,8 +73,10 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			{
 				authFlow.POST("/login", authHandler.Auth)
 				authFlow.POST("/refresh", authHandler.Refresh)
-				authFlow.GET("/google", authGoogleHandler.GoogleLogin)
-				authFlow.GET("/google/callback", authGoogleHandler.GoogleCallback)
+				authFlow.GET("/google", authSocialHandler.GoogleLogin)
+				authFlow.GET("/google/callback", authSocialHandler.GoogleCallback)
+				authFlow.GET("/github", authSocialHandler.GithubLogin)
+				authFlow.GET("/github/callback", authSocialHandler.GithubCallback)
 			}
 
 			authStrict := auth.Group("", strictAbuseLimiter)

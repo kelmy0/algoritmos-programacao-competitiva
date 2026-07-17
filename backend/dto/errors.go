@@ -30,6 +30,7 @@ const (
 	CodeNoPermission          = "NO_PERMISSION"
 	CodePageNotFound          = "PAGE_NOT_FOUND"
 	CodeTooManyRequests       = "TOO_MANY_REQUESTS"
+	CodeUnverifiedGithubEmail = "GITHUB_EMAIL_UNVERIFIED"
 )
 
 const (

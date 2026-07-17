@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -222,7 +223,7 @@ func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString 
 	return nil
 }
 
-func (s *AuthService) AuthWithGoogle(ctx context.Context, provider, socialUserId, email, name string) (*AuthResult, error) {
+func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, socialUserId, email, name string) (*AuthResult, error) {
 	user, err := s.UserRepo.GetUserBySocialID(ctx, provider, socialUserId)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
@@ -236,46 +237,39 @@ func (s *AuthService) AuthWithGoogle(ctx context.Context, provider, socialUserId
 						Name:         name,
 						Username:     username,
 						Email:        email,
-						Provider:     "google",
+						Provider:     provider,
 						SocialUserId: socialUserId,
 					}
 
 					user, err = s.UserRepo.CreateSocialUser(ctx, newUser, provider, socialUserId)
 					if err != nil {
-						log.Printf("[AuthWithGoogle] failed to register social user %s: %v", utils.MaskEmail(email), err)
+						slog.Error("failed to register social user", "email", utils.MaskEmail(email), "provider", provider, "error", err)
 						return nil, models.ErrRegisterSocialUser
 					}
 				} else {
-					log.Printf("[AuthWithGoogle] db error while checking email existence for %s: %v", utils.MaskEmail(email), err)
+					slog.Error("database error checking email existence during social auth", "email", utils.MaskEmail(email), "error", err)
 					return nil, models.ErrFailQueryUser
 				}
 			} else {
-				err = s.UserRepo.CreateSocialLink(ctx, user.Id, provider, socialUserId)
-				if err != nil {
-					log.Printf("[AuthWithGoogle] failed to create social link for user %s: %v", user.Id, err)
-					return nil, models.ErrLinkGoogleAccount
-				}
-
-				user, err = s.UserRepo.GetUserByIdForAuth(ctx, user.Id)
-				if err != nil {
-					log.Printf("[AuthWithGoogle] failed to reload user %s after social link: %v", user.Id, err)
-					return nil, models.ErrReloadUser
-				}
+				slog.Warn("social login block: email already exists with a different provider or password",
+					"email", utils.MaskEmail(email), "attempted_provider", provider)
+				return nil, models.ErrUserAlreadyExists
 			}
 		} else {
-			log.Printf("[AuthWithGoogle] db query error on GetUserBySocialID: %v", err)
+			slog.Error("database query error fetching user by social ID", "provider", provider, "error", err)
 			return nil, models.ErrFailQueryUser
 		}
 	}
+
 	if !user.Enable {
-		log.Printf("[AuthWithGoogle] disabled user %s tried to sign in via Google", user.Id)
+		slog.Warn("disabled user tried to sign in", "userId", user.Id, "provider", provider)
 		return nil, models.ErrUserNotEnabled
 	}
 
 	if user.TwoFactorAuthentication {
 		_, preAuthToken, err := utils.GenerateToken(user.Id, "", "", nil, s.JwtAccessSecret, s.AppName, false, time.Now().Add(5*time.Minute))
 		if err != nil {
-			log.Printf("[AuthWithGoogle] failed to generate pre-auth token for user %s: %v", user.Id, err)
+			slog.Error("failed to generate pre-auth token", "userId", user.Id, "error", err)
 			return nil, models.ErrUnexpectedLogin
 		}
 
@@ -289,19 +283,19 @@ func (s *AuthService) AuthWithGoogle(ctx context.Context, provider, socialUserId
 
 	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 	if err != nil {
-		log.Printf("[AuthWithGoogle] failed to generate access token for user %s: %v", user.Id, err)
+		slog.Error("failed to generate access token during social auth", "userId", user.Id, "error", err)
 		return nil, models.ErrGeneratingToken
 	}
 
 	idToken, refreshToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtRefreshSecret, s.AppName, user.Role.IsEmployee, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
-		log.Printf("[AuthWithGoogle] failed to generate refresh token for user %s: %v", user.Id, err)
+		slog.Error("failed to generate refresh token during social auth", "userId", user.Id, "error", err)
 		return nil, models.ErrGeneratingToken
 	}
 
 	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, user.Id, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
-		log.Printf("[AuthWithGoogle] failed to persist refresh token to database for user %s: %v", user.Id, err)
+		slog.Error("failed to persist refresh token to database during social auth", "userId", user.Id, "error", err)
 		return nil, models.ErrGeneratingToken
 	}
 

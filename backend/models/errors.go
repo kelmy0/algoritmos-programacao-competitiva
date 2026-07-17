@@ -33,7 +33,7 @@ var (
 	ErrFailGeneratePublicId       = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_GENERATE_PUBLIC_ID_FAILED", Message: "Failed to generate public ID."}
 	ErrFailQueryUser              = &AppError{StatusCode: http.StatusInternalServerError, Code: "AUTH_QUERY_USER_FAILED", Message: "Failed to query the user in the database."}
 	ErrRegisterSocialUser         = &AppError{StatusCode: http.StatusInternalServerError, Code: "USER_REGISTER_SOCIAL_FAILED", Message: "Failed to register social user."}
-	ErrLinkGoogleAccount          = &AppError{StatusCode: http.StatusInternalServerError, Code: "LINK_GOOGLE_ACCOUNT_FAILED", Message: "Failed to link google account."}
+	ErrLinkSocialAccount          = &AppError{StatusCode: http.StatusInternalServerError, Code: "LINK_SOCIAL_ACCOUNT_FAILED", Message: "Failed to link social account."}
 	ErrReloadUser                 = &AppError{StatusCode: http.StatusInternalServerError, Code: "USER_RELOAD_FAILED", Message: "Failed to reload user after link."}
 	ErrUserNotEnabled             = &AppError{StatusCode: http.StatusForbidden, Code: "USER_NOT_ENABLED", Message: "This account is not enabled."}
 	ErrUnexpectedLogin            = &AppError{StatusCode: http.StatusInternalServerError, Code: "AUTH_UNEXPECTED_ERROR", Message: "Unexpected login error."}

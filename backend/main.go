@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"log"
+	"log/slog"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/config"
@@ -21,20 +23,21 @@ func main() {
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
-		//logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-		//slog.SetDefault(logger)
+		logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		slog.SetDefault(logger)
 
 		if *resetFlag || *seedFlag {
 			log.Fatalf("❌ Security Error: It's not allowed to use these flags in production.")
 		}
 	} else {
 		gin.SetMode(gin.DebugMode)
-		//logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-		//slog.SetDefault(logger)
+		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		slog.SetDefault(logger)
 	}
 
 	//Google Oauth config
 	googleCfg := config.LoadGoogleOauthConfig(cfg.GoogleClientId, cfg.GoogleClientSecret, cfg.GoogleCallbackUrl)
+	githubCfg := config.LoadGithubOauthConfig(cfg.GithubClientId, cfg.GithubClientSecret, cfg.GithubCallbackUrl)
 
 	// Database connection
 	if !database.ConnectDB(*resetFlag, cfg.DatabaseURL) {
@@ -57,6 +60,6 @@ func main() {
 	router.Use(middleware.SetupRecovery())
 	router.Use(middleware.SetupCORS(cfg.AppEnv))
 	router.Use(middleware.SetupSecureHeaders())
-	routes.ConfigRoutes(router, database.DB, cfg, googleCfg)
+	routes.ConfigRoutes(router, database.DB, cfg, googleCfg, githubCfg)
 	router.Run(cfg.Port)
 }

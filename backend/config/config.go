@@ -28,14 +28,16 @@ type Config struct {
 	KeyLength               uint32
 	GoogleClientId          string
 	GoogleClientSecret      string
-	GoogleRedirectURL       string
+	GoogleCallbackUrl       string
+	GithubClientId          string
+	GithubClientSecret      string
+	GithubCallbackUrl       string
 	HostEmail               string
 	PortEmail               string
 	UserEmail               string
 	PasswordEmail           string
 	FromEmail               string
 	FrontendUrl             string
-	GoogleCallbackUrl       string
 }
 
 func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
@@ -137,9 +139,24 @@ func LoadConfig() *Config {
 		log.Fatal("❌ GOOGLE_CLIENT_SECRET is required.")
 	}
 
-	googleRedirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
-	if googleRedirectURL == "" {
-		log.Fatal("❌ GOOGLE_REDIRECT_URL is required.")
+	googleCallbackUrl := os.Getenv("GOOGLE_CALLBACK_URL")
+	if googleCallbackUrl == "" {
+		log.Fatal("❌ GOOGLE_CALLBACK_URL is required.")
+	}
+
+	githubClientId := os.Getenv("GITHUB_CLIENT_ID")
+	if githubClientId == "" {
+		log.Fatal("❌ GITHUB_CLIENT_ID is required.")
+	}
+
+	githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
+	if githubClientSecret == "" {
+		log.Fatal("❌ GITHUB_CLIENT_SECRET is required.")
+	}
+
+	githubCallbackUrl := os.Getenv("GITHUB_CALLBACK_URL")
+	if githubCallbackUrl == "" {
+		log.Fatal("❌ GITHUB_CALLBACK_URL is required.")
 	}
 
 	hostEmail := os.Getenv("EMAIL_SMTP_HOST")
@@ -172,11 +189,6 @@ func LoadConfig() *Config {
 		log.Fatal("❌ FRONTEND_URL is required.")
 	}
 
-	googleCallbackUrl := os.Getenv("GOOGLE_CALLBACK_URL")
-	if googleCallbackUrl == "" {
-		log.Fatal("❌ GOOGLE_CALLBACK_URL is required.")
-	}
-
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -196,13 +208,15 @@ func LoadConfig() *Config {
 		KeyLength:               keyLength,
 		GoogleClientId:          googleClientId,
 		GoogleClientSecret:      googleClientSecret,
-		GoogleRedirectURL:       googleRedirectURL,
+		GoogleCallbackUrl:       googleCallbackUrl,
+		GithubClientId:          githubClientId,
+		GithubClientSecret:      githubClientSecret,
+		GithubCallbackUrl:       githubCallbackUrl,
 		HostEmail:               hostEmail,
 		PortEmail:               portEmail,
 		UserEmail:               userEmail,
 		PasswordEmail:           passwordEmail,
 		FromEmail:               fromEmail,
 		FrontendUrl:             frontendUrl,
-		GoogleCallbackUrl:       googleCallbackUrl,
 	}
 }
