@@ -11,35 +11,65 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-100 text-gray-800 font-sans flex flex-col">
+<div class="min-h-screen bg-app-bg text-text-primary font-inter flex flex-col">
 	<!--Topbar-->
 	<header
-		class="bg-indigo-950 border-b border-indigo-300 h-16
-	fixed top-0 left-0 right-0 flex items-center justify-between px-4 z-10"
+		class="bg-app-surface h-16 border-b border-gray-800 fixed top-0 left-0 right-0 flex items-center justify-between px-6 z-10"
 	>
-		<!--Just the title-->
-		<a class="font-bold text-xl text-gray-100" href="/">Algoritmos para Maratona</a>
+		<!--Title-->
+		<a
+			class="font-bold text-xl text-text-primary font-montserrat tracking-tight hover:text-text-brand transition-colors flex items-center gap-2"
+			href="/"
+		>
+			<span class="text-text-brand">&lt;/&gt;</span> Algoritmos para Maratona
+		</a>
 
 		<!--Search field-->
-		<div class="flex-1 max-w-md mx-4 hidden md:block">
+		<div class="flex-1 max-w-md mx-8 hidden md:block">
 			<div class="relative">
+				<span
+					class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+						/>
+					</svg>
+				</span>
 				<input
 					type="search"
 					placeholder="Pesquisar..."
-					class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all text-sm"
+					class="w-full pl-10 pr-4 py-2 bg-app-bg/50 border border-gray-800 rounded-lg text-text-primary
+					placeholder-gray-500 text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1
+					focus:ring-text-brand focus:outline-none transition-all"
 				/>
 			</div>
 		</div>
 
-		<!--Button to open sidebar-->
+		<!--Login button-->
+		<div class="items-center hidden md:block">
+			<button
+				type="button"
+				class="px-4 py-1.5 border border-text-brand
+			text-text-brand hover:bg-text-brand hover:text-app-bg font-medium text-sm rounded-lg transition-all"
+				aria-label="Sign up"
+			>
+				Login
+			</button>
+		</div>
+
+		<!--Mobile Menu Button-->
 		<div class="flex items-center gap-3 md:hidden">
 			<button
 				type="button"
 				onclick={() => (isSidebarOpen = !isSidebarOpen)}
-				class="p-2 text-gray-400 hover:bg-blue-200/30 rounded-lg"
+				class="p-2 text-text-brand hover:bg-app-surface rounded-lg transition-colors"
 				aria-label="Toggle Menu"
 			>
-				<svg class="w-6 h-6 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -51,36 +81,44 @@
 		</div>
 	</header>
 
-	<!--Sidebar-->
-	<div class="flex flex-1 pt-16 ">
+	<div class="flex flex-1 pt-16">
+		<!--Mobile Overlay Backdrop-->
 		{#if isSidebarOpen}
 			<button
 				onclick={() => (isSidebarOpen = false)}
-				class="fixed inset-0 bg-black/40 z-40 md:hidden cursor-default
-				w-full h-full border-0 p-0 appearance-none"
-				aria-label="Fechar menu"
+				class="fixed inset-0 bg-black/60 z-40 md:hidden cursor-default w-full h-full
+				border-0 p-0 appearance-none backdrop-blur-sm"
+				aria-label="Close menu"
 			></button>
 		{/if}
 
 		<aside
-			class="fixed top-16 bottom-0 right-0 z-50 w-64 bg-gray-200 md:bg-gray-300/50 border-l
-			border-gray-200 transform transition-transform duration-200 ease-in-out
-        	md:sticky md:left-0 md:right-auto md:border-l-0 md:border-r md:translate-x-0
-        {isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}"
+			class="fixed top-16 bottom-0 right-0 z-50 w-64 bg-app-surface border-l border-gray-800 md:border-l-0
+			md:border-r transform transition-transform duration-200 ease-in-out md:sticky md:left-0 md:right-auto md:translate-x-0
+            {isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}"
 		>
 			<nav class="p-4 space-y-1">
 				<a
 					href="/"
-					class="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+					class="flex items-center gap-3 px-4 py-2.5
+					bg-app-bg/50 text-text-brand border-l-2 border-text-brand rounded-r-lg font-medium transition-colors"
 				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+						/>
+					</svg>
 					<span>Início</span>
 				</a>
 			</nav>
 		</aside>
 
 		<!--SPA container-->
-		<main class="flex-1 p-6 min-w-0 overflow-y-auto bg-gray-200/50">
-			<div class="max-w-7xl mx-auto ">
+		<main class="flex-1 p-6 min-w-0 overflow-y-auto">
+			<div class="max-w-7xl mx-auto">
 				{@render children()}
 			</div>
 		</main>
