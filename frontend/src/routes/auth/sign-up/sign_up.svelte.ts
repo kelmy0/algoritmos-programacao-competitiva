@@ -285,9 +285,6 @@ export class SignUpController {
 }
 
 const SIGN_UP_ERRORS: Record<string, string> = {
-	// Internal User Operation Failures
-	AUTH_QUERY_USER_FAILED: 'Erro interno ao consultar dados cadastrais.',
-
 	// Sign-up / Registration
 	EMAIL_ALREADY_USED: 'Este endereço de e-mail já está cadastrado.',
 	USERNAME_ALREADY_USED: 'Este nome de usuário já está cadastrado.',

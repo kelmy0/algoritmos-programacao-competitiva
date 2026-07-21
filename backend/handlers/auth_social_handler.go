@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"cloud.google.com/go/auth/credentials/idtoken"
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"golang.org/x/oauth2"
@@ -22,9 +24,10 @@ type AuthSocialHandler struct {
 	AppDomain           string
 	IsProduce           bool
 	RefreshDurationDays int
+	FrontendUrl         string
 }
 
-func NewAuthSocialHandler(service *services.AuthService, googleConfig, githubConfig *oauth2.Config, appDomain string, isProduce bool, refreshDurationDays int) *AuthSocialHandler {
+func NewAuthSocialHandler(service *services.AuthService, googleConfig, githubConfig *oauth2.Config, appDomain, frontendUrl string, isProduce bool, refreshDurationDays int) *AuthSocialHandler {
 	return &AuthSocialHandler{
 		Service:             service,
 		GithubConfig:        githubConfig,
@@ -32,6 +35,7 @@ func NewAuthSocialHandler(service *services.AuthService, googleConfig, githubCon
 		AppDomain:           appDomain,
 		IsProduce:           isProduce,
 		RefreshDurationDays: refreshDurationDays,
+		FrontendUrl:         frontendUrl,
 	}
 }
 
@@ -45,35 +49,28 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 		return
 	}
 
+	frontendUrl := fmt.Sprintf("%s/auth/callback?", h.FrontendUrl)
 	token, err := h.GoogleConfig.Exchange(c.Request.Context(), code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, "Failed to exchange code for token."))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeInternalError)
 		return
 	}
 
 	idTokenStr, ok := token.Extra("id_token").(string)
 	if !ok {
-		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.CodeMissingTokenID, "Missing Google id token.",
-		))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeMissingTokenID)
 		return
 	}
 
 	payload, err := idtoken.Validate(c.Request.Context(), idTokenStr, h.GoogleConfig.ClientID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(dto.CodeInvalidGoogleToken, "Invalid Google token."))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeInvalidGoogleToken)
 		return
 	}
 
 	googleUser, errorCode := dto.NewGoogleUserPayload(payload)
 	if errorCode != "" {
-		var msg string
-		if errorCode == dto.CodeUnverifiedGoogleEmail {
-			msg = "Your Google account email is not verified."
-		} else {
-			msg = "Missing email from Google token."
-		}
-		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorCode, msg))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+errorCode)
 		return
 	}
 
@@ -90,17 +87,23 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 
 		err := h.Service.LinkSocialAccount(c.Request.Context(), linkedUserID, "google", googleUser.Subject, googleUser.Email)
 		if err != nil {
-			HandleAPIError(c, err)
+			h.socialError(c, err)
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.MessageResponse{Message: "Google account successfully linked!"})
+		c.Redirect(http.StatusFound, frontendUrl)
 		return
 	}
 
 	result, err := h.Service.AuthWithSocialProvider(c.Request.Context(), "google", googleUser.Subject, googleUser.Email, googleUser.Name)
 	if err != nil {
-		HandleAPIError(c, err)
+		h.socialError(c, err)
+		return
+	}
+
+	if result.LoginResponse.Requires2FA {
+		frontendURL := fmt.Sprintf("%s/auth/callback?pre_token=%s", h.FrontendUrl, result.LoginResponse.PreAuthToken)
+		c.Redirect(http.StatusFound, frontendURL)
 		return
 	}
 
@@ -108,7 +111,8 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 		c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.RefreshDurationDays, "/", h.AppDomain, h.IsProduce, true)
 	}
 
-	c.JSON(http.StatusOK, result.LoginResponse)
+	frontendURL := fmt.Sprintf("%s/auth/callback?access_token=%s", h.FrontendUrl, result.LoginResponse.AccessToken)
+	c.Redirect(http.StatusFound, frontendURL)
 }
 
 func (h *AuthSocialHandler) GoogleLinkAccount(c *gin.Context) {
@@ -125,10 +129,11 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 		return
 	}
 
+	frontendUrl := fmt.Sprintf("%s/auth/callback?", h.FrontendUrl)
 	token, err := h.GithubConfig.Exchange(c.Request.Context(), code)
 	if err != nil {
 		slog.Error("failed to exchange code for GitHub token", "error", err)
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(dto.CodeInternalError, "Failed to exchange code for token."))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeInternalError)
 		return
 	}
 
@@ -136,9 +141,7 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 	resp, err := client.Get("https://api.github.com/user")
 	if err != nil {
 		slog.Error("failed to fetch user profile from GitHub API", "error", err)
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError, "Failed to retrieve user profile.",
-		))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeInternalError)
 		return
 	}
 	defer resp.Body.Close()
@@ -146,9 +149,7 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 	var ghUser dto.GithubUserResponse
 	if err := json.NewDecoder(resp.Body).Decode(&ghUser); err != nil {
 		slog.Error("failed to decode GitHub profile response", "error", err)
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError, "Failed to process user profile.",
-		))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeInternalError)
 		return
 	}
 
@@ -157,9 +158,7 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 	emailResp, err := client.Get("https://api.github.com/user/emails")
 	if err != nil {
 		slog.Error("failed to fetch user emails from GitHub API", "userId", socialUserId, "error", err)
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError, "Failed to retrieve verified email.",
-		))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeInternalError)
 		return
 	}
 	defer emailResp.Body.Close()
@@ -167,9 +166,7 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 	var emails []dto.GithubEmailResponse
 	if err := json.NewDecoder(emailResp.Body).Decode(&emails); err != nil {
 		slog.Error("failed to decode GitHub emails list", "userId", socialUserId, "error", err)
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError, "Failed to process emails list.",
-		))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeInternalError)
 		return
 	}
 
@@ -182,9 +179,7 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 	}
 
 	if email == "" {
-		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.CodeUnverifiedGithubEmail, "A verified primary email on GitHub is required to register.",
-		))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeUnverifiedGithubEmail)
 		return
 	}
 
@@ -199,17 +194,17 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 
 		err := h.Service.LinkSocialAccount(c.Request.Context(), linkedUserID, "github", socialUserId, email)
 		if err != nil {
-			HandleAPIError(c, err)
+			h.socialError(c, err)
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.MessageResponse{Message: "Github account successfully linked!"})
+		c.Redirect(http.StatusFound, frontendUrl)
 		return
 	}
 
 	result, err := h.Service.AuthWithSocialProvider(c.Request.Context(), "github", socialUserId, email, name)
 	if err != nil {
-		HandleAPIError(c, err)
+		h.socialError(c, err)
 		return
 	}
 
@@ -217,8 +212,8 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 		c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.RefreshDurationDays, "/", h.AppDomain, h.IsProduce, true)
 	}
 
-	c.JSON(http.StatusOK, result.LoginResponse)
-
+	frontendURL := fmt.Sprintf("%s/auth/callback?access_token=%s", h.FrontendUrl, result.LoginResponse.AccessToken)
+	c.Redirect(http.StatusFound, frontendURL)
 }
 
 func (h *AuthSocialHandler) GithubLinkAccount(c *gin.Context) {
@@ -239,17 +234,18 @@ func (h *AuthSocialHandler) startSocialLogin(c *gin.Context, cookieName string, 
 }
 
 func (h *AuthSocialHandler) verifyCallbackAndGetCode(c *gin.Context, cookieName string) string {
+	frontendUrl := fmt.Sprintf("%s/auth/callback?", h.FrontendUrl)
 	urlState := c.Query("state")
 	cookieState, err := c.Cookie(cookieName)
 	if err != nil || urlState != cookieState {
-		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(dto.CodeSessionExpired, dto.MsgSessionExpired))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeSessionExpired)
 		return ""
 	}
 	c.SetCookie(cookieName, "", -1, "/", h.AppDomain, h.IsProduce, true)
 
 	code := c.Query("code")
 	if code == "" {
-		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(dto.CodeMissingOAuthCode, "Missing exchange code."))
+		c.Redirect(http.StatusFound, frontendUrl+"error="+dto.CodeMissingOAuthCode)
 		return ""
 	}
 
@@ -289,4 +285,16 @@ func (h *AuthSocialHandler) linkSocialAccount(c *gin.Context, linkCookieName, co
 	c.SetCookie(linkCookieName, userId, 300, "/", h.AppDomain, h.IsProduce, true)
 
 	h.startSocialLogin(c, cookieName, oauthConfig)
+}
+
+func (h *AuthSocialHandler) socialError(c *gin.Context, err error) {
+	frontendURL := fmt.Sprintf("%s/auth/callback?error=", h.FrontendUrl)
+
+	if appErr, ok := errors.AsType[*models.AppError](err); ok {
+
+		c.Redirect(http.StatusFound, frontendURL+appErr.Code)
+		return
+	}
+
+	c.Redirect(http.StatusFound, frontendURL+dto.CodeInternalError)
 }

@@ -10,6 +10,7 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	TOO_MANY_REQUESTS: 'Você fez muitas requisições seguidas. Aguarde um momento e tente novamente.',
 
 	// Generic Authentication and Session
+	USER_NOT_FOUND: 'Usuário não encontrado.',
 	SESSION_EXPIRED: 'Sua sessão expirou ou ocorreu uma falha de segurança. Faça login novamente.',
 	MISSING_USER_ID: 'Identificação do usuário ausente na requisição.',
 	MISSING_COOKIE: 'Cookie de autenticação obrigatório está ausente.',
@@ -18,6 +19,12 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	INVALID_ACCESS_TOKEN: 'Seu token de acesso é inválido ou expirou.',
 	RESTRICTED_AREA: 'Esta é uma área restrita do sistema.',
 	NO_PERMISSION: 'Você não tem permissão para realizar esta ação.',
+	AUTH_UNEXPECTED_ERROR: 'Falha inesperada no login. Tente novamente!',
+
+	// Two Factor
+	'2FA_NOT_INITIATED': 'A autenticação em dois fatores não está ativa.',
+	'2FA_INVALID_CODE': 'Código inválido ou expirado! Caso o erro persista, faça login novamente.',
+	MISSING_PRE_TOKEN: 'Está faltando o token da autenticação em dois fatores',
 
 	// OAuth Integrations (Google and GitHub)
 	MISSING_OAUTH_CODE: 'Código de autenticação do provedor social ausente.',
@@ -26,7 +33,13 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	MISSING_GOOGLE_EMAIL: 'Não foi possível obter seu e-mail através da conta do Google.',
 	UNVERIFIED_GOOGLE_EMAIL:
 		'Sua conta do Google precisa ter o e-mail verificado para ser utilizada.',
-	GITHUB_EMAIL_UNVERIFIED: 'Sua conta do GitHub precisa ter o e-mail verificado para ser utilizada.'
+	GITHUB_EMAIL_UNVERIFIED:
+		'Sua conta do GitHub precisa ter o e-mail verificado para ser utilizada.',
+	EMAIL_MISMATCH_SOCIAL_LINK: 'Os e-mails precisam ser iguais para vincular na mesma conta.',
+	LINK_SOCIAL_ACCOUNT_FAILED: 'Erro ao vincular contas. Tente novamente!',
+
+	// Internal User Operation Failures
+	AUTH_QUERY_USER_FAILED: 'Erro interno ao consultar dados cadastrais.'
 };
 
 export function getErrorMessage(

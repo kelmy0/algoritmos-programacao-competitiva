@@ -58,7 +58,7 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(middleware.SetupRecovery())
-	router.Use(middleware.SetupCORS(cfg.AppEnv))
+	router.Use(middleware.SetupCORS(cfg.AppEnv, cfg.FrontendUrl))
 	router.Use(middleware.SetupSecureHeaders())
 	routes.ConfigRoutes(router, database.DB, cfg, googleCfg, githubCfg)
 	router.Run(cfg.Port)

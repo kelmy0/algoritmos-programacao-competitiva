@@ -8,11 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupCORS(env string) gin.HandlerFunc {
+func SetupCORS(env, froendUrl string) gin.HandlerFunc {
 	switch env {
 	case "production":
 		return cors.New(cors.Config{
-			AllowOrigins:     []string{"https://algoritimos-programacao-competitiva.com"},
+			AllowOrigins:     []string{froendUrl},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
 			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 			AllowCredentials: true,
@@ -21,10 +21,10 @@ func SetupCORS(env string) gin.HandlerFunc {
 
 	case "development":
 		return cors.New(cors.Config{
-			AllowAllOrigins:  true,
+			AllowOrigins:     []string{froendUrl},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-			AllowCredentials: false,
+			AllowCredentials: true,
 		})
 
 	default:
