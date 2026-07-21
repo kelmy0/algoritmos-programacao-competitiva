@@ -64,8 +64,12 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		Password: data.Password,
 	}
 
-	if sanitizedData.Name == "" || sanitizedData.Username == "" || utf8.RuneCountInString(sanitizedData.Name) < 6 || utf8.RuneCountInString(sanitizedData.Username) < 6 {
-		return nil, models.ErrInvalidRegistrationFields
+	if sanitizedData.Name == "" || utf8.RuneCountInString(sanitizedData.Name) < 6 {
+		return nil, models.ErrInvalidRegistrationName
+	}
+
+	if sanitizedData.Username == "" || utf8.RuneCountInString(sanitizedData.Username) < 6 {
+		return nil, models.ErrInvalidRegistrationUsername
 	}
 
 	_, err := mail.ParseAddress(sanitizedData.Email)

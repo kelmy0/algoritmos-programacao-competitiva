@@ -77,11 +77,11 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 				authFlow.GET("/google/callback", authSocialHandler.GoogleCallback)
 				authFlow.GET("/github", authSocialHandler.GithubLogin)
 				authFlow.GET("/github/callback", authSocialHandler.GithubCallback)
+				auth.POST("/sign-up", signUpHandler.SignUp)
 			}
 
 			authStrict := auth.Group("", strictAbuseLimiter)
 			{
-				authStrict.POST("/sign-up", signUpHandler.SignUp)
 				authStrict.POST("/forgot-password", userConfigHandler.ForgotPassword)
 				authStrict.POST("/reset-password", userConfigHandler.ResetPassword)
 				authStrict.POST("/verify-2fa", authHandler.Verify2FA)
