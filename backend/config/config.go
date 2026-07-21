@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -38,6 +39,7 @@ type Config struct {
 	PasswordEmail           string
 	FromEmail               string
 	FrontendUrl             string
+	TrustedProxies          []string
 }
 
 func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
@@ -50,6 +52,21 @@ func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, e
 	}
 
 	return memory, iterations, parallelism, saltLength, keyLength, nil
+}
+
+func parseTrustedProxies(proxiesEnv string) []string {
+	if proxiesEnv == "" {
+		return []string{"127.0.0.1", "::1"}
+	}
+
+	var proxies []string
+	for _, proxy := range strings.Split(proxiesEnv, ",") {
+		trimmed := strings.TrimSpace(proxy)
+		if trimmed != "" {
+			proxies = append(proxies, trimmed)
+		}
+	}
+	return proxies
 }
 
 func LoadConfig() *Config {
@@ -189,6 +206,8 @@ func LoadConfig() *Config {
 		log.Fatal("❌ FRONTEND_URL is required.")
 	}
 
+	trustedProxies := parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -218,5 +237,6 @@ func LoadConfig() *Config {
 		PasswordEmail:           passwordEmail,
 		FromEmail:               fromEmail,
 		FrontendUrl:             frontendUrl,
+		TrustedProxies:          trustedProxies,
 	}
 }

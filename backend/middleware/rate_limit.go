@@ -73,7 +73,15 @@ func RateLimitMiddleware(limiterManager *RateLimiter) gin.HandlerFunc {
 		}
 
 		if key == "" {
-			key = "ip_" + c.ClientIP()
+			clientIP := c.GetHeader("X-Forwarded-For")
+			if clientIP == "" {
+				clientIP = c.GetHeader("X-Real-IP")
+			}
+			if clientIP == "" {
+				clientIP = c.ClientIP()
+			}
+
+			key = "ip_" + clientIP
 		}
 
 		limiter := limiterManager.getLimiter(key)

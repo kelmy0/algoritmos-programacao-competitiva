@@ -60,6 +60,7 @@ func main() {
 	router.Use(middleware.SetupRecovery())
 	router.Use(middleware.SetupCORS(cfg.AppEnv, cfg.FrontendUrl))
 	router.Use(middleware.SetupSecureHeaders())
+	router.SetTrustedProxies(cfg.TrustedProxies)
 	routes.ConfigRoutes(router, database.DB, cfg, googleCfg, githubCfg)
 	router.Run(cfg.Port)
 }
