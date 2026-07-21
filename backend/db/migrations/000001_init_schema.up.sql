@@ -47,7 +47,7 @@ CREATE TABLE role_permissions (
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(128) NOT NULL CHECK (char_length(name) >= 6),
-    username VARCHAR(32) NOT NULL CHECK (char_length(username) >= 6),
+    username VARCHAR(32) NOT NULL UNIQUE CHECK (char_length(username) >= 6),
     email VARCHAR(128) NOT NULL UNIQUE,
     password_hash VARCHAR(255),
     enable BOOLEAN NOT NULL DEFAULT TRUE,

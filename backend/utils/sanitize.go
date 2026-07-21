@@ -3,24 +3,28 @@ package utils
 import (
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/microcosm-cc/bluemonday"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var HumanNameRegex = regexp.MustCompile(`[^\p{L}\s\-\.\']+`)
 var TitleRegex = regexp.MustCompile(`[^\p{L}\s\-\.\'\d\+\#\&]+`)
 var UsernameRegex = regexp.MustCompile(`[^\p{L}\p{N}_\-]+`)
+var MultipleSpacesRegex = regexp.MustCompile(`\s+`)
 
 func SanitizeHumanName(name string) string {
 	clean := HumanNameRegex.ReplaceAllString(name, "")
 	fields := strings.Fields(clean)
-	return strings.Join(fields, " ")
+	return cases.Title(language.BrazilianPortuguese).String(strings.ToLower(strings.Join(fields, " ")))
 }
 
 func SanitizeUsername(username string) string {
 	clean := UsernameRegex.ReplaceAllString(username, "")
 	fields := strings.Fields(clean)
-	return strings.Join(fields, "")
+	return strings.ToLower(strings.Join(fields, ""))
 }
 
 func SanitizeTitle(title string) string {
@@ -36,17 +40,32 @@ func SanitizeMarkDown(text string) string {
 }
 
 func NormalizeUsername(text string) string {
-	re := regexp.MustCompile(`\s+`)
-	username := re.ReplaceAllString(text, "_")
-	username = strings.Trim(username, "_")
-	username = strings.ToLower(username)
-	return username
+	clean := MultipleSpacesRegex.ReplaceAllString(text, "_")
+	clean = UsernameRegex.ReplaceAllString(clean, "")
+	if clean == "" {
+		clean = "user"
+	}
+	id, _ := GenerateCustomId(12)
+
+	maxCleanLen := 32 - 1 - len(id)
+	if len(clean) > maxCleanLen {
+		clean = clean[:maxCleanLen]
+	}
+
+	return clean + "_" + id
 }
 
 func ExtractNameFromEmail(email string) string {
 	parts := strings.Split(email, "@")
-	if len(parts) > 0 {
-		return parts[0]
+	if len(parts) > 0 && parts[0] != "" {
+		cleanPart := strings.ReplaceAll(parts[0], "+", " ")
+		cleanPart = strings.ReplaceAll(cleanPart, ".", " ")
+
+		formattedName := SanitizeHumanName(cleanPart)
+
+		if utf8.RuneCountInString(formattedName) >= 6 {
+			return formattedName
+		}
 	}
-	return "Google User"
+	return "Social User"
 }

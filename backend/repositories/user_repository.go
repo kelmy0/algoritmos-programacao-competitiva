@@ -141,16 +141,19 @@ func (r *UserRepository) Disable2FA(ctx context.Context, userId string) error {
 	return nil
 }
 
-func (r *UserRepository) CheckUserExists(ctx context.Context, email string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`
+func (r *UserRepository) CheckAvailability(ctx context.Context, email, username string) (emailTaken bool, usernameTaken bool, err error) {
+	query := `
+		SELECT 
+			EXISTS(SELECT 1 FROM users WHERE email = $1) AS email_taken,
+			EXISTS(SELECT 1 FROM users WHERE username = $2) AS username_taken;
+	`
 
-	var exists bool
-	err := r.db.QueryRow(ctx, query, email).Scan(&exists)
+	err = r.db.QueryRow(ctx, query, email, username).Scan(&emailTaken, &usernameTaken)
 	if err != nil {
-		return false, fmt.Errorf("failed to check user existence by email: %w", err)
+		return false, false, fmt.Errorf("failed to check availability: %w", err)
 	}
 
-	return exists, nil
+	return emailTaken, usernameTaken, nil
 }
 
 func (r *UserRepository) CreateUser(ctx context.Context, data models.NewUser) (string, error) {
@@ -164,8 +167,15 @@ func (r *UserRepository) CreateUser(ctx context.Context, data models.NewUser) (s
 	err := r.db.QueryRow(ctx, query, data.Name, data.Username, data.Email, data.PasswordHash).Scan(&insertedId)
 	if err != nil {
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
-			if pgErr.Code == "23505" {
-				return "", models.ErrUserAlreadyExists
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				switch pgErr.ConstraintName {
+				case "users_email_key":
+					return "", models.ErrEmailAlreadyUsed
+				case "users_username_key":
+					return "", models.ErrUsernameAlreadyUsed
+				default:
+					return "", models.ErrUserAlreadyExists
+				}
 			}
 		}
 
@@ -221,6 +231,18 @@ func (r *UserRepository) CreateSocialUser(ctx context.Context, newUser models.Ne
 	var userID string
 	err = tx.QueryRow(ctx, queryUser, newUser.Name, newUser.Username, newUser.Email).Scan(&userID)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			switch pgErr.ConstraintName {
+			case "users_email_key":
+				return nil, models.ErrEmailAlreadyUsed
+			case "users_username_key":
+				return nil, models.ErrUsernameAlreadyUsed
+			default:
+				return nil, models.ErrUserAlreadyExists
+			}
+		}
+
 		return nil, fmt.Errorf("failed to write profile inside social transaction: %w", err)
 	}
 

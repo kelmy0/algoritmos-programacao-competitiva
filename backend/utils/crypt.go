@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -30,6 +31,35 @@ var DefaultParams = ArgonParams{
 	Parallelism: 4,
 	SaltLength:  16,
 	KeyLength:   32,
+}
+
+func IsPasswordValid(password string) bool {
+	var (
+		hasMinLen  = len(password) >= 8
+		hasUpper   = false
+		hasLower   = false
+		hasNumber  = false
+		hasSpecial = false
+	)
+
+	if !hasMinLen {
+		return false
+	}
+
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsNumber(char):
+			hasNumber = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecial = true
+		}
+	}
+
+	return hasUpper && hasLower && hasNumber && hasSpecial
 }
 
 func HashPassword(password string, p ArgonParams) (string, error) {

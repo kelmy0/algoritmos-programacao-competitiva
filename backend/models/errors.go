@@ -17,6 +17,7 @@ func (e *AppError) Error() string {
 
 var (
 	ErrPasswordsDontMatch          = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORDS_DONT_MATCH", Message: "Passwords don't match."}
+	ErrPasswordIsNotValid          = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORD_NOT_VALID", Message: "Password is not valid."}
 	ErrIncorrectPassword           = &AppError{StatusCode: http.StatusBadRequest, Code: "AUTH_INCORRECT_PASSWORD", Message: "Incorrect password."}
 	ErrUserNotFound                = &AppError{StatusCode: http.StatusNotFound, Code: "USER_NOT_FOUND", Message: "User not found."}
 	ErrInvalidOrExpiredRefresh     = &AppError{StatusCode: http.StatusUnauthorized, Code: "AUTH_INVALID_REFRESH_TOKEN", Message: "Invalid or expired refresh token."}
@@ -50,6 +51,8 @@ var (
 	Err2FAUpdateFailed             = &AppError{StatusCode: http.StatusInternalServerError, Code: "2FA_UPDATE_FAILED", Message: "Failed to update 2FA status."}
 	Err2FAGetDataFailed            = &AppError{StatusCode: http.StatusInternalServerError, Code: "2FA_GET_DATA_FAILED", Message: "Failed to get 2FA data."}
 	ErrUserAlreadyExists           = &AppError{StatusCode: http.StatusConflict, Code: "USER_ALREADY_EXISTS", Message: "User already exists."}
+	ErrEmailAlreadyUsed            = &AppError{StatusCode: http.StatusConflict, Code: "EMAIL_ALREADY_USED", Message: "Email already used."}
+	ErrUsernameAlreadyUsed         = &AppError{StatusCode: http.StatusConflict, Code: "USERNAME_ALREADY_USED", Message: "Username already used."}
 	ErrInvalidRegistrationName     = &AppError{StatusCode: http.StatusBadRequest, Code: "REGISTRATION_INVALID_NAME", Message: "Invalid name."}
 	ErrInvalidRegistrationUsername = &AppError{StatusCode: http.StatusBadRequest, Code: "REGISTRATION_INVALID_USERNAME", Message: "Invalid username."}
 	ErrInvalidEmailFormat          = &AppError{StatusCode: http.StatusBadRequest, Code: "REGISTRATION_INVALID_EMAIL", Message: "Invalid email format."}

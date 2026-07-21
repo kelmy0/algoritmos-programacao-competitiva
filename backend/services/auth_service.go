@@ -232,7 +232,6 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 			if err != nil {
 				if errors.Is(err, models.ErrUserNotFound) {
 					username := utils.NormalizeUsername(name)
-
 					newUser := models.NewUserGoogle{
 						Name:         name,
 						Username:     username,
@@ -243,8 +242,16 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 
 					user, err = s.UserRepo.CreateSocialUser(ctx, newUser, provider, socialUserId)
 					if err != nil {
-						slog.Error("failed to register social user", "email", utils.MaskEmail(email), "provider", provider, "error", err)
-						return nil, models.ErrRegisterSocialUser
+						switch {
+						case errors.Is(err, models.ErrEmailAlreadyUsed),
+							errors.Is(err, models.ErrUsernameAlreadyUsed),
+							errors.Is(err, models.ErrUserAlreadyExists):
+							return nil, err
+
+						default:
+							slog.Error("failed to register social user", "email", utils.MaskEmail(email), "provider", provider, "error", err)
+							return nil, models.ErrRegisterSocialUser
+						}
 					}
 				} else {
 					slog.Error("database error checking email existence during social auth", "email", utils.MaskEmail(email), "error", err)

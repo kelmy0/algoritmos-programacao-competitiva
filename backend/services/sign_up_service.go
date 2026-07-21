@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/mail"
 	"strings"
 	"time"
@@ -15,7 +15,7 @@ import (
 )
 
 type SignUpUserRepository interface {
-	CheckUserExists(ctx context.Context, email string) (bool, error)
+	CheckAvailability(ctx context.Context, email, username string) (emailTaken bool, usernameTaken bool, err error)
 	CreateUser(ctx context.Context, data models.NewUser) (string, error)
 }
 
@@ -57,6 +57,10 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		return nil, models.ErrPasswordsDontMatch
 	}
 
+	if !utils.IsPasswordValid(data.Password) {
+		return nil, models.ErrPasswordIsNotValid
+	}
+
 	sanitizedData := dto.SignUpRequest{
 		Name:     utils.SanitizeHumanName(data.Name),
 		Username: utils.SanitizeUsername(data.Username),
@@ -77,19 +81,22 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		return nil, models.ErrInvalidEmailFormat
 	}
 
-	userExists, err := s.UserRepo.CheckUserExists(ctx, sanitizedData.Email)
+	emailTaken, usernameTaken, err := s.UserRepo.CheckAvailability(ctx, sanitizedData.Email, sanitizedData.Username)
 	if err != nil {
-		log.Printf("[SignUp] failed to verify if user email %s already exists: %v", utils.MaskEmail(sanitizedData.Email), err)
+		slog.Error("[SignUp] failed to verify user availability", "error", err)
 		return nil, models.ErrFailQueryUser
 	}
 
-	if userExists {
-		return nil, models.ErrUserAlreadyExists
+	if emailTaken {
+		return nil, models.ErrEmailAlreadyUsed
+	}
+	if usernameTaken {
+		return nil, models.ErrUsernameAlreadyUsed
 	}
 
 	passwordHash, err := utils.HashPassword(sanitizedData.Password, s.ArgonParams)
 	if err != nil {
-		log.Printf("[SignUp] Argon2 hashing failed for new user registration: %v", err)
+		slog.Error("[SignUp] Argon2 hashing failed for new user registration", "error", err)
 		return nil, models.ErrCryptTokenFailed
 	}
 
@@ -102,28 +109,33 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 
 	userId, err := s.UserRepo.CreateUser(ctx, dataUser)
 	if err != nil {
-		if errors.Is(err, models.ErrUserAlreadyExists) {
-			return nil, models.ErrUserAlreadyExists
+		switch {
+		case errors.Is(err, models.ErrEmailAlreadyUsed),
+			errors.Is(err, models.ErrUsernameAlreadyUsed),
+			errors.Is(err, models.ErrUserAlreadyExists):
+			return nil, err
+
+		default:
+			slog.Error("[SignUp] failed to register user", "email", utils.MaskEmail(dataUser.Email), "error", err)
+			return nil, models.ErrUserRegistrationFailed
 		}
-		log.Printf("[SignUp] DB write error during user insertion: %v", err)
-		return nil, models.ErrUserRegistrationFailed
 	}
 
 	_, accessToken, err := utils.GenerateToken(userId, sanitizedData.Username, sanitizedData.Email, []string{}, s.JwtAccessSecret, s.AppName, false, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 	if err != nil {
-		log.Printf("[SignUp] user %s registered, but failed to sign access token: %v", userId, err)
+		slog.Warn("[SignUp] user registered, but failed to sign access token", "userID", userId, "error", err)
 		return nil, models.ErrAccountCreatedButTokenFailed
 	}
 
 	idToken, refreshToken, err := utils.GenerateToken(userId, sanitizedData.Username, sanitizedData.Email, []string{}, s.JwtRefreshSecret, s.AppName, false, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
-		log.Printf("[SignUp] user %s registered, but failed to sign refresh token: %v", userId, err)
+		slog.Warn("[SignUp] user registered, but failed to sign refresh token", "userID", userId, "error", err)
 		return nil, models.ErrAccountCreatedButTokenFailed
 	}
 
 	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, userId, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
-		log.Printf("[SignUp] user %s registered, but failed to persist refresh session in database: %v", userId, err)
+		slog.Warn("[SignUp] user registered, but failed to persist refresh session in database", "userID", userId, "error", err)
 		return nil, models.ErrAccountCreatedButTokenFailed
 	}
 

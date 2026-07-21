@@ -97,6 +97,10 @@ func (s *UserConfigService) DefinePassword(ctx context.Context, userIdContext, r
 		return models.ErrPasswordsDontMatch
 	}
 
+	if !utils.IsPasswordValid(data.NewPassword) {
+		return models.ErrPasswordIsNotValid
+	}
+
 	user, token, err := s.validateUserSession(ctx, userIdContext, refreshTokenString)
 	if err != nil {
 		return err
@@ -183,6 +187,10 @@ func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) er
 func (s *UserConfigService) ResetPassword(ctx context.Context, data dto.ResetPasswordRequest) error {
 	if data.NewPassword != data.ConfirmNewPassword {
 		return models.ErrPasswordsDontMatch
+	}
+
+	if !utils.IsPasswordValid(data.NewPassword) {
+		return models.ErrPasswordIsNotValid
 	}
 
 	hashToken := utils.HashSHA512(data.Token)

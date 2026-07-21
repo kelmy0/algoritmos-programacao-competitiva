@@ -28,7 +28,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	//RATE LIMIT
 	standardApiLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(5), 10))
-	authFlowLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.2), 3))
+	authFlowLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.1), 5))
 	strictAbuseLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.0055), 2))
 
 	// Algorithm Handlers and Services
