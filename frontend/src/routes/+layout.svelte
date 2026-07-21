@@ -2,9 +2,6 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
-	import { PUBLIC_API_URL } from '$env/static/public';
-
 	let { children } = $props();
 
 	let isSidebarOpen = $state(false);
@@ -15,6 +12,8 @@
 		}
 	}
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <svelte:head>
 	<title>Algoritmos para Maratona de Programação</title>
@@ -65,12 +64,20 @@
 
 		<!--Login button-->
 		<div class="items-center hidden md:flex">
-			<a
-				href="/auth/login"
-				class="px-4 py-1.5 border border-text-brand text-text-brand hover:bg-text-brand hover:text-app-bg font-medium text-sm rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-text-brand"
-			>
-				Entrar
-			</a>
+			{#if page.data.user}
+				<div class="flex items-center gap-3">
+					<span class="text-sm font-medium text-text-brand">
+						Logado como {page.data.user.name ?? 'Usuário'}
+					</span>
+				</div>
+			{:else}
+				<a
+					href="/auth/login"
+					class="px-4 py-1.5 border border-text-brand text-text-brand hover:bg-text-brand hover:text-app-bg font-medium text-sm rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-text-brand"
+				>
+					Entrar
+				</a>
+			{/if}
 		</div>
 
 		<!--Mobile Menu Button-->
@@ -104,14 +111,13 @@
 	<div class="flex flex-1 pt-16">
 		<!--Mobile Overlay Backdrop-->
 		{#if isSidebarOpen}
-			<div
+			<button
 				onclick={() => (isSidebarOpen = false)}
-				onkeydown={(e) => e.key === 'Escape' && (isSidebarOpen = false)}
-				role="button"
+				type="button"
 				tabindex="-1"
 				aria-label="Fechar menu lateral"
-				class="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
-			></div>
+				class="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm border-0 cursor-default"
+			></button>
 		{/if}
 
 		<aside
@@ -149,13 +155,21 @@
 				</div>
 
 				<div class="pt-4 border-t border-gray-800 md:hidden mt-auto">
-					<a
-						href="/auth/login"
-						onclick={() => (isSidebarOpen = false)}
-						class="w-full py-2.5 border border-text-brand text-text-brand hover:bg-text-brand hover:text-app-bg font-semibold text-sm rounded-lg transition-all flex items-center justify-center gap-2"
-					>
-						Entrar
-					</a>
+					{#if page.data.user}
+						<div class="flex items-center gap-3">
+							<span class="text-sm font-medium text-text-brand">
+								Logado como {page.data.user.name ?? 'Usuário'}
+							</span>
+						</div>
+					{:else}
+						<a
+							href="/auth/login"
+							onclick={() => (isSidebarOpen = false)}
+							class="w-full py-2.5 border border-text-brand text-text-brand hover:bg-text-brand hover:text-app-bg font-semibold text-sm rounded-lg transition-all flex items-center justify-center gap-2"
+						>
+							Entrar
+						</a>
+					{/if}
 				</div>
 			</nav>
 		</aside>
