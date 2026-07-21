@@ -9,11 +9,18 @@ import (
 
 var HumanNameRegex = regexp.MustCompile(`[^\p{L}\s\-\.\']+`)
 var TitleRegex = regexp.MustCompile(`[^\p{L}\s\-\.\'\d\+\#\&]+`)
+var UsernameRegex = regexp.MustCompile(`[^\p{L}\p{N}_\-]+`)
 
 func SanitizeHumanName(name string) string {
 	clean := HumanNameRegex.ReplaceAllString(name, "")
 	fields := strings.Fields(clean)
 	return strings.Join(fields, " ")
+}
+
+func SanitizeUsername(username string) string {
+	clean := UsernameRegex.ReplaceAllString(username, "")
+	fields := strings.Fields(clean)
+	return strings.Join(fields, "")
 }
 
 func SanitizeTitle(title string) string {

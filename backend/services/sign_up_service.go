@@ -59,7 +59,7 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 
 	sanitizedData := dto.SignUpRequest{
 		Name:     utils.SanitizeHumanName(data.Name),
-		Username: utils.SanitizeHumanName(data.Username),
+		Username: utils.SanitizeUsername(data.Username),
 		Email:    strings.ToLower(strings.TrimSpace(data.Email)),
 		Password: data.Password,
 	}
