@@ -1,9 +1,7 @@
 import { goto, invalidateAll } from '$app/navigation';
 import type { ApiError } from '$lib/types/api';
-import { setCookie } from '$lib/utils/cookie';
 import { page } from '$app/state';
 import { getErrorMessage } from '$lib/utils/errors';
-import { PUBLIC_API_URL, PUBLIC_ENV } from '$env/static/public';
 
 interface TwoFactorRequest {
 	pre_auth_token: string;

@@ -1,6 +1,5 @@
 import { PUBLIC_API_URL } from '$env/static/public';
 import type { ApiError } from '$lib/types/api';
-import { getErrorMessage } from '$lib/utils/errors';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { jwtDecode } from 'jwt-decode';
 

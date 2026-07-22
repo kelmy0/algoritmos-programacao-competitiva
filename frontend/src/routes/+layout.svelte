@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import { AuthService } from '$lib/services/auth_service';
 	import { fade } from 'svelte/transition';
-	import { invalidateAll } from '$app/navigation';
+	
 	let { children } = $props();
 
 	let isSidebarOpen = $state(false);
