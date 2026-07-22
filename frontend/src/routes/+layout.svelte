@@ -67,7 +67,7 @@
 			{#if page.data.user}
 				<div class="flex items-center gap-3">
 					<span class="text-sm font-medium text-text-brand">
-						Logado como {page.data.user.name ?? 'Usuário'}
+						Logado como {page.data.user.username ?? 'Usuário'}
 					</span>
 				</div>
 			{:else}
@@ -158,7 +158,7 @@
 					{#if page.data.user}
 						<div class="flex items-center gap-3">
 							<span class="text-sm font-medium text-text-brand">
-								Logado como {page.data.user.name ?? 'Usuário'}
+								Logado como {page.data.user.username ?? 'Usuário'}
 							</span>
 						</div>
 					{:else}

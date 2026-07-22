@@ -13,7 +13,16 @@ declare global {
 			} | null;
 			accessToken: string | null;
 		}
-		// interface PageData {}
+		interface PageData {
+			user?: {
+				id: string;
+				username: string;
+				email: string;
+				permissions: string[];
+				is_employee: boolean;
+			} | null;
+			accessToken?: string | null;
+		}
 		// interface PageState {}
 		// interface Platform {}
 	}

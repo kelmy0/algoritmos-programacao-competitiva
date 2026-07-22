@@ -11,7 +11,7 @@ interface JwtPayload {
 	exp?: number;
 }
 
-export const handle: Handle = async ({ event, resolve }) => {
+export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 	event.locals.user = null;
 	event.locals.accessToken = null;
 
@@ -79,9 +79,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 				});
 			}
 		} catch (err) {
-			console.error('Erro ao renovar sessão:', err);
+			console.error('Error renewing session:', err);
 		}
 	}
 
 	return await resolve(event);
-};
+}
