@@ -1,4 +1,4 @@
-import { goto } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import type { ApiError } from '$lib/types/api';
 import { setCookie } from '$lib/utils/cookie';
 import { page } from '$app/state';
@@ -79,8 +79,7 @@ export class TwoFactorController {
 		};
 
 		try {
-			const twoFactorUrl = `${PUBLIC_API_URL}/api/auth/verify-2fa`;
-			const response = await fetch(twoFactorUrl, {
+			const response = await fetch('/auth/verify-2fa', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(bodyRequest)
@@ -104,10 +103,8 @@ export class TwoFactorController {
 				return;
 			}
 
-			if (data.access_token) {
-				setCookie('access_token', data.access_token, 15, PUBLIC_ENV !== 'development');
-				goto('/');
-			}
+			await invalidateAll();
+			await goto('/');
 		} catch {
 			this.apiError = {
 				code: 'NETWORK_ERROR',

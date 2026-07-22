@@ -1,8 +1,6 @@
-import { goto } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import type { ApiError } from '$lib/types/api';
-import { setCookie } from '$lib/utils/cookie';
 import { getErrorMessage } from '$lib/utils/errors';
-import { PUBLIC_API_URL, PUBLIC_ENV } from '$env/static/public';
 import { tick } from 'svelte';
 
 interface SignUpRequest {
@@ -202,20 +200,17 @@ export class SignUpController {
 
 		this.isLoading = true;
 
-		const bodyRequest: SignUpRequest = {
-			name: this.name,
-			username: this.username,
-			email: this.email,
-			password: this.password,
-			confirm_password: this.confirmPassword
-		};
-
 		try {
-			const signUpUrl = `${PUBLIC_API_URL}/api/auth/sign-up`;
-			const response = await fetch(signUpUrl, {
+			const response = await fetch('/auth/sign-up', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(bodyRequest)
+				body: JSON.stringify({
+					name: this.name,
+					username: this.username,
+					email: this.email,
+					password: this.password,
+					confirm_password: this.confirmPassword
+				})
 			});
 
 			if (!response.ok) {
@@ -238,10 +233,11 @@ export class SignUpController {
 			}
 
 			const data: SignUpResponse = await response.json();
+
 			if (data.access_token) {
 				this.apiError = null;
-				setCookie('access_token', data.access_token, 15, PUBLIC_ENV !== 'development');
-				goto('/');
+				await invalidateAll();
+				await goto('/');
 			} else if (data.success && !data.auto_login) {
 				this.apiError = null;
 				goto('/login');

@@ -2,9 +2,16 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
+	import { AuthService } from '$lib/services/auth_service';
 	let { children } = $props();
 
 	let isSidebarOpen = $state(false);
+
+	$effect(() => {
+		if (page.data.accessToken) {
+			AuthService.startAutoRefreshTimer(page.data.accessToken);
+		}
+	});
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape') {

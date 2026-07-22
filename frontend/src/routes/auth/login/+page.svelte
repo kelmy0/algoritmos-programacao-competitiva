@@ -5,10 +5,6 @@
 	import { page } from '$app/state';
 	import { redirect } from '@sveltejs/kit';
 
-	if (page.data.user) {
-		redirect(301, '/');
-	}
-
 	const controller = new LoginController();
 
 	onMount(() => controller.checkErrors());

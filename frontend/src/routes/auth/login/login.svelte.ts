@@ -1,9 +1,7 @@
-import { goto } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import type { ApiError } from '$lib/types/api';
-import { setCookie } from '$lib/utils/cookie';
 import { page } from '$app/state';
 import { getErrorMessage } from '$lib/utils/errors';
-import { PUBLIC_API_URL, PUBLIC_ENV } from '$env/static/public';
 import { isValidEmail } from '../sign-up/sign_up.svelte';
 
 interface LoginRequest {
@@ -71,24 +69,19 @@ export class LoginController {
 		this.touched.email = true;
 		this.touched.password = true;
 
-		if (!this.isEmailValid || !this.isPasswordValid) {
-			return;
-		}
+		if (!this.isEmailValid || !this.isPasswordValid) return;
 
 		this.isLoading = true;
 		this.apiError = null;
 
-		const bodyRequest: LoginRequest = {
-			email: this.email,
-			password: this.password
-		};
-
 		try {
-			const loginUrl = `${PUBLIC_API_URL}/api/auth/login`;
-			const response = await fetch(loginUrl, {
+			const response = await fetch('/auth/login', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(bodyRequest)
+				body: JSON.stringify({
+					email: this.email,
+					password: this.password
+				})
 			});
 
 			if (!response.ok) {
@@ -108,8 +101,8 @@ export class LoginController {
 			}
 
 			if (data.access_token) {
-				setCookie('access_token', data.access_token, 15, PUBLIC_ENV !== 'development');
-				goto('/');
+				await invalidateAll();
+				await goto('/');
 			}
 		} catch {
 			this.apiError = {

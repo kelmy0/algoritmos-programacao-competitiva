@@ -14,7 +14,7 @@
 			<h1 class="font-montserrat font-bold text-2xl text-text-primary tracking-tight mb-2">
 				Autenticação em dois fatores
 			</h1>
-			<p class="text-sm text-gray-400 font-inter">
+			<p id="code-hint" class="text-sm text-gray-400 font-inter">
 				Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador.
 			</p>
 		</div>
@@ -40,9 +40,9 @@
 					onblur={() => (controller.touched.code = true)}
 					aria-required="true"
 					aria-invalid={controller.touched.code && !controller.isCodeValid}
-					aria-describedby={controller.touched.code && !controller.isCodeValid
+					aria-describedby="code-hint {controller.touched.code && !controller.isCodeValid
 						? 'code-error'
-						: undefined}
+						: ''}"
 					placeholder="000000"
 					required
 					disabled={controller.isLoading}
@@ -62,7 +62,7 @@
 				{/if}
 			</div>
 
-			<!-- Box de Erro da API -->
+			<!-- API Error Box -->
 			{#if controller.apiError}
 				<div
 					role="alert"
@@ -90,18 +90,20 @@
 				</div>
 			{/if}
 
-			<!-- Botão de Submit -->
+			<!-- Submit -->
 			<button
 				type="submit"
-				disabled={controller.isLoading || !controller.isCodeValid}
+				disabled={controller.isLoading}
+				aria-disabled={!controller.isCodeValid}
 				aria-busy={controller.isLoading}
 				class="w-full py-2.5 bg-text-brand text-app-bg font-semibold text-sm rounded-lg cursor-pointer
                        hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none
+                       aria-disabled:opacity-50 aria-disabled:cursor-not-allowed
                        flex items-center justify-center gap-2"
 			>
 				{#if controller.isLoading}
 					<svg
-						class="animate-spin h-4 w-4 text-app-bg"
+						class="animate-spin motion-reduce:animate-none h-4 w-4 text-app-bg"
 						fill="none"
 						viewBox="0 0 24 24"
 						aria-hidden="true"

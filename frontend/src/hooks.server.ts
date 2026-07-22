@@ -16,13 +16,17 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 	event.locals.accessToken = null;
 
 	const accessToken = event.cookies.get('access_token');
+	const refreshToken = event.cookies.get('refresh_token');
+
 	let isTokenValid = false;
 
 	if (accessToken) {
 		try {
 			const decoded = jwtDecode<JwtPayload>(accessToken);
+			const nowInSeconds = Math.floor(Date.now() / 1000);
+			const BUFFER_SECONDS = 90;
 
-			if (decoded.exp && decoded.exp * 1000 > Date.now()) {
+			if (decoded.exp && decoded.exp - nowInSeconds > BUFFER_SECONDS) {
 				isTokenValid = true;
 
 				event.locals.user = {
@@ -43,9 +47,8 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 		return await resolve(event);
 	}
 
-	const cookieHeader = event.request.headers.get('cookie');
-
-	if (cookieHeader) {
+	if (refreshToken) {
+		const cookieHeader = event.request.headers.get('cookie') || '';
 		const clientIp = event.getClientAddress();
 
 		try {
@@ -77,6 +80,9 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 					sameSite: 'lax',
 					maxAge: 60 * 15
 				});
+			} else {
+				event.cookies.delete('access_token', { path: '/' });
+				event.cookies.delete('refresh_token', { path: '/' });
 			}
 		} catch (err) {
 			console.error('Error renewing session:', err);
