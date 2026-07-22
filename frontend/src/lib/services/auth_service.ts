@@ -32,7 +32,7 @@ export class AuthService {
 			this.currentError = null;
 
 			try {
-				const response = await fetch('/auth/refresh', { method: 'POST' });
+				const response = await fetch('/api/auth/refresh', { method: 'POST' });
 
 				if (!response.ok) {
 					const errorData: ApiError = await response.json();

@@ -2,8 +2,6 @@
 	import { LoginController } from './login.svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { onMount } from 'svelte';
-	import { page } from '$app/state';
-	import { redirect } from '@sveltejs/kit';
 
 	const controller = new LoginController();
 

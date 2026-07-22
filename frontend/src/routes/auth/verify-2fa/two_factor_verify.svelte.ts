@@ -79,7 +79,7 @@ export class TwoFactorController {
 		};
 
 		try {
-			const response = await fetch('/auth/verify-2fa', {
+			const response = await fetch('/api/auth/verify-2fa', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(bodyRequest)
