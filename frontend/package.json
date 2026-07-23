@@ -31,7 +31,8 @@
 	},
 	"dependencies": {
 		"jwt-decode": "^4.0.0",
-		"marked": "^18.0.5",
-		"shiki": "^4.2.0"
+		"marked": "^18.0.7",
+		"marked-highlight": "^2.2.4",
+		"shiki": "^4.3.1"
 	}
 }
