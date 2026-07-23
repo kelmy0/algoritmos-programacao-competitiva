@@ -8,6 +8,11 @@
 	const controller = new LoginController(untrack(() => data.initialError));
 </script>
 
+<svelte:head>
+	<title>Entrar</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 <div class="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4">
 	<div class="w-full max-w-md p-8 bg-app-surface border border-gray-800 rounded-xl shadow-xl">
 		<!-- Header do Card -->

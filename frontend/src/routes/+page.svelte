@@ -18,6 +18,35 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Algoritmos para programação competitiva</title>
+
+	<meta
+		name="description"
+		content="Coleção de algoritmos e estruturas de dados otimizados para maratonas de programação e competições."
+	/>
+	<meta
+		name="keywords"
+		content="algoritmos, maratona de programação, c++, estruturas de dados, competitiva"
+	/>
+
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content="Algoritmos para programação competitiva" />
+	<meta
+		property="og:description"
+		content="Explore a coleção de algoritmos e estruturas de dados com implementações prontas para uso em competições."
+	/>
+	<!--<meta property="og:image" content="/og-image.png" />-->
+
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Algoritmos para programação competitiva" />
+	<meta
+		name="twitter:description"
+		content="Coleção de algoritmos e estruturas de dados para programação competitiva."
+	/>
+	<meta name="twitter:image" content="/og-image.png" />
+</svelte:head>
+
 <div class="space-y-6 font-inter">
 	<header
 		class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-800"

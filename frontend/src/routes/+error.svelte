@@ -2,6 +2,11 @@
 	import { page } from '$app/state';
 </script>
 
+<svelte:head>
+	<title>{page.status}: {page.error?.message || 'Erro no servidor'}</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 <div
 	class="flex min-h-[60vh] flex-col items-center justify-center p-4 text-center font-inter"
 	role="alert"

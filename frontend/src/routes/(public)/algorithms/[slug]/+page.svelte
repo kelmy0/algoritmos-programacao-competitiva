@@ -6,6 +6,17 @@
 	const algorithm = $derived(data.algorithm);
 </script>
 
+<svelte:head>
+	{#if algorithm}
+		<title>{algorithm.Name}</title>
+		<meta name="description" content="Implementação do algoritmo {algorithm.Name}." />
+		<meta property="og:title" content="{algorithm.Name} em C++" />
+		<meta property="og:description" content="Veja a implementação do algoritmo {algorithm.Name}." />
+	{:else}
+		<title>Algoritmo</title>
+	{/if}
+</svelte:head>
+
 <div class="mx-auto max-w-4xl space-y-6 font-inter">
 	<a
 		href="/"

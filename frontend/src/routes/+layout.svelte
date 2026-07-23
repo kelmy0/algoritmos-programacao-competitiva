@@ -35,8 +35,9 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <svelte:head>
-	<title>Algoritmos para Maratona de Programação</title>
+	<title>Algoritmos para Programação Competitiva</title>
 	<link rel="icon" href={favicon} />
+	<meta name="author" content="kelmy0" />
 </svelte:head>
 
 <div class="min-h-screen bg-app-bg text-text-primary font-inter flex flex-col">
@@ -58,7 +59,7 @@
 			href="/"
 		>
 			<span class="text-text-brand">&lt;/&gt;</span>
-			<span>Algoritmos para Maratona</span>
+			<span>Algoritmos para Programação</span>
 		</a>
 
 		<!--Search field-->

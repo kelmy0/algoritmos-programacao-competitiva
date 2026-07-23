@@ -1,3 +1,8 @@
+<svelte:head>
+	<title>Logout</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 <div 
   class="flex min-h-screen items-center justify-center bg-app-bg font-inter text-white"
   role="status"

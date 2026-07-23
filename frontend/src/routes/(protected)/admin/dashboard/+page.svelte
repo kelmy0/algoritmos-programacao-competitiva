@@ -35,7 +35,8 @@
 </script>
 
 <svelte:head>
-	<title>Painel Administrativo | Dashboard</title>
+	<title>Painel Administrativo</title>
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <div class="space-y-6 font-inter">
