@@ -1,6 +1,9 @@
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { PUBLIC_API_URL } from '$env/static/public';
 import { jwtDecode } from 'jwt-decode';
+import { normalizeApiError } from '$lib/utils/errors';
+import { setAuthCookie } from '$lib/server/cookies';
+import { deleteAuthCookie } from '$lib/server/cookies';
 
 interface JwtPayload {
 	sub: string;
@@ -74,20 +77,27 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 					is_employee: decoded.isEmployee
 				};
 
-				event.cookies.set('access_token', access_token, {
-					path: '/',
-					httpOnly: true,
-					sameSite: 'lax',
-					maxAge: 60 * 15
-				});
+				setAuthCookie(event.cookies, 'access_token', access_token, 15);
 			} else {
-				event.cookies.delete('access_token', { path: '/' });
-				event.cookies.delete('refresh_token', { path: '/' });
+				deleteAuthCookie(event.cookies, 'access_token');
+				deleteAuthCookie(event.cookies, 'refresh_token');
 			}
 		} catch (err) {
-			console.error('Error renewing session:', err);
+			deleteAuthCookie(event.cookies, 'access_token');
+			deleteAuthCookie(event.cookies, 'refresh_token');
 		}
 	}
 
 	return await resolve(event);
 }
+
+export const handleError: HandleServerError = ({ error, event }) => {
+	const apiError = normalizeApiError(error, 'Ocorreu um erro interno no servidor.');
+
+	console.error(`[Server Error ${event.url.pathname}]:`, apiError);
+
+	return {
+		message: apiError.message,
+		code: apiError.code
+	};
+};

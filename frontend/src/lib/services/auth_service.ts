@@ -1,6 +1,6 @@
 import { jwtDecode } from 'jwt-decode';
 import type { ApiError } from '$lib/types/api';
-import { getErrorMessage } from '$lib/utils/errors';
+import { normalizeApiError } from '$lib/utils/errors';
 import { AUTH_ERRORS } from '../../routes/auth/login/login.svelte';
 
 interface JwtPayload {
@@ -35,26 +35,28 @@ export class AuthService {
 				const response = await fetch('/api/auth/refresh', { method: 'POST' });
 
 				if (!response.ok) {
-					const errorData: ApiError = await response.json();
-					this.currentError = {
-						code: errorData.code || 'AUTH_UNEXPECTED_ERROR',
-						message: getErrorMessage(errorData.code, errorData.message, AUTH_ERRORS)
-					};
+					const errorData: ApiError = await response.json().catch(() => null);
+					this.currentError = normalizeApiError(
+						errorData,
+						'Sua sessão expirou. Faça login novamente.',
+						AUTH_ERRORS
+					);
 					return false;
 				}
 
 				const data = await response.json();
 				if (data.accessToken) {
-					console.log('Renovado');
+					console.log('Sessão renovada com sucesso');
 					AuthService.startAutoRefreshTimer(data.accessToken);
 				}
 
 				return true;
 			} catch (error) {
-				this.currentError = {
-					code: 'AUTH_UNEXPECTED_ERROR',
-					message: getErrorMessage('AUTH_UNEXPECTED_ERROR', 'Falha na rede ou no servidor.')
-				};
+				this.currentError = normalizeApiError(
+					error,
+					'Não foi possível conectar ao servidor.',
+					AUTH_ERRORS
+				);
 				return false;
 			} finally {
 				window.__activeRefreshPromise = undefined;
@@ -84,13 +86,15 @@ export class AuthService {
 			if (timeUntilRefresh <= 0) {
 				AuthService.silentRefresh();
 			} else {
-				console.log(`Iniciado a contagem, faltam: ${timeUntilRefresh / 1000}s`);
+				console.log(
+					`Iniciado a contagem do refresh, faltam: ${Math.round(timeUntilRefresh / 1000)}s`
+				);
 				this.refreshTimeoutId = setTimeout(() => {
 					AuthService.silentRefresh();
 				}, timeUntilRefresh);
 			}
 		} catch (err) {
-			console.error('Error scheduling the next refresh:', err);
+			console.error('Erro ao agendar a renovação do token:', err);
 		}
 	}
 }

@@ -1,7 +1,6 @@
 import { goto, invalidateAll } from '$app/navigation';
 import type { ApiError } from '$lib/types/api';
-import { page } from '$app/state';
-import { getErrorMessage } from '$lib/utils/errors';
+import { normalizeApiError } from '$lib/utils/errors';
 import { isValidEmail } from '../sign-up/sign_up.svelte';
 
 interface LoginResponse {
@@ -24,6 +23,10 @@ export class LoginController {
 	isLoading = $state(false);
 	apiError = $state<ApiError | null>(null);
 	showPassword = $state(false);
+
+	constructor(initialError: ApiError | null = null) {
+		this.apiError = initialError;
+	}
 
 	touched = $state({
 		email: false,
@@ -48,17 +51,6 @@ export class LoginController {
 		this.showPassword = !this.showPassword;
 	}
 
-	checkErrors() {
-		const error = page.url.searchParams.get('error');
-
-		if (error) {
-			this.apiError = {
-				code: error,
-				message: getErrorMessage(error, 'Erro desconhecido.', AUTH_ERRORS)
-			};
-		}
-	}
-
 	async login(event: SubmitEvent) {
 		event.preventDefault();
 		this.touched.email = true;
@@ -80,11 +72,8 @@ export class LoginController {
 			});
 
 			if (!response.ok) {
-				const errorData: ApiError = await response.json();
-				this.apiError = {
-					code: errorData.code,
-					message: getErrorMessage(errorData.code, errorData.message, AUTH_ERRORS)
-				};
+				const errorData: ApiError = await response.json().catch(() => ({}));
+				this.apiError = normalizeApiError(errorData, 'Falha no login.', AUTH_ERRORS);
 				return;
 			}
 
@@ -99,11 +88,8 @@ export class LoginController {
 				await invalidateAll();
 				await goto('/');
 			}
-		} catch {
-			this.apiError = {
-				code: 'NETWORK_ERROR',
-				message: getErrorMessage('NETWORK_ERROR', '')
-			};
+		} catch (err) {
+			this.apiError = normalizeApiError(err, 'Falha ao se conectar com o servidor.', AUTH_ERRORS);
 		} finally {
 			this.isLoading = false;
 		}

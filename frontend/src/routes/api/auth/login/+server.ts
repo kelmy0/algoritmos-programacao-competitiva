@@ -1,8 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_API_URL } from '$env/static/public';
+import { normalizeApiError } from '$lib/utils/errors';
+import { AUTH_ERRORS } from '../../../auth/login/login.svelte';
+import { setAuthCookie } from '$lib/server/cookies';
 
-export async function POST({ fetch, request, cookies }: Parameters<RequestHandler>[0]) {
+export const POST: RequestHandler = async ({ fetch, request, cookies }) => {
 	try {
 		const body = await request.json();
 
@@ -13,20 +16,17 @@ export async function POST({ fetch, request, cookies }: Parameters<RequestHandle
 		});
 
 		if (!apiRes.ok) {
-			const errorData = await apiRes.json();
-			return json(errorData, { status: apiRes.status });
+			const rawError = await apiRes.json().catch(() => null);
+			const normalizedError = normalizeApiError(rawError, 'Erro ao realizar login.', AUTH_ERRORS);
+
+			return json(normalizedError, { status: apiRes.status });
 		}
 
 		const data = await apiRes.json();
 		const setCookieHeader = apiRes.headers.get('set-cookie');
 
 		if (data.access_token) {
-			cookies.set('access_token', data.access_token, {
-				path: '/',
-				httpOnly: true,
-				sameSite: 'lax',
-				maxAge: 60 * 15
-			});
+			setAuthCookie(cookies, 'access_token', data.access_token, 15);
 		}
 
 		const response = json(data);
@@ -36,7 +36,13 @@ export async function POST({ fetch, request, cookies }: Parameters<RequestHandle
 		}
 
 		return response;
-	} catch {
-		return json({ code: 'NETWORK_ERROR', message: 'Erro na rede' }, { status: 500 });
+	} catch (err) {
+		const normalizedError = normalizeApiError(
+			err,
+			'Não foi possível conectar ao servidor. Verifique sua conexão.',
+			AUTH_ERRORS
+		);
+
+		return json(normalizedError, { status: 500 });
 	}
-}
+};

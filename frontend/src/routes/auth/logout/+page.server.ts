@@ -1,5 +1,6 @@
 import { redirect, type Actions, type RequestEvent } from '@sveltejs/kit';
 import { PUBLIC_API_URL } from '$env/static/public';
+import { deleteAuthCookie } from '$lib/server/cookies';
 
 async function handleLogout({ fetch, locals, cookies }: RequestEvent) {
 	if (locals.accessToken) {
@@ -13,8 +14,8 @@ async function handleLogout({ fetch, locals, cookies }: RequestEvent) {
 		}
 	}
 
-	cookies.delete('access_token', { path: '/' });
-	cookies.delete('refresh_token', { path: '/' });
+	deleteAuthCookie(cookies, 'access_token');
+	deleteAuthCookie(cookies, 'refresh_token');
 	locals.user = null;
 	locals.accessToken = null;
 

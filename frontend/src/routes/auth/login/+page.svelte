@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { LoginController } from './login.svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import { onMount } from 'svelte';
+	import { untrack } from 'svelte';
 
-	const controller = new LoginController();
+	let { data } = $props();
 
-	onMount(() => controller.checkErrors());
+	const controller = new LoginController(untrack(() => data.initialError));
 </script>
 
 <div class="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4">

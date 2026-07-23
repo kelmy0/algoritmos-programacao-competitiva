@@ -1,3 +1,5 @@
+import type { ApiError } from '$lib/types/api';
+
 export const GLOBAL_ERRORS: Record<string, string> = {
 	// Network and Operating System (Captured by the Fetch chat)
 	NETWORK_ERROR: 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.',
@@ -42,13 +44,41 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	AUTH_QUERY_USER_FAILED: 'Erro interno ao consultar dados cadastrais.'
 };
 
-export function getErrorMessage(
-	code: string,
-	fallbackMessage: string,
+export function normalizeApiError(
+	error: unknown,
+	fallbackMessage = 'Ocorreu um erro inesperado.',
 	localErrors?: Record<string, string>
-): string {
-	if (localErrors && code in localErrors) return localErrors[code];
-	if (code in GLOBAL_ERRORS) return GLOBAL_ERRORS[code];
+): ApiError {
+	if (error instanceof TypeError && error.message.includes('fetch')) {
+		return {
+			code: 'NETWORK_ERROR',
+			message: GLOBAL_ERRORS.NETWORK_ERROR
+		};
+	}
 
-	return fallbackMessage || 'Ocorreu um erro desconhecido.';
+	if (typeof error === 'string') {
+		const translatedMessage = localErrors?.[error] ?? GLOBAL_ERRORS[error] ?? fallbackMessage;
+
+		return {
+			code: error,
+			message: translatedMessage
+		};
+	}
+
+	if (typeof error === 'object' && error !== null && 'code' in error) {
+		const apiErr = error as { code: string; message?: string };
+		const code = apiErr.code;
+
+		const translatedMessage = localErrors?.[code] ?? GLOBAL_ERRORS[code] ?? fallbackMessage;
+
+		return {
+			code,
+			message: translatedMessage
+		};
+	}
+
+	return {
+		code: 'UNEXPECTED_ERROR',
+		message: fallbackMessage
+	};
 }

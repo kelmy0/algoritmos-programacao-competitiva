@@ -1,7 +1,7 @@
 import { goto, invalidateAll } from '$app/navigation';
 import type { ApiError } from '$lib/types/api';
 import { page } from '$app/state';
-import { getErrorMessage } from '$lib/utils/errors';
+import { normalizeApiError } from '$lib/utils/errors';
 
 interface TwoFactorRequest {
 	pre_auth_token: string;
@@ -13,7 +13,7 @@ interface TwoFactorResponse {
 	requires_2fa: string;
 }
 
-const TWO_FACTOR_ERRORS: Record<string, string> = {
+export const TWO_FACTOR_ERRORS: Record<string, string> = {
 	INVALID_SESSION_DATA: 'Está faltando o id do usuário no token. Faça login novamente!'
 };
 
@@ -86,11 +86,13 @@ export class TwoFactorController {
 			if (!response.ok) {
 				this.touched.code = false;
 				this.code = '';
+
 				const errorData: ApiError = await response.json();
-				this.apiError = {
-					code: errorData.code,
-					message: getErrorMessage(errorData.code, errorData.message, TWO_FACTOR_ERRORS)
-				};
+				this.apiError = normalizeApiError(
+					errorData,
+					'Falha na verificação do código.',
+					TWO_FACTOR_ERRORS
+				);
 				return;
 			}
 
@@ -103,11 +105,12 @@ export class TwoFactorController {
 
 			await invalidateAll();
 			await goto('/');
-		} catch {
-			this.apiError = {
-				code: 'NETWORK_ERROR',
-				message: getErrorMessage('NETWORK_ERROR', '')
-			};
+		} catch (err) {
+			this.apiError = normalizeApiError(
+				err,
+				'Falha ao se conectar com o servidor.',
+				TWO_FACTOR_ERRORS
+			);
 		} finally {
 			this.isLoading = false;
 		}

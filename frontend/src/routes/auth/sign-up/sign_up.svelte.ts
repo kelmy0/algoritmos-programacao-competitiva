@@ -1,6 +1,6 @@
 import { goto, invalidateAll } from '$app/navigation';
 import type { ApiError } from '$lib/types/api';
-import { getErrorMessage } from '$lib/utils/errors';
+import { normalizeApiError } from '$lib/utils/errors';
 import { tick } from 'svelte';
 
 interface SignUpRequest {
@@ -215,12 +215,7 @@ export class SignUpController {
 
 			if (!response.ok) {
 				const errorData: ApiError = await response.json();
-
-				this.apiError = {
-					code: errorData.code,
-					message: getErrorMessage(errorData.code, errorData.message, SIGN_UP_ERRORS)
-				};
-
+				this.apiError = normalizeApiError(errorData, 'Falha na criação de conta.', SIGN_UP_ERRORS);
 				this.isLoading = false;
 				await tick();
 
@@ -248,10 +243,11 @@ export class SignUpController {
 				};
 			}
 		} catch (err) {
-			this.apiError = {
-				code: 'NETWORK_ERROR',
-				message: getErrorMessage('NETWORK_ERROR', '')
-			};
+			this.apiError = normalizeApiError(
+				err,
+				'Falha ao se conectar com o servidor.',
+				SIGN_UP_ERRORS
+			);
 		} finally {
 			this.isLoading = false;
 		}
@@ -280,7 +276,7 @@ export class SignUpController {
 	}
 }
 
-const SIGN_UP_ERRORS: Record<string, string> = {
+export const SIGN_UP_ERRORS: Record<string, string> = {
 	// Sign-up / Registration
 	EMAIL_ALREADY_USED: 'Este endereço de e-mail já está cadastrado.',
 	USERNAME_ALREADY_USED: 'Este nome de usuário já está cadastrado.',
