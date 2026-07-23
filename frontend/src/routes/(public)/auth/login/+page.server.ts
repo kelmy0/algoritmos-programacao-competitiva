@@ -5,7 +5,14 @@ import { AUTH_ERRORS } from './login.svelte';
 
 export async function load({ locals, url }: Parameters<PageServerLoad>[0]) {
 	if (locals.user) {
-		redirect(303, '/');
+		const redirectTo = url.searchParams.get('redirectTo');
+		const isSafeRedirect = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
+
+		if (isSafeRedirect) {
+			redirect(303, redirectTo);
+		} else {
+			redirect(303, '/');
+		}
 	}
 
 	const errorCode = url.searchParams.get('error');

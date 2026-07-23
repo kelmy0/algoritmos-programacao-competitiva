@@ -2,7 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_API_URL } from '$env/static/public';
 import { normalizeApiError } from '$lib/utils/errors';
 import { setAuthCookie } from '$lib/server/cookies';
-import { SIGN_UP_ERRORS } from '../../../auth/sign-up/sign_up.svelte';
+import { SIGN_UP_ERRORS } from '../../../(public)/auth/sign-up/sign_up.svelte';
 
 export const POST: RequestHandler = async ({ fetch, request, cookies }) => {
 	try {

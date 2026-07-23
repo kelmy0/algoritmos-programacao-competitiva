@@ -1,7 +1,7 @@
 import { jwtDecode } from 'jwt-decode';
 import type { ApiError } from '$lib/types/api';
 import { normalizeApiError } from '$lib/utils/errors';
-import { AUTH_ERRORS } from '../../routes/auth/login/login.svelte';
+import { AUTH_ERRORS } from '../../routes/(public)/auth/login/login.svelte';
 
 interface JwtPayload {
 	exp?: number;

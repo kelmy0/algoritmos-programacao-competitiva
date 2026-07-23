@@ -2,7 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_API_URL } from '$env/static/public';
 import { normalizeApiError } from '$lib/utils/errors';
 import { setAuthCookie } from '$lib/server/cookies';
-import { TWO_FACTOR_ERRORS } from '../../../auth/verify-2fa/two_factor_verify.svelte';
+import { TWO_FACTOR_ERRORS } from '../../../(public)/auth/verify-2fa/two_factor_verify.svelte';
 
 export const POST: RequestHandler = async ({ fetch, request, cookies }) => {
 	try {

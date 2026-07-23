@@ -1,4 +1,5 @@
 import { goto, invalidateAll } from '$app/navigation';
+import { page } from '$app/state';
 import type { ApiError } from '$lib/types/api';
 import { normalizeApiError } from '$lib/utils/errors';
 import { isValidEmail } from '../sign-up/sign_up.svelte';
@@ -86,7 +87,16 @@ export class LoginController {
 
 			if (data.access_token) {
 				await invalidateAll();
-				await goto('/');
+
+				const redirectTo = page.url.searchParams.get('redirectTo');
+				const isSafeRedirect =
+					redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
+
+				if (isSafeRedirect) {
+					await goto(redirectTo);
+				} else {
+					await goto('/');
+				}
 			}
 		} catch (err) {
 			this.apiError = normalizeApiError(err, 'Falha ao se conectar com o servidor.', AUTH_ERRORS);
