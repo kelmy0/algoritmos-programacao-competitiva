@@ -10,7 +10,7 @@ interface JwtPayload {
 	username: string;
 	email: string;
 	permissions: string[];
-	isEmployee: boolean;
+	is_employee: boolean;
 	exp?: number;
 }
 
@@ -37,7 +37,7 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 					username: decoded.username,
 					email: decoded.email,
 					permissions: decoded.permissions || [],
-					is_employee: decoded.isEmployee
+					is_employee: decoded.is_employee
 				};
 				event.locals.accessToken = accessToken;
 			}
@@ -74,7 +74,7 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 					username: decoded.username,
 					email: decoded.email,
 					permissions: decoded.permissions || [],
-					is_employee: decoded.isEmployee
+					is_employee: decoded.is_employee
 				};
 
 				setAuthCookie(event.cookies, 'access_token', access_token, 15);
@@ -91,13 +91,13 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 	return await resolve(event);
 }
 
-export const handleError: HandleServerError = ({ error, event }) => {
-	const apiError = normalizeApiError(error, 'Ocorreu um erro interno no servidor.');
+export const handleError: HandleServerError = ({ error, event, status }) => {
+	if (status === 404) {
+		return normalizeApiError('PAGE_NOT_FOUND', 'Página não encontrada.');
+	}
 
+	const apiError = normalizeApiError(error, 'Ocorreu um erro interno no servidor.');
 	console.error(`[Server Error ${event.url.pathname}]:`, apiError);
 
-	return {
-		message: apiError.message,
-		code: apiError.code
-	};
+	return normalizeApiError('INTERNAL_ERROR', 'Ocorreu um erro inesperado no servidor.');
 };

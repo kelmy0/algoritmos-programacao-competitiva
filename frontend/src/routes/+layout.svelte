@@ -328,6 +328,33 @@
 						<span>Início</span>
 					</a>
 
+					{#if page.data.user?.is_employee}
+						<a
+							href="/admin/dashboard"
+							aria-current={page.url.pathname === '/admin/dashboard' ? 'page' : undefined}
+							class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
+                {page.url.pathname === '/admin/dashboard'
+								? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
+								: 'text-gray-400 border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
+							onclick={() => (isSidebarOpen = false)}
+						>
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+								aria-hidden="true"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+								/>
+							</svg>
+							<span>Dashboard</span>
+						</a>
+					{/if}
 					<!-- Other mobile links will go here -->
 				</div>
 
@@ -479,6 +506,34 @@
 								</svg>
 								<span>Início</span>
 							</a>
+
+							<!-- Dashboard -->
+							{#if page.data.user?.is_employee}
+								<a
+									href="/admin/dashboard"
+									aria-current={page.url.pathname === '/admin/dashboard' ? 'page' : undefined}
+									class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
+                        {page.url.pathname === '/admin/dashboard'
+										? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
+										: 'text-gray-400 border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+										aria-hidden="true"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+										/>
+									</svg>
+									<span>Dashboard</span>
+								</a>
+							{/if}
 						</div>
 					</div>
 
