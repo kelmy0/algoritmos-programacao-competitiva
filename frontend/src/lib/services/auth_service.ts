@@ -10,15 +10,24 @@ interface JwtPayload {
 declare global {
 	interface Window {
 		__activeRefreshPromise?: Promise<boolean>;
+		__refreshTimeoutId?: ReturnType<typeof setTimeout>;
 	}
 }
 
 export class AuthService {
 	private static currentError: ApiError | null = null;
-	private static refreshTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 	static getLastError(): ApiError | null {
 		return this.currentError;
+	}
+
+	static clearAutoRefreshTimer(): void {
+		if (typeof window === 'undefined') return;
+
+		if (window.__refreshTimeoutId) {
+			clearTimeout(window.__refreshTimeoutId);
+			window.__refreshTimeoutId = undefined;
+		}
 	}
 
 	static async silentRefresh(): Promise<boolean> {
@@ -27,6 +36,8 @@ export class AuthService {
 		if (window.__activeRefreshPromise) {
 			return window.__activeRefreshPromise;
 		}
+
+		AuthService.clearAutoRefreshTimer();
 
 		window.__activeRefreshPromise = (async () => {
 			this.currentError = null;
@@ -69,9 +80,7 @@ export class AuthService {
 	static startAutoRefreshTimer(accessToken: string): void {
 		if (typeof window === 'undefined') return;
 
-		if (this.refreshTimeoutId) {
-			clearTimeout(this.refreshTimeoutId);
-		}
+		AuthService.clearAutoRefreshTimer();
 
 		try {
 			const decoded = jwtDecode<JwtPayload>(accessToken);
@@ -89,7 +98,7 @@ export class AuthService {
 				console.log(
 					`Iniciado a contagem do refresh, faltam: ${Math.round(timeUntilRefresh / 1000)}s`
 				);
-				this.refreshTimeoutId = setTimeout(() => {
+				window.__refreshTimeoutId = setTimeout(() => {
 					AuthService.silentRefresh();
 				}, timeUntilRefresh);
 			}

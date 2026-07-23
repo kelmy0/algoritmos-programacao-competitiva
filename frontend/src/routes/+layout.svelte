@@ -10,10 +10,24 @@
 	let isSidebarOpen = $state(false);
 	let isProfileMenuOpen = $state(false);
 
+	let currentToken = $state<string | null>(null);
+
 	$effect(() => {
-		if (page.data.accessToken) {
-			AuthService.startAutoRefreshTimer(page.data.accessToken);
+		const newToken = page.data.accessToken ?? null;
+
+		if (newToken !== currentToken) {
+			currentToken = newToken;
+
+			if (newToken) {
+				AuthService.startAutoRefreshTimer(newToken);
+			} else {
+				AuthService.clearAutoRefreshTimer();
+			}
 		}
+
+		return () => {
+			AuthService.clearAutoRefreshTimer();
+		};
 	});
 
 	function handleKeydown(event: KeyboardEvent) {
