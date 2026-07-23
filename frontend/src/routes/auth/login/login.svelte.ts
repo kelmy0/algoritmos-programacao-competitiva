@@ -4,11 +4,6 @@ import { page } from '$app/state';
 import { getErrorMessage } from '$lib/utils/errors';
 import { isValidEmail } from '../sign-up/sign_up.svelte';
 
-interface LoginRequest {
-	email: string;
-	password: string;
-}
-
 interface LoginResponse {
 	access_token?: string;
 	requires_2fa: boolean;
