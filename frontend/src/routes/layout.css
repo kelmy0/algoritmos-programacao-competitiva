@@ -3,12 +3,32 @@
 @plugin '@tailwindcss/typography';
 
 @theme {
-    --color-app-bg: #121214;
-    --color-app-surface: #181825;
-    --color-text-primary: #cdd6f4;
-    --color-text-brand: #89b4fa;
-    --color-text-accent: #00f2fe;
+	--color-app-bg: #121214;
+	--color-app-surface: #181825;
+	--color-text-primary: #cdd6f4;
+	--color-text-brand: #89b4fa;
+	--color-text-accent: #00f2fe;
 
-    --font-montserrat: 'Montserrat', sans-serif;
-    --font-inter: 'Inter', sans-serif;
+	--font-montserrat: 'Montserrat', sans-serif;
+	--font-inter: 'Inter', sans-serif;
+}
+
+@keyframes progress-bar {
+	0% {
+		width: 0%;
+		opacity: 0.8;
+	}
+	50% {
+		width: 70%;
+		opacity: 1;
+	}
+	100% {
+		width: 100%;
+		opacity: 0.8;
+	}
+}
+
+.animate-progress {
+	animation: progress-bar 1.2s ease-in-out;
+	box-shadow: 0 0 8px rgba(137, 180, 250, 0.6);
 }

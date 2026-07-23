@@ -1,7 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
 	import { AuthService } from '$lib/services/auth_service';
 	import { fade } from 'svelte/transition';
 
@@ -44,6 +44,14 @@
 	<header
 		class="bg-app-surface h-16 border-b border-gray-800 fixed top-0 left-0 right-0 flex items-center justify-between px-6 z-50"
 	>
+		{#if navigating.to}
+			<div
+				class="absolute bottom-0 left-0 right-0 h-0.5 bg-text-brand z-50 animate-progress"
+				role="progressbar"
+				aria-label="Carregando nova página"
+			></div>
+		{/if}
+
 		<!--Title-->
 		<a
 			class="font-bold text-xl text-text-primary font-montserrat tracking-tight hover:text-text-brand transition-colors flex items-center gap-2"
