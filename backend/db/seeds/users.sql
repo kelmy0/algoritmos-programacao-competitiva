@@ -12,5 +12,5 @@ INSERT INTO role_permissions(role_id, permission_id) VALUES
 (2, 3);
 
 INSERT INTO users(name, username, email, password_hash, role_id) VALUES
-('Adm teste', 'adm_teste', 'teste@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$RKCxwjgfKfv+/1CDNn39Qg$dWA+Ijh6T0f/kvT18NMoiOSYszW31chyL5e71cj81x0', 2),
-('user teste', 'user_teste', 'uteste@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$RKCxwjgfKfv+/1CDNn39Qg$dWA+Ijh6T0f/kvT18NMoiOSYszW31chyL5e71cj81x0', 1);
+('Adm teste', 'adm_teste', 'teste@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$IIZofmSeiiATyVyGC3cmgg$A4tCBHsy869mMWKkL8Cmj7z+Hfzjwsxaly2x7AmXrCA', 2),
+('user teste', 'user_teste', 'uteste@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$IIZofmSeiiATyVyGC3cmgg$A4tCBHsy869mMWKkL8Cmj7z+Hfzjwsxaly2x7AmXrCA', 1);
