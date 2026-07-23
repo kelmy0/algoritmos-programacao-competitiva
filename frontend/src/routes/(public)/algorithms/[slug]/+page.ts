@@ -3,27 +3,7 @@ import { normalizeApiError } from '$lib/utils/errors';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import { ALGORITHMS_ERRORS } from '../algorithms';
-import { Marked } from 'marked';
-import { markedHighlight } from 'marked-highlight';
-import { createHighlighter } from 'shiki';
-
-const highlighter = await createHighlighter({
-	themes: ['github-dark'],
-	langs: ['cpp']
-});
-
-const marked = new Marked(
-	markedHighlight({
-		async: true,
-		highlight(code, lang) {
-			const language = highlighter.getLoadedLanguages().includes(lang) ? lang : 'text';
-			return highlighter.codeToHtml(code, {
-				lang: language,
-				theme: 'github-dark'
-			});
-		}
-	})
-);
+import { renderMarkdown } from '$lib/services/markdown';
 
 export const load: PageLoad = async ({ fetch, params }) => {
 	const { slug } = params;
@@ -44,7 +24,8 @@ export const load: PageLoad = async ({ fetch, params }) => {
 		}
 
 		const { data: algorithm } = await response.json();
-		const contentHtml = await marked.parse(algorithm.Content || '');
+
+		const contentHtml = await renderMarkdown(algorithm.Content || '');
 
 		return {
 			algorithm: {
