@@ -19,7 +19,7 @@ func NewAlgorithmRepository(db *pgxpool.Pool) *AlgorithmRepository {
 
 func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]models.Algorithm, error) {
 	query := `
-		SELECT id, public_id, slug, name, category, difficulty, content, created_at, updated_at
+		SELECT id, public_id, slug, name, category, difficulty
 		FROM algorithms
 		ORDER BY name ASC
 		LIMIT $1 OFFSET $2
@@ -37,7 +37,7 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]mo
 
 		err := rows.Scan(
 			&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
-			&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
+			&algo.Difficulty,
 		)
 
 		if err != nil {
