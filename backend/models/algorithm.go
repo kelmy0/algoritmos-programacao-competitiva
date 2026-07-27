@@ -11,6 +11,14 @@ const (
 	DifficultyExpert       Difficulty = "expert"
 )
 
+type Status string
+
+const (
+	StatusApproved Status = "approved"
+	StatusPeding   Status = "pending"
+	StatusRejected Status = "rejected"
+)
+
 type Algorithm struct {
 	Id         string     `db:"id"`
 	PublicId   string     `db:"public_id"`
@@ -19,6 +27,8 @@ type Algorithm struct {
 	Category   string     `db:"category"`
 	Difficulty Difficulty `db:"difficulty"`
 	Content    string     `db:"content"`
+	Status     string     `db:"status,oneof=approved pending rejected"`
+	AuthorId   string     `db:"author_id"`
 	CreatedAt  time.Time  `db:"created_at"`
 	UpdatedAt  time.Time  `db:"updated_at"`
 }
@@ -30,6 +40,7 @@ type NewAlgorithm struct {
 	Category   string     `db:"category"`
 	Difficulty Difficulty `db:"difficulty,oneof=beginner intermediate advanced expert"`
 	Content    string     `db:"content"`
+	AuthorId   string     `db:"author_id"`
 }
 
 type PutAlgorithm struct {

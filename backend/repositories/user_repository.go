@@ -39,7 +39,7 @@ func (r *UserRepository) getForAuth(ctx context.Context, value, field string) (*
 	query := fmt.Sprintf(`
         SELECT 
             u.id, u.username, u.email, u.password_hash, u.enable, 
-            u.two_factor_authentication, u.two_factor_secret, r.is_employee,
+            u.two_factor_authentication, u.two_factor_secret, u.last_logout_all, r.is_employee,
             COALESCE(array_agg(p.slug) FILTER (WHERE p.slug IS NOT NULL), '{}') as permissions
         FROM users u
         INNER JOIN roles r ON u.role_id = r.id
@@ -52,7 +52,7 @@ func (r *UserRepository) getForAuth(ctx context.Context, value, field string) (*
 	var user models.User
 	err := r.db.QueryRow(ctx, query, value).Scan(
 		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.Enable,
-		&user.TwoFactorAuthentication, &user.TwoFactorSecret, &user.Role.IsEmployee,
+		&user.TwoFactorAuthentication, &user.TwoFactorSecret, &user.LastLogoutAll, &user.Role.IsEmployee,
 		&user.Permissions,
 	)
 	if err != nil {

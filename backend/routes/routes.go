@@ -31,13 +31,13 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	authFlowLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.1), 5))
 	strictAbuseLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.0055), 2))
 
-	// Algorithm Handlers and Services
-	algoRepo := repositories.NewAlgorithmRepository(db)
-	algoService := services.NewAlgorithmService(algoRepo)
-	algoHandler := handlers.NewAlgorithmHandler(algoService)
-
 	//User
 	userRepo := repositories.NewUserRepository(db)
+
+	// Algorithm Handlers and Services
+	algoRepo := repositories.NewAlgorithmRepository(db)
+	algoService := services.NewAlgorithmService(algoRepo, userRepo)
+	algoHandler := handlers.NewAlgorithmHandler(algoService)
 
 	//Auth
 	authRepo := repositories.NewAuthRepository(db)

@@ -1,5 +1,5 @@
 INSERT INTO roles(name, is_employee) VALUES
-('user', FALSE), ('admin', TRUE);
+('user', FALSE), ('admin', TRUE), ('moderator', TRUE);
 
 INSERT INTO permissions(slug) VALUES
 ('create:algorithms'), 
@@ -7,10 +7,10 @@ INSERT INTO permissions(slug) VALUES
 ('delete:algorithms');
 
 INSERT INTO role_permissions(role_id, permission_id) VALUES
-(2, 1), 
-(2, 2), 
-(2, 3);
+(2, 1), (2, 2), (2, 3),
+(3, 2), (3, 3);
 
 INSERT INTO users(name, username, email, password_hash, role_id) VALUES
-('Adm teste', 'adm_teste', 'teste@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$IIZofmSeiiATyVyGC3cmgg$A4tCBHsy869mMWKkL8Cmj7z+Hfzjwsxaly2x7AmXrCA', 2),
+('Adm teste', 'adm_teste', 'admin@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$IIZofmSeiiATyVyGC3cmgg$A4tCBHsy869mMWKkL8Cmj7z+Hfzjwsxaly2x7AmXrCA', 2),
+('Moderator teste', 'moderator_teste', 'moderator@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$IIZofmSeiiATyVyGC3cmgg$A4tCBHsy869mMWKkL8Cmj7z+Hfzjwsxaly2x7AmXrCA', 3),
 ('user teste', 'user_teste', 'uteste@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$IIZofmSeiiATyVyGC3cmgg$A4tCBHsy869mMWKkL8Cmj7z+Hfzjwsxaly2x7AmXrCA', 1);

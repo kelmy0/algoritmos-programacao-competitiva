@@ -18,6 +18,7 @@ type User struct {
 	RoleId                  int                 `db:"role_id"`
 	FailedAttempts          int                 `db:"failed_attempts"`
 	LastLogin               *time.Time          `db:"last_login"`
+	LastLogoutAll           *time.Time          `db:"last_logout_all"`
 	BlockedUntil            *time.Time          `db:"blocked_until"`
 	CreatedAt               time.Time           `db:"created_at"`
 	UpdatedAt               time.Time           `db:"updated_at"`

@@ -43,11 +43,21 @@ func AuthMiddleware(secretKey, issuer string) gin.HandlerFunc {
 			return
 		}
 
+		if claims.IssuedAt == nil || claims.IssuedAt.Time.IsZero() {
+			c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+				dto.CodeInvalidAccessToken,
+				"Token is missing issued at (iat) claim.",
+			))
+			c.Abort()
+			return
+		}
+
 		c.Set("userId", claims.Subject)
 		c.Set("permissions", claims.Permissions)
 		c.Set("username", claims.Username)
 		c.Set("email", claims.Email)
 		c.Set("isEmployee", claims.IsEmployee)
+		c.Set("iat", claims.IssuedAt.Time)
 		c.Next()
 	}
 }

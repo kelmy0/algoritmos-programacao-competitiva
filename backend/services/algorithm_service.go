@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
+	"time"
 	"unicode/utf8"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -19,12 +21,22 @@ type AlgorithmRepository interface {
 	PutAlgorithm(ctx context.Context, data models.PutAlgorithm) (*models.Algorithm, error)
 }
 
-type AlgorithmService struct {
-	repo AlgorithmRepository
+type AlgorithmUserRepository interface {
+	GetUserByIdForAuth(ctx context.Context, id string) (*models.User, error)
 }
 
-func NewAlgorithmService(repo AlgorithmRepository) *AlgorithmService {
-	return &AlgorithmService{repo: repo}
+type AlgorithmService struct {
+	AlgoRepo AlgorithmRepository
+	UserRepo AlgorithmUserRepository
+}
+
+type AlgorithmUser struct {
+	Id  string
+	Iat time.Time
+}
+
+func NewAlgorithmService(algoRepo AlgorithmRepository, userRepo AlgorithmUserRepository) *AlgorithmService {
+	return &AlgorithmService{AlgoRepo: algoRepo, UserRepo: userRepo}
 }
 
 func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.Algorithm, int, error) {
@@ -37,7 +49,7 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 
 	offset := (page - 1) * limit
 
-	data, err := s.repo.List(ctx, limit, offset)
+	data, err := s.AlgoRepo.List(ctx, limit, offset)
 	if err != nil {
 		log.Printf("[AlgorithmService.List] failed to retrieve algorithms (page: %d, limit: %d): %v", page, limit, err)
 		return nil, page, models.ErrFailQueryingAlgorithm
@@ -47,7 +59,7 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 }
 
 func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error) {
-	algo, err := s.repo.GetByPublicID(ctx, publicId)
+	algo, err := s.AlgoRepo.GetByPublicID(ctx, publicId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
@@ -58,7 +70,25 @@ func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId 
 	return algo, nil
 }
 
-func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest) (*models.Algorithm, error) {
+func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, u AlgorithmUser) (*models.Algorithm, error) {
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, u.Id)
+
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return nil, models.ErrUserNotFound
+		}
+		slog.Error("database error querying user ID during post algoritm", "error", err)
+		return nil, models.ErrUserNotFound
+	}
+
+	if user.LastLogoutAll != nil && user.LastLogoutAll.Unix() > u.Iat.Unix() {
+		return nil, models.ErrTokenNoLongerValid
+	}
+
+	if !user.Enable {
+		return nil, models.ErrUserNotEnabled
+	}
+
 	name, category, content, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
 	if err != nil {
 		return nil, err
@@ -70,16 +100,17 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 		return nil, models.ErrFailGeneratePublicId
 	}
 
-	algorithm := &models.NewAlgorithm{
+	algorithm := models.NewAlgorithm{
 		PublicId:   publicId,
 		Name:       name,
 		Slug:       utils.Slug(name),
 		Category:   category,
 		Difficulty: data.Difficulty,
 		Content:    content,
+		AuthorId:   user.Id,
 	}
 
-	res, err := s.repo.PostAlgorithm(ctx, *algorithm)
+	res, err := s.AlgoRepo.PostAlgorithm(ctx, algorithm)
 	if err != nil {
 		log.Printf("[AlgorithmService.PostAlgorithm] repository failed to save algorithm (slug: %s): %v", algorithm.Slug, err)
 		return nil, models.ErrFailPostingAlgorithm
@@ -88,7 +119,7 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 }
 
 func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error) {
-	algo, err := s.repo.DeleteAlgorithm(ctx, publicId)
+	algo, err := s.AlgoRepo.DeleteAlgorithm(ctx, publicId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
@@ -116,7 +147,7 @@ func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorit
 		Content:    content,
 	}
 
-	res, err := s.repo.PutAlgorithm(ctx, *algorithm)
+	res, err := s.AlgoRepo.PutAlgorithm(ctx, *algorithm)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
