@@ -1,25 +1,26 @@
-import { goto, invalidateAll } from '$app/navigation';
-import type { ApiError } from '$lib/types/api';
-import { page } from '$app/state';
-import { normalizeApiError } from '$lib/utils/errors';
+import { goto, invalidateAll } from "$app/navigation";
+import type { ApiError } from "$lib/types/api";
+import { page } from "$app/state";
+import { normalizeApiError } from "$lib/utils/errors";
+import { customFetch } from "$lib/api/client";
 
 interface TwoFactorRequest {
 	pre_auth_token: string;
 	code: string;
 }
 
-interface TwoFactorResponse {
-	access_token: string;
-	requires_2fa: string;
+export interface TwoFactorServerResponse {
+	access_token: boolean;
+	requires_2fa: boolean;
 }
 
 export const TWO_FACTOR_ERRORS: Record<string, string> = {
-	INVALID_SESSION_DATA: 'Está faltando o id do usuário no token. Faça login novamente!'
+	INVALID_SESSION_DATA: "Está faltando o id do usuário no token. Faça login novamente!"
 };
 
 export class TwoFactorController {
-	token = '';
-	code = $state('');
+	token = "";
+	code = $state("");
 	isLoading = $state(false);
 	apiError = $state<ApiError | null>(null);
 
@@ -34,14 +35,14 @@ export class TwoFactorController {
 	onInput(event: Event) {
 		const input = event.target as HTMLInputElement;
 
-		this.code = input.value.replace(/\D/g, '');
+		this.code = input.value.replace(/\D/g, "");
 
 		if (this.apiError) {
 			this.apiError = null;
 		}
 
 		if (this.code.length === 6 && !this.isLoading) {
-			const form = input.closest('form');
+			const form = input.closest("form");
 			if (form) {
 				form.requestSubmit();
 			}
@@ -49,18 +50,18 @@ export class TwoFactorController {
 	}
 
 	getToken() {
-		const token = page.url.searchParams.get('token');
+		const token = page.url.searchParams.get("token");
 
 		if (!token) {
-			goto('/auth/login?error=MISSING_PRE_TOKEN');
+			goto("/auth/login?error=MISSING_PRE_TOKEN");
 			return;
 		}
 
 		this.token = token;
 	}
 
-	async sendCode(event: SubmitEvent) {
-		event.preventDefault();
+	async sendCode(e: SubmitEvent) {
+		e.preventDefault();
 
 		this.touched.code = true;
 
@@ -76,43 +77,37 @@ export class TwoFactorController {
 			code: this.code
 		};
 
-		try {
-			const response = await fetch('/api/auth/verify-2fa', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+		const { data, error } = await customFetch<TwoFactorServerResponse>(
+			window.fetch,
+			"/api/auth/verify-2fa",
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(bodyRequest)
-			});
+			},
+			TWO_FACTOR_ERRORS
+		);
 
-			if (!response.ok) {
-				this.touched.code = false;
-				this.code = '';
+		this.isLoading = false;
+		if (error) {
+			this.apiError = error;
+			return;
+		}
 
-				const errorData: ApiError = await response.json();
-				this.apiError = normalizeApiError(
-					errorData,
-					'Falha na verificação do código.',
-					TWO_FACTOR_ERRORS
-				);
-				return;
-			}
-
-			const data: TwoFactorResponse = await response.json();
-
-			if (data.requires_2fa) {
-				goto(`/auth/login?error=AUTH_UNEXPECTED_ERROR`);
-				return;
-			}
-
-			await invalidateAll();
-			await goto('/');
-		} catch (err) {
+		if (!data) {
 			this.apiError = normalizeApiError(
-				err,
-				'Falha ao se conectar com o servidor.',
+				"INTERNAL_SERVER_ERROR",
+				"Falha ao processar resposta do servidor.",
 				TWO_FACTOR_ERRORS
 			);
-		} finally {
-			this.isLoading = false;
+			return;
 		}
+
+		if (data.requires_2fa) {
+			await goto(`/auth/login?error=AUTH_UNEXPECTED_ERROR`);
+			return;
+		}
+
+		await goto("/", { invalidateAll: true });
 	}
 }

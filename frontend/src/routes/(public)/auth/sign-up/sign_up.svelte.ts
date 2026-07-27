@@ -1,28 +1,20 @@
-import { goto, invalidateAll } from '$app/navigation';
-import type { ApiError } from '$lib/types/api';
-import { normalizeApiError } from '$lib/utils/errors';
-import { tick } from 'svelte';
+import { goto, invalidateAll } from "$app/navigation";
+import { customFetch } from "$lib/api/client";
+import type { ApiError } from "$lib/types/api";
+import { normalizeApiError } from "$lib/utils/errors";
+import { tick } from "svelte";
 
-interface SignUpRequest {
-	name: string;
-	username: string;
-	email: string;
-	password: string;
-	confirm_password: string;
-}
-
-interface SignUpResponse {
-	access_token?: string;
+export interface SignUpServerResponse {
 	success: boolean;
-	auto_login: boolean;
+	autoLogin: boolean;
 }
 
 export class SignUpController {
-	name = $state('');
-	username = $state('');
-	email = $state('');
-	password = $state('');
-	confirmPassword = $state('');
+	name = $state("");
+	username = $state("");
+	email = $state("");
+	password = $state("");
+	confirmPassword = $state("");
 	isLoading = $state(false);
 	apiError = $state<ApiError | null>(null);
 	showPassword = $state(false);
@@ -97,7 +89,7 @@ export class SignUpController {
 	}
 
 	onNameInput() {
-		this.clearApiError(['REGISTRATION_INVALID_NAME']);
+		this.clearApiError(["REGISTRATION_INVALID_NAME"]);
 	}
 
 	onNameBlur() {
@@ -107,7 +99,7 @@ export class SignUpController {
 
 	onUsernameInput() {
 		this.username = sanitizeUsername(this.username);
-		this.clearApiError(['REGISTRATION_INVALID_USERNAME']);
+		this.clearApiError(["REGISTRATION_INVALID_USERNAME"]);
 	}
 
 	onUsernameBlur() {
@@ -115,7 +107,7 @@ export class SignUpController {
 	}
 
 	onEmailInput() {
-		this.clearApiError(['REGISTRATION_INVALID_EMAIL']);
+		this.clearApiError(["REGISTRATION_INVALID_EMAIL"]);
 	}
 
 	onEmailBlur() {
@@ -123,7 +115,7 @@ export class SignUpController {
 	}
 
 	onPasswordInput() {
-		this.clearApiError(['USER_PASSWORDS_DONT_MATCH', 'USER_PASSWORD_NOT_VALID']);
+		this.clearApiError(["USER_PASSWORDS_DONT_MATCH", "USER_PASSWORD_NOT_VALID"]);
 	}
 
 	onPasswordBlur() {
@@ -155,8 +147,8 @@ export class SignUpController {
 
 		if (!this.isNameValid) {
 			this.apiError = {
-				code: 'REGISTRATION_INVALID_NAME',
-				message: 'O nome deve conter pelo menos 6 letras.'
+				code: "REGISTRATION_INVALID_NAME",
+				message: "O nome deve conter pelo menos 6 letras."
 			};
 			await this.focusFirstInvalidField();
 			return;
@@ -164,8 +156,8 @@ export class SignUpController {
 
 		if (!this.isUsernameValid) {
 			this.apiError = {
-				code: 'REGISTRATION_INVALID_USERNAME',
-				message: 'Username deve ter pelo menos 6 caracteres válidos.'
+				code: "REGISTRATION_INVALID_USERNAME",
+				message: "Username deve ter pelo menos 6 caracteres válidos."
 			};
 			await this.focusFirstInvalidField();
 			return;
@@ -173,8 +165,8 @@ export class SignUpController {
 
 		if (!this.isEmailValid) {
 			this.apiError = {
-				code: 'REGISTRATION_INVALID_EMAIL',
-				message: 'Digite um endereço de e-mail válido.'
+				code: "REGISTRATION_INVALID_EMAIL",
+				message: "Digite um endereço de e-mail válido."
 			};
 			await this.focusFirstInvalidField();
 			return;
@@ -182,7 +174,7 @@ export class SignUpController {
 
 		if (!this.isPasswordValid) {
 			this.apiError = {
-				code: 'USER_PASSWORD_NOT_VALID',
+				code: "USER_PASSWORD_NOT_VALID",
 				message: SIGN_UP_ERRORS.USER_PASSWORD_NOT_VALID
 			};
 			await this.focusFirstInvalidField();
@@ -191,7 +183,7 @@ export class SignUpController {
 
 		if (!this.isPasswordsMatching) {
 			this.apiError = {
-				code: 'USER_PASSWORDS_DONT_MATCH',
+				code: "USER_PASSWORDS_DONT_MATCH",
 				message: SIGN_UP_ERRORS.USER_PASSWORDS_DONT_MATCH
 			};
 			await this.focusFirstInvalidField();
@@ -200,10 +192,12 @@ export class SignUpController {
 
 		this.isLoading = true;
 
-		try {
-			const response = await fetch('/api/auth/sign-up', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+		const { data, error } = await customFetch<SignUpServerResponse>(
+			window.fetch,
+			"/api/auth/sign-up",
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					name: this.name,
 					username: this.username,
@@ -211,45 +205,37 @@ export class SignUpController {
 					password: this.password,
 					confirm_password: this.confirmPassword
 				})
-			});
+			},
+			SIGN_UP_ERRORS
+		);
 
-			if (!response.ok) {
-				const errorData: ApiError = await response.json();
-				this.apiError = normalizeApiError(errorData, 'Falha na criação de conta.', SIGN_UP_ERRORS);
-				this.isLoading = false;
-				await tick();
+		this.isLoading = false;
 
-				if (errorData.code === 'USERNAME_ALREADY_USED') {
-					this.scrollToAndFocus(this.usernameInput);
-				} else if (errorData.code === 'EMAIL_ALREADY_USED') {
-					this.scrollToAndFocus(this.emailInput);
-				}
-				return;
-			}
+		if (error) {
+			this.apiError = error;
+			return;
+		}
 
-			const data: SignUpResponse = await response.json();
-
-			if (data.access_token) {
-				this.apiError = null;
-				await invalidateAll();
-				await goto('/');
-			} else if (data.success && !data.auto_login) {
-				this.apiError = null;
-				goto('/login');
-			} else {
-				this.apiError = {
-					code: 'REGISTRATION_UNEXPECTED_ERROR',
-					message: SIGN_UP_ERRORS.REGISTRATION_UNEXPECTED_ERROR
-				};
-			}
-		} catch (err) {
+		if (!data) {
 			this.apiError = normalizeApiError(
-				err,
-				'Falha ao se conectar com o servidor.',
+				"INTERNAL_SERVER_ERROR",
+				"Falha ao processar resposta do servidor.",
 				SIGN_UP_ERRORS
 			);
-		} finally {
-			this.isLoading = false;
+			return;
+		}
+
+		if (data.autoLogin) {
+			this.apiError = null;
+			await goto("/", { invalidateAll: true });
+		} else if (data.success && !data.autoLogin) {
+			this.apiError = null;
+			goto("/login");
+		} else {
+			this.apiError = {
+				code: "REGISTRATION_UNEXPECTED_ERROR",
+				message: SIGN_UP_ERRORS.REGISTRATION_UNEXPECTED_ERROR
+			};
 		}
 	}
 
@@ -271,45 +257,45 @@ export class SignUpController {
 
 	private scrollToAndFocus(element: HTMLInputElement | null) {
 		if (!element) return;
-		element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		element.scrollIntoView({ behavior: "smooth", block: "center" });
 		element.focus({ preventScroll: true });
 	}
 }
 
 export const SIGN_UP_ERRORS: Record<string, string> = {
 	// Sign-up / Registration
-	EMAIL_ALREADY_USED: 'Este endereço de e-mail já está cadastrado.',
-	USERNAME_ALREADY_USED: 'Este nome de usuário já está cadastrado.',
-	USER_PASSWORDS_DONT_MATCH: 'As senhas digitadas não coincidem.',
-	USER_PASSWORD_NOT_VALID: 'A senha é muito fraca.',
-	REGISTRATION_INVALID_NAME: 'O campo nome está inválido ou mal preenchido.',
-	REGISTRATION_INVALID_USERNAME: 'O campo nome de usuário está inválido ou mal preenchido.',
-	REGISTRATION_INVALID_EMAIL: 'O formato do e-mail digitado não é válido.',
-	REGISTRATION_UNEXPECTED_ERROR: 'Ocorreu um erro inesperado ao criar sua conta.',
+	EMAIL_ALREADY_USED: "Este endereço de e-mail já está cadastrado.",
+	USERNAME_ALREADY_USED: "Este nome de usuário já está cadastrado.",
+	USER_PASSWORDS_DONT_MATCH: "As senhas digitadas não coincidem.",
+	USER_PASSWORD_NOT_VALID: "A senha é muito fraca.",
+	REGISTRATION_INVALID_NAME: "O campo nome está inválido ou mal preenchido.",
+	REGISTRATION_INVALID_USERNAME: "O campo nome de usuário está inválido ou mal preenchido.",
+	REGISTRATION_INVALID_EMAIL: "O formato do e-mail digitado não é válido.",
+	REGISTRATION_UNEXPECTED_ERROR: "Ocorreu um erro inesperado ao criar sua conta.",
 
 	// General Tokens
-	TOKEN_CRYPT_FAILED: 'Erro interno de criptografia de segurança.'
+	TOKEN_CRYPT_FAILED: "Erro interno de criptografia de segurança."
 };
 
 export function sanitizeHumanName(name: string): string {
-	const clean = name.replace(/[^\p{L}\s.'-]/gu, '');
+	const clean = name.replace(/[^\p{L}\s.'-]/gu, "");
 
-	const words = clean.replace(/\s+/g, ' ').trim().split(' ');
+	const words = clean.replace(/\s+/g, " ").trim().split(" ");
 
-	if (words.length === 0 || words[0] === '') return '';
+	if (words.length === 0 || words[0] === "") return "";
 
-	return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+	return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
 }
 
 export function sanitizeUsername(username: string): string {
-	const clean = username.replace(/[^\p{L}\p{N}_-]/gu, '');
-	return clean.replace(/\s+/g, '').toLowerCase();
+	const clean = username.replace(/[^\p{L}\p{N}_-]/gu, "");
+	return clean.replace(/\s+/g, "").toLowerCase();
 }
 
 export function isValidEmail(email: string): boolean {
 	const clean = email.trim().toLowerCase();
-	const atIndex = clean.indexOf('@');
-	const lastDotIndex = clean.lastIndexOf('.');
+	const atIndex = clean.indexOf("@");
+	const lastDotIndex = clean.lastIndexOf(".");
 
 	return atIndex > 0 && lastDotIndex > atIndex + 1 && lastDotIndex < clean.length - 1;
 }

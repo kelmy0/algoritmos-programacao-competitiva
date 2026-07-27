@@ -40,6 +40,9 @@ type Config struct {
 	FromEmail               string
 	FrontendUrl             string
 	TrustedProxies          []string
+	RedisAddr               string
+	RedisPassword           string
+	RedisTls                bool
 }
 
 func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
@@ -208,6 +211,25 @@ func LoadConfig() *Config {
 
 	trustedProxies := parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
 
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		log.Fatal("❌ REDIS_ADDR is required.")
+	}
+
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+	if redisPassword == "" {
+		log.Println("⚠️ REDIS_PASSWORD is empty.")
+	}
+
+	rawRedisTls := os.Getenv("REDIS_TLS")
+	var redisTls bool
+	if rawRedisTls == "false" {
+		log.Println("⚠️ REDIS_TLS is false.")
+		redisTls = false
+	} else {
+		redisTls = true
+	}
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -238,5 +260,8 @@ func LoadConfig() *Config {
 		FromEmail:               fromEmail,
 		FrontendUrl:             frontendUrl,
 		TrustedProxies:          trustedProxies,
+		RedisAddr:               redisAddr,
+		RedisPassword:           redisPassword,
+		RedisTls:                redisTls,
 	}
 }

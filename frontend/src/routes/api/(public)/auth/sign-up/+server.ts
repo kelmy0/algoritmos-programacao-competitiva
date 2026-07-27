@@ -2,51 +2,59 @@ import { json, type RequestHandler } from "@sveltejs/kit";
 import { PUBLIC_API_URL } from "$env/static/public";
 import { normalizeApiError } from "$lib/utils/errors";
 import { setAuthCookie } from "$lib/server/cookies";
-import { SIGN_UP_ERRORS } from "../../../../(public)/auth/sign-up/sign_up.svelte";
+import {
+	SIGN_UP_ERRORS,
+	type SignUpServerResponse
+} from "../../../../(public)/auth/sign-up/sign_up.svelte";
+import { customFetch } from "$lib/api/client";
 
-export const POST: RequestHandler = async ({ fetch, request, cookies }) => {
-	try {
-		const body = await request.json();
+interface SignUpResponse {
+	access_token?: string;
+	success: boolean;
+	auto_login: boolean;
+}
 
-		const apiRes = await fetch(`${PUBLIC_API_URL}/api/auth/sign-up`, {
+export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookies }) => {
+	const body = await request.json().catch(() => ({}));
+
+	const { data, error, status, headers } = await customFetch<SignUpResponse>(
+		svelteFetch,
+		`${PUBLIC_API_URL}/api/auth/sign-up`,
+		{
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(body)
-		});
+		},
+		SIGN_UP_ERRORS
+	);
 
-		if (!apiRes.ok) {
-			const rawError = await apiRes.json().catch(() => null);
-
-			const normalizedError = normalizeApiError(
-				rawError,
-				"Não foi possível realizar o cadastro.",
-				SIGN_UP_ERRORS
-			);
-
-			return json(normalizedError, { status: apiRes.status });
-		}
-
-		const data = await apiRes.json();
-		const setCookieHeader = apiRes.headers.get("set-cookie");
-
-		if (data.access_token) {
-			setAuthCookie(cookies, "access_token", data.access_token, 15);
-		}
-
-		const response = json(data);
-
-		if (setCookieHeader) {
-			response.headers.append("set-cookie", setCookieHeader);
-		}
-
-		return response;
-	} catch (err) {
-		const normalizedError = normalizeApiError(
-			err,
-			"Não foi possível conectar ao servidor. Verifique sua conexão.",
-			SIGN_UP_ERRORS
-		);
-
-		return json(normalizedError, { status: 500 });
+	if (error) {
+		return json(error, { status });
 	}
+
+	if (!data) {
+		return json(
+			normalizeApiError("INTERNAL_SERVER_ERROR", "Resposta inválida do servidor.", SIGN_UP_ERRORS),
+			{ status: 500 }
+		);
+	}
+
+	// This will be removed
+	if (data.access_token) {
+		setAuthCookie(cookies, "access_token", data.access_token, 15);
+	}
+
+	const sanitizedResponse: SignUpServerResponse = {
+		success: data.success,
+		autoLogin: data.auto_login
+	};
+
+	const response = json(sanitizedResponse);
+
+	const setCookies = headers.getSetCookie();
+	for (const cookieString of setCookies) {
+		response.headers.append("set-cookie", cookieString);
+	}
+
+	return response;
 };

@@ -55,12 +55,18 @@ func main() {
 		return
 	}
 
+	// Redis connection
+	redisClient, err := config.NewRedisConfig(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisTls)
+	if err != nil {
+		log.Fatalln("❌ Fatal error: Could not connect to redis.")
+	}
+
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(middleware.SetupRecovery())
 	router.Use(middleware.SetupCORS(cfg.AppEnv, cfg.FrontendUrl))
 	router.Use(middleware.SetupSecureHeaders())
 	router.SetTrustedProxies(cfg.TrustedProxies)
-	routes.ConfigRoutes(router, database.DB, cfg, googleCfg, githubCfg)
+	routes.ConfigRoutes(router, database.DB, cfg, googleCfg, githubCfg, redisClient)
 	router.Run(cfg.Port)
 }

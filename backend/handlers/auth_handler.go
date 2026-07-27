@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 )
 
 type AuthHandler struct {
@@ -88,21 +89,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	userId, exists := c.Get("userId")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeMissingUserIdContext,
-			dto.MsgMissingDataFromContext,
-		))
-		return
-	}
-
-	id, ok := userId.(string)
+	id, accessJti, accessExpiresAt, ok := utils.GetAuthContext(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError,
-			dto.MsgUnexpectedError,
-		))
 		return
 	}
 
@@ -115,7 +103,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	err = h.service.Logout(c.Request.Context(), id, refreshToken)
+	err = h.service.Logout(c.Request.Context(), id, refreshToken, accessJti, accessExpiresAt)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -128,21 +116,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 func (h *AuthHandler) LogoutAll(c *gin.Context) {
-	userId, exists := c.Get("userId")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeMissingUserIdContext,
-			dto.MsgMissingDataFromContext,
-		))
-		return
-	}
-
-	id, ok := userId.(string)
+	id, accessJti, _, ok := utils.GetAuthContext(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError,
-			dto.MsgUnexpectedError,
-		))
 		return
 	}
 
@@ -155,7 +130,7 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 		return
 	}
 
-	err = h.service.LogoutAll(c.Request.Context(), id, refreshToken)
+	err = h.service.LogoutAll(c.Request.Context(), id, refreshToken, accessJti)
 	if err != nil {
 		HandleAPIError(c, err)
 		return

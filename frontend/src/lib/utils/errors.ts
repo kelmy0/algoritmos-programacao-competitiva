@@ -40,6 +40,7 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 		"Sua conta do GitHub precisa ter o e-mail verificado para ser utilizada.",
 	EMAIL_MISMATCH_SOCIAL_LINK: "Os e-mails precisam ser iguais para vincular na mesma conta.",
 	LINK_SOCIAL_ACCOUNT_FAILED: "Erro ao vincular contas. Tente novamente!",
+	TOKEN_NO_LONGER_VALID: "Você foi desconectado, faça login novamente!",
 
 	// Internal User Operation Failures
 	AUTH_QUERY_USER_FAILED: "Erro interno ao consultar dados cadastrais."

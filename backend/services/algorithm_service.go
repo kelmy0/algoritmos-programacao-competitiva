@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 	"log/slog"
-	"time"
+	"slices"
 	"unicode/utf8"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -28,11 +28,6 @@ type AlgorithmUserRepository interface {
 type AlgorithmService struct {
 	AlgoRepo AlgorithmRepository
 	UserRepo AlgorithmUserRepository
-}
-
-type AlgorithmUser struct {
-	Id  string
-	Iat time.Time
 }
 
 func NewAlgorithmService(algoRepo AlgorithmRepository, userRepo AlgorithmUserRepository) *AlgorithmService {
@@ -70,8 +65,8 @@ func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId 
 	return algo, nil
 }
 
-func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, u AlgorithmUser) (*models.Algorithm, error) {
-	user, err := s.UserRepo.GetUserByIdForAuth(ctx, u.Id)
+func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, userId string) (*models.Algorithm, error) {
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
 
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
@@ -81,12 +76,12 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 		return nil, models.ErrUserNotFound
 	}
 
-	if user.LastLogoutAll != nil && user.LastLogoutAll.Unix() > u.Iat.Unix() {
-		return nil, models.ErrTokenNoLongerValid
-	}
-
 	if !user.Enable {
 		return nil, models.ErrUserNotEnabled
+	}
+
+	if !slices.Contains(user.Permissions, "create:algorithms") {
+		return nil, models.ErrAlgorithmNoCreatePermission
 	}
 
 	name, category, content, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)

@@ -1,7 +1,7 @@
-import { Marked } from 'marked';
-import { markedHighlight } from 'marked-highlight';
-import { createHighlighter, type Highlighter } from 'shiki';
-import DOMPurify from 'dompurify';
+import { Marked } from "marked";
+import { markedHighlight } from "marked-highlight";
+import { createHighlighter, type Highlighter } from "shiki";
+import DOMPurify from "isomorphic-dompurify";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 let markedInstance: Marked | null = null;
@@ -9,8 +9,8 @@ let markedInstance: Marked | null = null;
 export async function getHighlighter(): Promise<Highlighter> {
 	if (!highlighterPromise) {
 		highlighterPromise = createHighlighter({
-			themes: ['github-dark'],
-			langs: ['cpp', 'python']
+			themes: ["github-dark"],
+			langs: ["cpp", "python"]
 		});
 	}
 	return highlighterPromise;
@@ -26,11 +26,11 @@ export async function getMarked(): Promise<Marked> {
 			async: true,
 			highlight(code, lang) {
 				const loadedLangs = highlighter.getLoadedLanguages();
-				const language = loadedLangs.includes(lang) ? lang : 'text';
+				const language = loadedLangs.includes(lang) ? lang : "text";
 
 				return highlighter.codeToHtml(code, {
 					lang: language,
-					theme: 'github-dark'
+					theme: "github-dark"
 				});
 			}
 		})
@@ -40,9 +40,9 @@ export async function getMarked(): Promise<Marked> {
 }
 
 export async function renderMarkdown(content: string): Promise<string> {
-	if (!content.trim()) return '';
+	if (!content.trim()) return "";
 	const marked = await getMarked();
 	const rawHtml = await marked.parse(content);
-	const sanitizedHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
+	const sanitizedHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ["target"] });
 	return sanitizedHtml;
 }

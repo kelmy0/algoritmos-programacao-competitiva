@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"log/slog"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"github.com/pquerna/otp/totp"
+	"github.com/redis/go-redis/v9"
 )
 
 type AuthRepository interface {
@@ -31,6 +33,7 @@ type AuthUserRepository interface {
 type AuthService struct {
 	AuthRepo             AuthRepository
 	UserRepo             AuthUserRepository
+	RedisClient          *redis.Client
 	JwtAccessSecret      string
 	JwtRefreshSecret     string
 	JwtAccessExpiration  int
@@ -44,10 +47,11 @@ type AuthResult struct {
 	RefreshToken  string
 }
 
-func NewAuthService(authRepo AuthRepository, userRepo AuthUserRepository, jwtAccessSecret, jwtRefreshSecret, appName, encryptSecret string, jwtAccessExpiration int, jwtRefreshExpiration int) *AuthService {
+func NewAuthService(authRepo AuthRepository, userRepo AuthUserRepository, redisClient *redis.Client, jwtAccessSecret, jwtRefreshSecret, appName, encryptSecret string, jwtAccessExpiration int, jwtRefreshExpiration int) *AuthService {
 	return &AuthService{
 		AuthRepo:             authRepo,
 		UserRepo:             userRepo,
+		RedisClient:          redisClient,
 		JwtAccessSecret:      jwtAccessSecret,
 		JwtRefreshSecret:     jwtRefreshSecret,
 		AppName:              appName,
@@ -190,7 +194,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 	return accessToken, nil
 }
 
-func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString string) error {
+func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString, accessJti string, accessExpiresAt time.Time) error {
 	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
@@ -198,28 +202,67 @@ func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString str
 
 	err = s.AuthRepo.DeleteRefreshTokenById(ctx, userId, claims.ID)
 	if err != nil {
-		log.Printf("[Logout] failed to delete session token %s for user %s: %v", claims.ID, userId, err)
+		slog.ErrorContext(ctx, "failed to delete session token",
+			slog.String("token_id", claims.ID),
+			slog.String("user_id", userId),
+			slog.Any("error", err),
+		)
 		return models.ErrUnexpectedLogout
 	}
+
+	ttl := time.Until(accessExpiresAt)
+	if ttl > 0 {
+		err = s.RedisClient.Set(ctx, "blacklist:jti:"+accessJti, "revoked", ttl).Err()
+		if err != nil {
+			slog.WarnContext(ctx, "failed to blacklist access token in redis",
+				slog.String("access_jti", accessJti),
+				slog.String("user_id", userId),
+				slog.Any("error", err),
+			)
+		}
+	}
+
 	return nil
 }
 
-func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString string) error {
+func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString, accessJti string) error {
 	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
 	}
 
 	if claims.Subject != userId {
-		log.Printf("[LogoutAll] Security mismatch. Subject in token (%s) does not match parameter user (%s)", claims.Subject, userId)
+		slog.WarnContext(ctx, "security mismatch during logout all",
+			slog.String("token_subject", claims.Subject),
+			slog.String("user_id_param", userId),
+		)
 		return models.ErrTokenMetadataMisMatch
 	}
 
 	err = s.AuthRepo.DeleteAllRefreshToken(ctx, userId, claims.ID)
 	if err != nil {
-		log.Printf("[LogoutAll] database error revoking all tokens for user %s: %v", userId, err)
+		slog.ErrorContext(ctx, "database error revoking all tokens for user",
+			slog.String("user_id", userId),
+			slog.Any("error", err),
+		)
 		return models.ErrUnexpectedLogout
 	}
+
+	nowTimestamp := time.Now().Unix()
+	redisTTL := time.Duration(s.JwtAccessExpiration) * time.Minute
+
+	redisValue := fmt.Sprintf("%d:%s", nowTimestamp, accessJti)
+	err = s.RedisClient.Set(ctx, "logout_all:"+userId, redisValue, redisTTL).Err()
+
+	err = s.RedisClient.Set(ctx, "logout_all:"+userId, nowTimestamp, redisTTL).Err()
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set logout_all timestamp in redis",
+			slog.String("user_id", userId),
+			slog.Any("error", err),
+		)
+		return models.ErrUnexpectedLogout
+	}
+
 	return nil
 }
 

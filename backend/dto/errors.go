@@ -32,6 +32,7 @@ const (
 	CodePageNotFound           = "PAGE_NOT_FOUND"
 	CodeTooManyRequests        = "TOO_MANY_REQUESTS"
 	CodeUnverifiedGithubEmail  = "GITHUB_EMAIL_UNVERIFIED"
+	CodeTokenNolongerValid     = "TOKEN_NO_LONGER_VALID"
 )
 
 const (

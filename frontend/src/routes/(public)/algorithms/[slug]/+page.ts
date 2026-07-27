@@ -1,9 +1,9 @@
-import { PUBLIC_API_URL } from '$env/static/public';
-import { normalizeApiError } from '$lib/utils/errors';
-import { error } from '@sveltejs/kit';
-import type { PageLoad } from './$types';
-import { ALGORITHMS_ERRORS } from '../algorithms';
-import { renderMarkdown } from '$lib/services/markdown';
+import { PUBLIC_API_URL } from "$env/static/public";
+import { normalizeApiError } from "$lib/utils/errors";
+import { error } from "@sveltejs/kit";
+import type { PageLoad } from "./$types";
+import { ALGORITHMS_ERRORS } from "../algorithms";
+import { renderMarkdown } from "$lib/services/markdown";
 
 export const load: PageLoad = async ({ fetch, params }) => {
 	const { slug } = params;
@@ -16,7 +16,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
 
 			const normalized = normalizeApiError(
 				rawError,
-				'Não foi possível carregar o algoritmo solicitado.',
+				"Não foi possível carregar o algoritmo solicitado.",
 				ALGORITHMS_ERRORS
 			);
 
@@ -25,7 +25,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
 
 		const { data: algorithm } = await response.json();
 
-		const contentHtml = await renderMarkdown(algorithm.Content || '');
+		const contentHtml = await renderMarkdown(algorithm.Content || "");
 
 		return {
 			algorithm: {
@@ -34,13 +34,13 @@ export const load: PageLoad = async ({ fetch, params }) => {
 			}
 		};
 	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) {
+		if (err && typeof err === "object" && "status" in err) {
 			throw err;
 		}
-
+		console.log(err);
 		const normalized = normalizeApiError(
 			err,
-			'Não foi possível conectar ao servidor. Verifique sua conexão.',
+			"Não foi possível conectar ao servidor. Verifique sua conexão.",
 			ALGORITHMS_ERRORS
 		);
 

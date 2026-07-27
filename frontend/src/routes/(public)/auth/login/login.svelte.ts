@@ -1,26 +1,27 @@
-import { goto, invalidateAll } from '$app/navigation';
-import { page } from '$app/state';
-import type { ApiError } from '$lib/types/api';
-import { normalizeApiError } from '$lib/utils/errors';
-import { isValidEmail } from '../sign-up/sign_up.svelte';
+import { goto } from "$app/navigation";
+import { page } from "$app/state";
+import { customFetch } from "$lib/api/client";
+import type { ApiError } from "$lib/types/api";
+import { normalizeApiError } from "$lib/utils/errors";
+import { isValidEmail } from "../sign-up/sign_up.svelte";
 
-interface LoginResponse {
-	access_token?: string;
+export interface LoginServerResponse {
+	access_token: boolean;
 	requires_2fa: boolean;
 	pre_auth_token?: string;
 }
 
 export const AUTH_ERRORS: Record<string, string> = {
-	AUTH_INVALID_EMAIL_PASSWORD: 'E-mail ou senha incorretos. Verifique seus dados.',
+	AUTH_INVALID_EMAIL_PASSWORD: "E-mail ou senha incorretos. Verifique seus dados.",
 	USER_ALREADY_EXISTS:
-		'Este e-mail já está cadastrado. Tente entrar por outro método ou use um email diferente.',
+		"Este e-mail já está cadastrado. Tente entrar por outro método ou use um email diferente.",
 	SOCIAL_ACCOUNT_ALREADY_LINKED:
-		'Este email já esta ligado a outra conta. Tente entrar por outro método ou use um email diferente. '
+		"Este email já esta ligado a outra conta. Tente entrar por outro método ou use um email diferente. "
 };
 
 export class LoginController {
-	email = $state('');
-	password = $state('');
+	email = $state("");
+	password = $state("");
 	isLoading = $state(false);
 	apiError = $state<ApiError | null>(null);
 	showPassword = $state(false);
@@ -62,46 +63,47 @@ export class LoginController {
 		this.isLoading = true;
 		this.apiError = null;
 
-		try {
-			const response = await fetch('/api/auth/login', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+		const { data, error } = await customFetch<LoginServerResponse>(
+			window.fetch,
+			"/api/auth/login",
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					email: this.email,
 					password: this.password
 				})
-			});
+			},
+			AUTH_ERRORS
+		);
 
-			if (!response.ok) {
-				const errorData: ApiError = await response.json().catch(() => ({}));
-				this.apiError = normalizeApiError(errorData, 'Falha no login.', AUTH_ERRORS);
-				return;
-			}
+		this.isLoading = false;
+		if (error) {
+			this.apiError = error;
+			return;
+		}
 
-			const data: LoginResponse = await response.json();
+		if (!data) {
+			this.apiError = normalizeApiError(
+				"INTERNAL_SERVER_ERROR",
+				"Falha ao processar resposta do servidor.",
+				AUTH_ERRORS
+			);
+			return;
+		}
 
-			if (data.requires_2fa) {
-				goto(`/auth/verify-2fa?token=${data.pre_auth_token}`);
-				return;
-			}
+		if (data.requires_2fa) {
+			await goto(`/auth/verify-2fa?token=${data.pre_auth_token}`);
+			return;
+		}
 
-			if (data.access_token) {
-				await invalidateAll();
+		if (data.access_token) {
+			const redirectTo = page.url.searchParams.get("redirectTo");
+			const isSafeRedirect =
+				redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//");
+			const targetUrl = isSafeRedirect ? redirectTo : "/";
 
-				const redirectTo = page.url.searchParams.get('redirectTo');
-				const isSafeRedirect =
-					redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
-
-				if (isSafeRedirect) {
-					await goto(redirectTo);
-				} else {
-					await goto('/');
-				}
-			}
-		} catch (err) {
-			this.apiError = normalizeApiError(err, 'Falha ao se conectar com o servidor.', AUTH_ERRORS);
-		} finally {
-			this.isLoading = false;
+			await goto(targetUrl, { invalidateAll: true });
 		}
 	}
 }

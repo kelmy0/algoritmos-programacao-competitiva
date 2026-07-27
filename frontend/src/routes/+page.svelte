@@ -1,20 +1,20 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();
 
 	const difficultyStyles: Record<string, string> = {
-		beginner: 'bg-emerald-950 text-emerald-300 border-emerald-800',
-		intermediate: 'bg-amber-950 text-amber-300 border-amber-800',
-		advanced: 'bg-orange-950 text-orange-300 border-orange-800',
-		expert: 'bg-red-950 text-red-300 border-red-800'
+		beginner: "bg-emerald-950 text-emerald-300 border-emerald-800",
+		intermediate: "bg-amber-950 text-amber-300 border-amber-800",
+		advanced: "bg-orange-950 text-orange-300 border-orange-800",
+		expert: "bg-red-950 text-red-300 border-red-800"
 	};
 
 	const difficultyLabels: Record<string, string> = {
-		beginner: 'Iniciante',
-		intermediate: 'Intermediário',
-		advanced: 'Avançado',
-		expert: 'Especialista'
+		beginner: "Iniciante",
+		intermediate: "Intermediário",
+		advanced: "Avançado",
+		expert: "Especialista"
 	};
 </script>
 

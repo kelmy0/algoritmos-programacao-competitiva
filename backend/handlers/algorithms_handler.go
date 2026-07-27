@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -78,24 +77,6 @@ func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
 		return
 	}
 
-	rawIat, exists := c.Get("iat")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeMissingTokenIatContext,
-			dto.MsgMissingDataFromContext,
-		))
-		return
-	}
-
-	iat, ok := rawIat.(time.Time)
-	if !ok || iat.IsZero() {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError,
-			dto.MsgUnexpectedError,
-		))
-		return
-	}
-
 	var requestBody dto.PostAlgorithmRequest
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
@@ -105,12 +86,7 @@ func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
 		return
 	}
 
-	userBody := services.AlgorithmUser{
-		Id:  id,
-		Iat: iat,
-	}
-
-	algorithm, err := h.Service.PostAlgorithm(c.Request.Context(), requestBody, userBody)
+	algorithm, err := h.Service.PostAlgorithm(c.Request.Context(), requestBody, id)
 	if err != nil {
 		HandleAPIError(c, err)
 		return

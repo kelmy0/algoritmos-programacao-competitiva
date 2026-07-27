@@ -29,6 +29,7 @@ var (
 	ErrPasswordNotSet              = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORD_NOT_SET", Message: "Password not set before."}
 	ErrPasswordSet                 = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORD_ALREADY_SET", Message: "Password already set before."}
 	ErrAlgorithmNotFound           = &AppError{StatusCode: http.StatusNotFound, Code: "ALGORITHM_NOT_FOUND", Message: "Algorithm not found."}
+	ErrAlgorithmNoCreatePermission = &AppError{StatusCode: http.StatusForbidden, Code: "ALGORITHM_NO_PERMISSION_CREATE", Message: "You don't have permission to create algorithms."}
 	ErrFailQueryingAlgorithm       = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_QUERY_FAILED", Message: "Failed to query algorithm."}
 	ErrFailPostingAlgorithm        = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_POST_FAILED", Message: "Failed to post algorithm."}
 	ErrInvalidAlgorithmName        = &AppError{StatusCode: http.StatusBadRequest, Code: "ALGORITHM_INVALID_NAME", Message: "Invalid algorithm name."}
@@ -66,7 +67,7 @@ var (
 	ErrFailedToSendEmail           = &AppError{StatusCode: http.StatusInternalServerError, Code: "EMAIL_SEND_FAILED", Message: "Failed to send email."}
 	ErrSocialAccountAlreadyLinked  = &AppError{StatusCode: http.StatusConflict, Code: "SOCIAL_ACCOUNT_ALREADY_LINKED", Message: "This social account is already linked to another account."}
 	ErrEmailMismatchForSocialLink  = &AppError{StatusCode: http.StatusUnauthorized, Code: "EMAIL_MISMATCH_SOCIAL_LINK", Message: "Email mismatch during social link attempt."}
-	ErrTokenNoLongerValid          = &AppError{StatusCode: http.StatusUnauthorized, Code: "TOKEN_NO_LONGER_VALID", Message: "Access token is no longer valid."}
+	//ErrTokenNoLongerValid          = &AppError{StatusCode: http.StatusUnauthorized, Code: "TOKEN_NO_LONGER_VALID", Message: "Access token is no longer valid."}
 )
 
 var ErrPasswordChangeButNotLogout = errors.New("password changed, but failed to log out other devices.")

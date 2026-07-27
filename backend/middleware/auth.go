@@ -2,14 +2,16 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
+	"github.com/redis/go-redis/v9"
 )
 
-func AuthMiddleware(secretKey, issuer string) gin.HandlerFunc {
+func AuthMiddleware(secretKey, issuer string, redisClient *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -52,12 +54,67 @@ func AuthMiddleware(secretKey, issuer string) gin.HandlerFunc {
 			return
 		}
 
+		ctx := c.Request.Context()
+
+		if claims.ID != "" {
+			blacklisted, err := redisClient.Exists(ctx, "blacklist:jti:"+claims.ID).Result()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+					dto.CodeInternalError,
+					"Failed to verify token revocation status.",
+				))
+				c.Abort()
+				return
+			}
+
+			if blacklisted > 0 {
+				c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+					dto.CodeInvalidAccessToken,
+					"Token has been revoked.",
+				))
+				c.Abort()
+				return
+			}
+		}
+
+		logoutAllKey := "logout_all:" + claims.Subject
+		val, err := redisClient.Get(ctx, logoutAllKey).Result()
+
+		if err != nil && err != redis.Nil {
+			c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+				dto.CodeInternalError,
+				"Failed to verify session status.",
+			))
+			c.Abort()
+			return
+		}
+
+		if err == nil && val != "" {
+			parts := strings.Split(val, ":")
+			logoutTimestamp, _ := strconv.ParseInt(parts[0], 10, 64)
+
+			allowedAccessJti := ""
+			if len(parts) > 1 {
+				allowedAccessJti = parts[1]
+			}
+
+			if claims.IssuedAt.Time.Unix() <= logoutTimestamp && claims.ID != allowedAccessJti {
+				c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+					dto.CodeTokenNolongerValid,
+					"Session expired due to logout on other devices.",
+				))
+				c.Abort()
+				return
+			}
+		}
+
 		c.Set("userId", claims.Subject)
 		c.Set("permissions", claims.Permissions)
 		c.Set("username", claims.Username)
 		c.Set("email", claims.Email)
 		c.Set("isEmployee", claims.IsEmployee)
-		c.Set("iat", claims.IssuedAt.Time)
+		c.Set("accessJti", claims.ID)
+		c.Set("accessExpiresAt", claims.ExpiresAt.Time)
 		c.Next()
 	}
 }
