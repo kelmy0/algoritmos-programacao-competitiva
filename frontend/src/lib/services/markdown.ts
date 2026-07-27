@@ -1,6 +1,7 @@
 import { Marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import { createHighlighter, type Highlighter } from 'shiki';
+import DOMPurify from 'dompurify';
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 let markedInstance: Marked | null = null;
@@ -41,5 +42,7 @@ export async function getMarked(): Promise<Marked> {
 export async function renderMarkdown(content: string): Promise<string> {
 	if (!content.trim()) return '';
 	const marked = await getMarked();
-	return await marked.parse(content);
+	const rawHtml = await marked.parse(content);
+	const sanitizedHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
+	return sanitizedHtml;
 }

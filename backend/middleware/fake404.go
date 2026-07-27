@@ -9,7 +9,7 @@ import (
 
 func Fake404Middleware(expectedHash string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		clientHash := c.GetHeader("X-Admin-Secret")
+		clientHash := c.GetHeader("x-admin-secret")
 		if clientHash != expectedHash {
 			c.JSON(http.StatusNotFound, dto.NewErrorResponse(
 				dto.CodePageNotFound,

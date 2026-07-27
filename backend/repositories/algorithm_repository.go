@@ -80,7 +80,7 @@ func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.New
 	query := `
 		INSERT INTO algorithms (public_id, slug, name, category, difficulty, content) VALUES
 		($1, $2, $3, $4, $5, $6)
-		RETURNING id, public_id, slug, name, category, difficulty, content, created_at, updated_at;
+		RETURNING id, public_id, slug, name, category, difficulty;
 	`
 
 	var algo models.Algorithm
@@ -88,7 +88,7 @@ func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.New
 		data.Name, data.Category, data.Difficulty, data.Content,
 	).Scan(
 		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
-		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt)
+		&algo.Difficulty)
 
 	if err != nil {
 		return nil, err

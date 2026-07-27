@@ -1,17 +1,9 @@
-import { PUBLIC_API_URL } from '$env/static/public';
-import { normalizeApiError } from '$lib/utils/errors';
-import { error } from '@sveltejs/kit';
-import type { PageLoad } from './$types';
-import type { ApiError } from '$lib/types/api';
-
-interface Algorithm {
-	Id: string;
-	PublicId: string;
-	Slug: string;
-	Name: string;
-	Category: string;
-	Difficulty: string;
-}
+import { PUBLIC_API_URL } from "$env/static/public";
+import { normalizeApiError } from "$lib/utils/errors";
+import { error } from "@sveltejs/kit";
+import type { PageLoad } from "./$types";
+import type { ApiError } from "$lib/types/api";
+import type { Algorithm } from "$lib/types/algorithm";
 
 interface ApiResponse {
 	page: number;
@@ -27,7 +19,7 @@ export async function load({ fetch }: Parameters<PageLoad>[0]) {
 			const errorData: ApiError = await response.json().catch(() => ({}));
 			const apiError = normalizeApiError(
 				errorData,
-				'Não foi possível carregar a lista de algoritmos.'
+				"Não foi possível carregar a lista de algoritmos."
 			);
 			error(response.status, {
 				message: apiError.message,
@@ -45,11 +37,11 @@ export async function load({ fetch }: Parameters<PageLoad>[0]) {
 			}
 		};
 	} catch (err) {
-		if (typeof err === 'object' && err !== null && 'status' in err) {
+		if (typeof err === "object" && err !== null && "status" in err) {
 			throw err;
 		}
 
-		const apiError = normalizeApiError(err, 'Erro ao conectar ao servidor.');
+		const apiError = normalizeApiError(err, "Erro ao conectar ao servidor.");
 
 		error(500, {
 			message: apiError.message,

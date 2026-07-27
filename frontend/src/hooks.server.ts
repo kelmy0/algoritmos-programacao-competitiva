@@ -1,4 +1,4 @@
-import type { Handle, HandleServerError } from '@sveltejs/kit';
+import { json, redirect, type Handle, type HandleServerError } from '@sveltejs/kit';
 import { PUBLIC_API_URL } from '$env/static/public';
 import { jwtDecode } from 'jwt-decode';
 import { normalizeApiError } from '$lib/utils/errors';
@@ -14,7 +14,7 @@ interface JwtPayload {
 	exp?: number;
 }
 
-export async function handle({ event, resolve }: Parameters<Handle>[0]) {
+export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 	event.locals.accessToken = null;
 
@@ -46,11 +46,7 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 		}
 	}
 
-	if (isTokenValid && event.locals.user) {
-		return await resolve(event);
-	}
-
-	if (refreshToken) {
+	if (!isTokenValid && refreshToken) {
 		const cookieHeader = event.request.headers.get('cookie') || '';
 		const clientIp = event.getClientAddress();
 
@@ -86,6 +82,20 @@ export async function handle({ event, resolve }: Parameters<Handle>[0]) {
 			deleteAuthCookie(event.cookies, 'access_token');
 			deleteAuthCookie(event.cookies, 'refresh_token');
 		}
+	}
+
+	const user = event.locals.user;
+	const isProtectedRoute = event.route.id?.includes('(protected)');
+	const isApiRoute = event.url.pathname.startsWith('/api');
+
+	if (isProtectedRoute && !user) {
+		if (isApiRoute) {
+			const normalizedError = normalizeApiError("INVALID_ACCESS_TOKEN", 'Seu token de acesso é inválido ou expirou.')
+			return json(normalizedError, { status: 401 });
+		}
+
+		const redirectTo = event.url.pathname + event.url.search;
+		redirect(303, `/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
 	}
 
 	return await resolve(event);

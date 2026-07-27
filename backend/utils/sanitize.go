@@ -5,7 +5,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -31,12 +30,6 @@ func SanitizeTitle(title string) string {
 	clean := TitleRegex.ReplaceAllString(title, "")
 	fields := strings.Fields(clean)
 	return strings.Join(fields, " ")
-}
-
-func SanitizeMarkDown(text string) string {
-	p := bluemonday.UGCPolicy()
-	p.AllowAttrs("class").OnElements("code")
-	return p.Sanitize(text)
 }
 
 func NormalizeUsername(text string) string {

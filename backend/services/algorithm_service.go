@@ -82,7 +82,7 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 	res, err := s.repo.PostAlgorithm(ctx, *algorithm)
 	if err != nil {
 		log.Printf("[AlgorithmService.PostAlgorithm] repository failed to save algorithm (slug: %s): %v", algorithm.Slug, err)
-		return nil, models.ErrFailQueryingAlgorithm
+		return nil, models.ErrFailPostingAlgorithm
 	}
 	return res, nil
 }
@@ -131,13 +131,18 @@ func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorit
 func validateAndSanitizeAlgorithmFields(name, category, content string) (string, string, string, error) {
 	nameSanitized := utils.SanitizeTitle(name)
 	categorySanitized := utils.SanitizeTitle(category)
-	contentSanitized := utils.SanitizeMarkDown(content)
+	contentSanitized := content
 
-	if nameSanitized == "" || contentSanitized == "" || categorySanitized == "" ||
-		utf8.RuneCountInString(nameSanitized) < 3 ||
-		utf8.RuneCountInString(categorySanitized) < 3 ||
-		utf8.RuneCountInString(contentSanitized) < 10 {
-		return "", "", "", models.ErrInvalidNameCategoryContent
+	if nameSanitized == "" || utf8.RuneCountInString(nameSanitized) < 3 {
+		return "", "", "", models.ErrInvalidAlgorithmName
+	}
+
+	if categorySanitized == "" || utf8.RuneCountInString(categorySanitized) < 3 {
+		return "", "", "", models.ErrInvalidAlgorithmCategory
+	}
+
+	if contentSanitized == "" || utf8.RuneCountInString(categorySanitized) < 10 {
+		return "", "", "", models.ErrInvalidAlgorithmContent
 	}
 
 	return nameSanitized, categorySanitized, contentSanitized, nil

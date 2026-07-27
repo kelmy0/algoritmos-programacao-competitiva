@@ -30,7 +30,10 @@ var (
 	ErrPasswordSet                 = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORD_ALREADY_SET", Message: "Password already set before."}
 	ErrAlgorithmNotFound           = &AppError{StatusCode: http.StatusNotFound, Code: "ALGORITHM_NOT_FOUND", Message: "Algorithm not found."}
 	ErrFailQueryingAlgorithm       = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_QUERY_FAILED", Message: "Failed to query algorithm."}
-	ErrInvalidNameCategoryContent  = &AppError{StatusCode: http.StatusBadRequest, Code: "ALGORITHM_INVALID_NAME_CATEGORY_CONTENT", Message: "Invalid name, content or category."}
+	ErrFailPostingAlgorithm        = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_POST_FAILED", Message: "Failed to post algorithm."}
+	ErrInvalidAlgorithmName        = &AppError{StatusCode: http.StatusBadRequest, Code: "ALGORITHM_INVALID_NAME", Message: "Invalid algorithm name."}
+	ErrInvalidAlgorithmContent     = &AppError{StatusCode: http.StatusBadRequest, Code: "ALGORITHM_INVALID_CONTENT", Message: "Invalid algorithm content."}
+	ErrInvalidAlgorithmCategory    = &AppError{StatusCode: http.StatusBadRequest, Code: "ALGORITHM_INVALID_CATEGORY", Message: "Invalid algorithm category."}
 	ErrFailGeneratePublicId        = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_GENERATE_PUBLIC_ID_FAILED", Message: "Failed to generate public ID."}
 	ErrFailQueryUser               = &AppError{StatusCode: http.StatusInternalServerError, Code: "AUTH_QUERY_USER_FAILED", Message: "Failed to query the user in the database."}
 	ErrRegisterSocialUser          = &AppError{StatusCode: http.StatusInternalServerError, Code: "USER_REGISTER_SOCIAL_FAILED", Message: "Failed to register social user."}
