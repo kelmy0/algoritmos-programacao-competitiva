@@ -2,50 +2,12 @@
 	import "./layout.css";
 	import favicon from "$lib/assets/favicon.svg";
 	import { page, navigating } from "$app/state";
-	import { AuthService } from "$lib/services/auth_service";
 	import { fade } from "svelte/transition";
-	import { onMount } from "svelte";
 
 	let { children } = $props();
 
 	let isSidebarOpen = $state(false);
 	let isProfileMenuOpen = $state(false);
-
-	let currentExpiresAt = $state<number | null>(null);
-
-	$effect(() => {
-		const newExpiresAt = page.data.expiresAt ?? null;
-
-		if (newExpiresAt !== currentExpiresAt) {
-			currentExpiresAt = newExpiresAt;
-
-			if (newExpiresAt) {
-				AuthService.startAutoRefreshTimer(newExpiresAt);
-			} else {
-				AuthService.clearAutoRefreshTimer();
-			}
-		}
-
-		return () => {
-			AuthService.clearAutoRefreshTimer();
-		};
-	});
-
-	onMount(() => {
-		function handleVisibilityChange() {
-			if (document.visibilityState === "visible" && page.data.expiresAt) {
-				const now = Date.now();
-				if (page.data.expiresAt - now <= 60000) {
-					AuthService.silentRefresh();
-				}
-			}
-		}
-
-		document.addEventListener("visibilitychange", handleVisibilityChange);
-		return () => {
-			document.removeEventListener("visibilitychange", handleVisibilityChange);
-		};
-	});
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === "Escape") {

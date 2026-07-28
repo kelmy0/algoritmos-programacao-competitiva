@@ -1,7 +1,9 @@
+import { page } from "$app/state";
 import { browser } from "$app/environment";
 import { goto, invalidateAll } from "$app/navigation";
 import type { ApiError } from "$lib/types/api";
 import { normalizeApiError } from "$lib/utils/errors";
+import { AuthService } from "$lib/services/auth_service";
 
 export async function customFetch<T>(
 	fetchImpl: typeof fetch,
@@ -10,6 +12,10 @@ export async function customFetch<T>(
 	localErrors?: Record<string, string>
 ): Promise<{ data: T | null; error: ApiError | null; status: number; headers: Headers }> {
 	try {
+		if (typeof window !== "undefined") {
+			await AuthService.ensureValidSession(fetchImpl, page.data?.expiresAt);
+		}
+
 		const response = await fetchImpl(url, options);
 
 		if (!response.ok) {
