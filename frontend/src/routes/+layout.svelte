@@ -1,25 +1,26 @@
 <script lang="ts">
-	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
-	import { page, navigating } from '$app/state';
-	import { AuthService } from '$lib/services/auth_service';
-	import { fade } from 'svelte/transition';
+	import "./layout.css";
+	import favicon from "$lib/assets/favicon.svg";
+	import { page, navigating } from "$app/state";
+	import { AuthService } from "$lib/services/auth_service";
+	import { fade } from "svelte/transition";
+	import { onMount } from "svelte";
 
 	let { children } = $props();
 
 	let isSidebarOpen = $state(false);
 	let isProfileMenuOpen = $state(false);
 
-	let currentToken = $state<string | null>(null);
+	let currentExpiresAt = $state<number | null>(null);
 
 	$effect(() => {
-		const newToken = page.data.accessToken ?? null;
+		const newExpiresAt = page.data.expiresAt ?? null;
 
-		if (newToken !== currentToken) {
-			currentToken = newToken;
+		if (newExpiresAt !== currentExpiresAt) {
+			currentExpiresAt = newExpiresAt;
 
-			if (newToken) {
-				AuthService.startAutoRefreshTimer(newToken);
+			if (newExpiresAt) {
+				AuthService.startAutoRefreshTimer(newExpiresAt);
 			} else {
 				AuthService.clearAutoRefreshTimer();
 			}
@@ -30,8 +31,24 @@
 		};
 	});
 
+	onMount(() => {
+		function handleVisibilityChange() {
+			if (document.visibilityState === "visible" && page.data.expiresAt) {
+				const now = Date.now();
+				if (page.data.expiresAt - now <= 60000) {
+					AuthService.silentRefresh();
+				}
+			}
+		}
+
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+		return () => {
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+		};
+	});
+
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
+		if (event.key === "Escape") {
 			closeMobileMenu();
 			closeProfileMenu();
 		}
@@ -131,12 +148,12 @@
 						aria-hidden="true"
 						class="w-8 h-8 rounded-lg bg-text-brand/10 border border-text-brand/30 text-text-brand flex items-center justify-center font-bold text-sm font-montserrat"
 					>
-						{page.data.user.username ? page.data.user.username[0].toUpperCase() : 'U'}
+						{page.data.user.username ? page.data.user.username[0].toUpperCase() : "U"}
 					</div>
 
 					<!-- Username -->
 					<span class="text-sm font-medium text-text-primary max-w-30 truncate">
-						{page.data.user.username ?? 'Usuário'}
+						{page.data.user.username ?? "Usuário"}
 					</span>
 
 					<!-- Dropdown indicator -->
@@ -171,7 +188,7 @@
 						<div class="px-4 py-2 border-b border-gray-800/80 mb-1">
 							<p class="text-xs text-gray-400">Conectado como</p>
 							<p class="font-semibold text-text-primary truncate">
-								{page.data.user.username ?? 'Usuário'}
+								{page.data.user.username ?? "Usuário"}
 							</p>
 						</div>
 
@@ -275,7 +292,7 @@
 				class="p-2 text-text-brand hover:bg-app-bg rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-text-brand"
 				aria-expanded={isSidebarOpen}
 				aria-controls="mobile-sidebar"
-				aria-label={isSidebarOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
+				aria-label={isSidebarOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
 			>
 				<svg
 					class="w-6 h-6"
@@ -319,7 +336,7 @@
 				<div class="space-y-1">
 					<a
 						href="/"
-						aria-current={page.url.pathname === '/' ? 'page' : undefined}
+						aria-current={page.url.pathname === "/" ? "page" : undefined}
 						class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
                 {page.url.pathname === '/'
 							? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
@@ -346,7 +363,7 @@
 					{#if page.data.user?.is_employee}
 						<a
 							href="/admin/dashboard"
-							aria-current={page.url.pathname === '/admin/dashboard' ? 'page' : undefined}
+							aria-current={page.url.pathname === "/admin/dashboard" ? "page" : undefined}
 							class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
                 {page.url.pathname === '/admin/dashboard'
 								? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
@@ -380,14 +397,14 @@
 								<div
 									class="w-8 h-8 rounded-full bg-text-brand/20 text-text-brand flex items-center justify-center font-bold text-sm"
 								>
-									{page.data.user.username?.[0]?.toUpperCase() ?? 'U'}
+									{page.data.user.username?.[0]?.toUpperCase() ?? "U"}
 								</div>
 								<div class="flex flex-col min-w-0">
 									<span class="text-sm font-medium text-text-primary truncate">
-										{page.data.user.username ?? 'Usuário'}
+										{page.data.user.username ?? "Usuário"}
 									</span>
 									<span class="text-xs text-gray-500 truncate">
-										{page.data.user.email ?? ''}
+										{page.data.user.email ?? ""}
 									</span>
 								</div>
 							</div>
@@ -499,7 +516,7 @@
 						<div class="space-y-1">
 							<a
 								href="/"
-								aria-current={page.url.pathname === '/' ? 'page' : undefined}
+								aria-current={page.url.pathname === "/" ? "page" : undefined}
 								class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
                         {page.url.pathname === '/'
 									? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
@@ -526,7 +543,7 @@
 							{#if page.data.user?.is_employee}
 								<a
 									href="/admin/dashboard"
-									aria-current={page.url.pathname === '/admin/dashboard' ? 'page' : undefined}
+									aria-current={page.url.pathname === "/admin/dashboard" ? "page" : undefined}
 									class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
                         {page.url.pathname === '/admin/dashboard'
 										? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
@@ -561,8 +578,8 @@
 						<div class="space-y-1">
 							<a
 								href="/?category=tecnologia"
-								aria-current={page.url.searchParams.get('category') === 'tecnologia'
-									? 'page'
+								aria-current={page.url.searchParams.get("category") === "tecnologia"
+									? "page"
 									: undefined}
 								class="flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition-all
             {page.url.searchParams.get('category') === 'tecnologia'
@@ -595,8 +612,8 @@
 
 							<a
 								href="/?category=design"
-								aria-current={page.url.searchParams.get('category') === 'design'
-									? 'page'
+								aria-current={page.url.searchParams.get("category") === "design"
+									? "page"
 									: undefined}
 								class="flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition-all
             {page.url.searchParams.get('category') === 'design'

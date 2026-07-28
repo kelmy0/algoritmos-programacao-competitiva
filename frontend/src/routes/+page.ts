@@ -2,8 +2,8 @@ import { PUBLIC_API_URL } from "$env/static/public";
 import { normalizeApiError } from "$lib/utils/errors";
 import { error } from "@sveltejs/kit";
 import type { PageLoad } from "./$types";
-import type { ApiError } from "$lib/types/api";
 import type { Algorithm } from "$lib/types/algorithm";
+import { customFetch } from "$lib/api/client";
 
 interface ApiResponse {
 	page: number;
@@ -11,41 +11,29 @@ interface ApiResponse {
 	data: Algorithm[];
 }
 
-export async function load({ fetch }: Parameters<PageLoad>[0]) {
-	try {
-		const response = await fetch(`${PUBLIC_API_URL}/api/algorithms`);
+export async function load({ fetch: svelteFetch }: Parameters<PageLoad>[0]) {
+	const {
+		data,
+		error: apiError,
+		status
+	} = await customFetch<ApiResponse>(svelteFetch, `${PUBLIC_API_URL}/api/algorithms`, {});
 
-		if (!response.ok) {
-			const errorData: ApiError = await response.json().catch(() => ({}));
-			const apiError = normalizeApiError(
-				errorData,
-				"Não foi possível carregar a lista de algoritmos."
-			);
-			error(response.status, {
-				message: apiError.message,
-				code: apiError.code
-			});
-		}
-
-		const result: ApiResponse = await response.json();
-
-		return {
-			algorithms: result.data,
-			pagination: {
-				page: result.page,
-				limit: result.limit
-			}
-		};
-	} catch (err) {
-		if (typeof err === "object" && err !== null && "status" in err) {
-			throw err;
-		}
-
-		const apiError = normalizeApiError(err, "Erro ao conectar ao servidor.");
-
-		error(500, {
-			message: apiError.message,
-			code: apiError.code
-		});
+	if (apiError) {
+		error(status, apiError);
 	}
+
+	if (!data || !data.data) {
+		error(
+			500,
+			normalizeApiError("INTERNAL_SERVER_ERROR", "Falha ao processar resposta do servidor.")
+		);
+	}
+
+	return {
+		algorithms: data.data,
+		pagination: {
+			page: data.page,
+			limit: data.limit
+		}
+	};
 }

@@ -4,5 +4,6 @@ export interface Algorithm {
 	Slug: string;
 	Name: string;
 	Category: string;
+	Content: string;
 	Difficulty: string;
 }

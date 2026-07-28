@@ -1,11 +1,7 @@
-import { jwtDecode } from 'jwt-decode';
-import type { ApiError } from '$lib/types/api';
-import { normalizeApiError } from '$lib/utils/errors';
-import { AUTH_ERRORS } from '../../routes/(public)/auth/login/login.svelte';
-
-interface JwtPayload {
-	exp?: number;
-}
+import type { ApiError } from "$lib/types/api";
+import { normalizeApiError } from "$lib/utils/errors";
+import { AUTH_ERRORS } from "../../routes/(public)/auth/login/login.svelte";
+import { customFetch } from "$lib/api/client";
 
 declare global {
 	interface Window {
@@ -14,25 +10,31 @@ declare global {
 	}
 }
 
+interface RefreshResponse {
+	accessToken: boolean;
+	expiresAt?: number;
+}
+
 export class AuthService {
 	private static currentError: ApiError | null = null;
+	private static activeExpiresAt: number | null = null;
 
 	static getLastError(): ApiError | null {
 		return this.currentError;
 	}
 
 	static clearAutoRefreshTimer(): void {
-		if (typeof window === 'undefined') return;
+		if (typeof window === "undefined") return;
 
+		this.activeExpiresAt = null;
 		if (window.__refreshTimeoutId) {
 			clearTimeout(window.__refreshTimeoutId);
 			window.__refreshTimeoutId = undefined;
 		}
 	}
 
-	static async silentRefresh(): Promise<boolean> {
-		if (typeof window === 'undefined') return false;
-
+	static async silentRefresh(fetchFn: typeof fetch = fetch): Promise<boolean> {
+		if (typeof window === "undefined") return false;
 		if (window.__activeRefreshPromise) {
 			return window.__activeRefreshPromise;
 		}
@@ -43,31 +45,26 @@ export class AuthService {
 			this.currentError = null;
 
 			try {
-				const response = await fetch('/api/auth/refresh', { method: 'POST' });
+				const { data, error } = await customFetch<RefreshResponse>(
+					window.fetch,
+					"/api/auth/refresh",
+					{ method: "POST" },
+					AUTH_ERRORS
+				);
 
-				if (!response.ok) {
-					const errorData: ApiError = await response.json().catch(() => null);
-					this.currentError = normalizeApiError(
-						errorData,
-						'Sua sessão expirou. Faça login novamente.',
-						AUTH_ERRORS
-					);
+				if (error || !data?.accessToken) {
+					this.currentError = error || normalizeApiError("UNAUTHORIZED", "Sessão expirada.");
 					return false;
 				}
 
-				const data = await response.json();
-				if (data.accessToken) {
-					console.log('Sessão renovada com sucesso');
-					AuthService.startAutoRefreshTimer(data.accessToken);
-				}
+				console.log("Sessão renovada com sucesso");
+
+				const newExpiresAt = data.expiresAt ?? Date.now() + 15 * 60 * 1000;
+				AuthService.startAutoRefreshTimer(newExpiresAt);
 
 				return true;
 			} catch (error) {
-				this.currentError = normalizeApiError(
-					error,
-					'Não foi possível conectar ao servidor.',
-					AUTH_ERRORS
-				);
+				this.currentError = normalizeApiError(error, "Não foi possível renovar a sessão.");
 				return false;
 			} finally {
 				window.__activeRefreshPromise = undefined;
@@ -77,33 +74,35 @@ export class AuthService {
 		return window.__activeRefreshPromise;
 	}
 
-	static startAutoRefreshTimer(accessToken: string): void {
-		if (typeof window === 'undefined') return;
+	static startAutoRefreshTimer(expiresAt?: number | null): void {
+		if (typeof window === "undefined") return;
+
+		if (!expiresAt) {
+			AuthService.clearAutoRefreshTimer();
+			return;
+		}
+
+		if (this.activeExpiresAt === expiresAt && window.__refreshTimeoutId) {
+			return;
+		}
 
 		AuthService.clearAutoRefreshTimer();
+		this.activeExpiresAt = expiresAt;
 
-		try {
-			const decoded = jwtDecode<JwtPayload>(accessToken);
-			if (!decoded.exp) return;
+		const nowInMs = Date.now();
+		const BUFFER_MS = 60 * 1000;
+		const timeUntilRefresh = expiresAt - nowInMs - BUFFER_MS;
 
-			const nowInMs = Date.now();
-			const expInMs = decoded.exp * 1000;
-
-			const BUFFER_MS = 60 * 1000;
-			const timeUntilRefresh = expInMs - nowInMs - BUFFER_MS;
-
-			if (timeUntilRefresh <= 0) {
+		if (timeUntilRefresh <= 0) {
+			console.log("Token próximo da expiração ou expirado. Disparando refresh imediato");
+			AuthService.silentRefresh();
+		} else {
+			console.log(
+				`Iniciada a contagem do refresh, faltam exatamente: ${Math.round(timeUntilRefresh / 1000)}s`
+			);
+			window.__refreshTimeoutId = setTimeout(() => {
 				AuthService.silentRefresh();
-			} else {
-				console.log(
-					`Iniciado a contagem do refresh, faltam: ${Math.round(timeUntilRefresh / 1000)}s`
-				);
-				window.__refreshTimeoutId = setTimeout(() => {
-					AuthService.silentRefresh();
-				}, timeUntilRefresh);
-			}
-		} catch (err) {
-			console.error('Erro ao agendar a renovação do token:', err);
+			}, timeUntilRefresh);
 		}
 	}
 }
