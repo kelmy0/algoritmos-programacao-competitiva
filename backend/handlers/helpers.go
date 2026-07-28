@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -19,4 +20,22 @@ func HandleAPIError(c *gin.Context, err error) {
 		dto.CodeInternalError,
 		dto.MsgUnexpectedError,
 	))
+}
+
+func GetAuthContext(c *gin.Context) (userId, email, accessId string, accessExpiresAt time.Time, ok bool) {
+	userId = c.GetString("userId")
+	accessId = c.GetString("accessId")
+	accessExpiresAt = c.GetTime("accessExpiresAt")
+	email = c.GetString("email")
+
+	if userId == "" || email == "" || accessId == "" || accessExpiresAt.IsZero() {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.CodeMissingUserIdContext,
+			dto.MsgMissingDataFromContext,
+		))
+		c.Abort()
+		return "", "", "", time.Time{}, false
+	}
+
+	return userId, email, accessId, accessExpiresAt, true
 }

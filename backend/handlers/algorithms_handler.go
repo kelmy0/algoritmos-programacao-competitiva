@@ -58,22 +58,8 @@ func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 }
 
 func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
-	userId, exists := c.Get("userId")
-
-	if !exists {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeMissingUserIdContext,
-			dto.MsgMissingDataFromContext,
-		))
-		return
-	}
-
-	id, ok := userId.(string)
+	id, _, _, _, ok := GetAuthContext(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError,
-			dto.MsgUnexpectedError,
-		))
 		return
 	}
 

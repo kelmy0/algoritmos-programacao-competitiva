@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 )
 
 type AuthHandler struct {
@@ -89,7 +88,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	id, accessJti, accessExpiresAt, ok := utils.GetAuthContext(c)
+	id, _, accessJti, accessExpiresAt, ok := GetAuthContext(c)
 	if !ok {
 		return
 	}
@@ -116,7 +115,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 func (h *AuthHandler) LogoutAll(c *gin.Context) {
-	id, accessJti, _, ok := utils.GetAuthContext(c)
+	id, _, accessJti, _, ok := GetAuthContext(c)
 	if !ok {
 		return
 	}

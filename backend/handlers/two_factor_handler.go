@@ -17,24 +17,9 @@ func NewTwoFactorHandler(service *services.TwoFactorService) *TwoFactorHandler {
 }
 
 func (h *TwoFactorHandler) Generate2FA(c *gin.Context) {
-	userIdContext, existsId := c.Get("userId")
-	userEmailContext, existsEmail := c.Get("email")
+	id, email, _, _, ok := GetAuthContext(c)
 
-	if !existsId || !existsEmail {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeMissingUserIdContext,
-			dto.MsgMissingDataFromContext,
-		))
-		return
-	}
-
-	id, okId := userIdContext.(string)
-	email, okEmail := userEmailContext.(string)
-	if !okId || !okEmail {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError,
-			dto.MsgUnexpectedError,
-		))
+	if !ok {
 		return
 	}
 
@@ -48,21 +33,9 @@ func (h *TwoFactorHandler) Generate2FA(c *gin.Context) {
 }
 
 func (h *TwoFactorHandler) Enable2FA(c *gin.Context) {
-	userIdContext, exists := c.Get("userId")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeMissingUserIdContext,
-			dto.MsgMissingDataFromContext,
-		))
-		return
-	}
+	id, _, _, _, ok := GetAuthContext(c)
 
-	id, ok := userIdContext.(string)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError,
-			dto.MsgUnexpectedError,
-		))
 		return
 	}
 
@@ -86,21 +59,9 @@ func (h *TwoFactorHandler) Enable2FA(c *gin.Context) {
 }
 
 func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
-	userIdContext, exists := c.Get("userId")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeMissingUserIdContext,
-			dto.MsgMissingDataFromContext,
-		))
-		return
-	}
+	id, _, _, _, ok := GetAuthContext(c)
 
-	id, ok := userIdContext.(string)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError,
-			dto.MsgUnexpectedError,
-		))
 		return
 	}
 

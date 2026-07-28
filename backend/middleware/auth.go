@@ -113,7 +113,7 @@ func AuthMiddleware(secretKey, issuer string, redisClient *redis.Client) gin.Han
 		c.Set("username", claims.Username)
 		c.Set("email", claims.Email)
 		c.Set("isEmployee", claims.IsEmployee)
-		c.Set("accessJti", claims.ID)
+		c.Set("accessId", claims.ID)
 		c.Set("accessExpiresAt", claims.ExpiresAt.Time)
 		c.Next()
 	}
