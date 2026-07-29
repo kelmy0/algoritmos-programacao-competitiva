@@ -5,5 +5,6 @@ export interface Algorithm {
 	Name: string;
 	Category: string;
 	Content: string;
+	Status: string;
 	Difficulty: string;
 }

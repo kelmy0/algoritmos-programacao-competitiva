@@ -2,7 +2,7 @@ import { json, redirect, type Handle, type HandleServerError } from "@sveltejs/k
 import { PUBLIC_API_URL } from "$env/static/public";
 import { jwtDecode } from "jwt-decode";
 import { normalizeApiError } from "$lib/utils/errors";
-import { setAuthCookie } from "$lib/server/cookies";
+import { setAuthCookie, setIdleCookie } from "$lib/server/cookies";
 import { deleteAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 
@@ -101,6 +101,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 		const redirectTo = event.url.pathname + event.url.search;
 		redirect(303, `/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+	}
+
+	const adminSecret = event.cookies.get("admin_secret");
+
+	if (adminSecret) {
+		setIdleCookie(event.cookies, "admin_secret", adminSecret, 60);
 	}
 
 	return await resolve(event);

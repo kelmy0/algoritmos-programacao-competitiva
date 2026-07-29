@@ -138,9 +138,12 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			admin.Use(standardApiLimiter)
 
 			admin.GET("/ping", handlers.AnswerPing)
+
+			admin.GET("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.GetAdminAlgorithms)
+			admin.GET("/algorithms/:slugAndId", middleware.PermissionMiddleware("create:algorithms"), algoHandler.GetAdminAlgorithm)
 			admin.POST("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.PostAlgorithm)
-			admin.DELETE("/algorithms/:slugAndId", middleware.PermissionMiddleware("delete:algorithms"), algoHandler.DeleteAlgorithm)
-			admin.PUT("/algorithms", middleware.PermissionMiddleware("update:algorithms"), algoHandler.PutAlgorithm)
+			admin.DELETE("/algorithms/:slugAndId", middleware.PermissionMiddleware("create:algorithms"), algoHandler.DeleteAlgorithm)
+			admin.PUT("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.PutAlgorithm)
 		}
 	}
 }

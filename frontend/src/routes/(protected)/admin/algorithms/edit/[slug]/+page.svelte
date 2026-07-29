@@ -1,17 +1,26 @@
 <script lang="ts">
 	import { AlgorithmEditor } from "$lib/utils/editor.svelte";
 	import { onMount } from "svelte";
-	import { NewAlgorithmController } from "./newAlgorithm.svelte";
+	import { EditAlgorithmController } from "./editAlgorithm.svelte";
 	import { createActivityKeeper } from "$lib/utils/idle-ping";
 
+	let { data } = $props();
+
 	const editor = new AlgorithmEditor();
-	const controller = new NewAlgorithmController();
+	const controller = new EditAlgorithmController();
+
+	$effect(() => {
+		if (data) {
+			editor.load(data);
+			controller.publicId = data.PublicId;
+		}
+	});
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		const payload = editor.getPayload();
 		if (payload) {
-			await controller.submit(payload);
+			await controller.editAlgorithm(payload);
 		}
 	}
 
@@ -24,15 +33,15 @@
 </script>
 
 <svelte:head>
-	<title>Criar Algoritmo</title>
+	<title>Editar Algoritmo</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <div class="max-w-7xl mx-auto space-y-6 font-inter p-6">
 	<header class="border-b border-gray-800 pb-4">
-		<h1 class="font-montserrat text-2xl font-bold text-text-primary">Criar Novo Algoritmo</h1>
+		<h1 class="font-montserrat text-2xl font-bold text-text-primary">Editar um Algoritmo</h1>
 		<p class="text-sm text-gray-300 mt-1">
-			Preencha os metadados e escreva o conteúdo em Markdown com o preview ao lado.
+			Preencha os metadados e edite o conteúdo em Markdown com o preview ao lado.
 		</p>
 	</header>
 

@@ -25,10 +25,7 @@ func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 	algorithms, finalPage, err := h.Service.List(c.Request.Context(), page, limit)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			"ALGORITHMS_QUERY_FAILED",
-			"Error querying algorithms.",
-		))
+		HandleAPIError(c, err)
 		return
 	}
 
@@ -53,6 +50,50 @@ func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.AlgorithmResponse{
+		Data: algorithm,
+	})
+}
+
+func (h *AlgorithmHandler) GetAdminAlgorithms(c *gin.Context) {
+	id, _, _, _, ok := GetAuthContext(c)
+	if !ok {
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	algorithms, finalPage, err := h.Service.ListAdmin(c.Request.Context(), page, limit, id)
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ListAdminAlgorithmsResponse{
+		Page:       finalPage,
+		Limit:      limit,
+		Algorithms: algorithms,
+	})
+}
+
+func (h *AlgorithmHandler) GetAdminAlgorithm(c *gin.Context) {
+	algoId, ok := parsePublicId(c)
+	if !ok {
+		return
+	}
+
+	id, _, _, _, ok := GetAuthContext(c)
+	if !ok {
+		return
+	}
+
+	algorithm, err := h.Service.GetAdminAlgorithm(c.Request.Context(), algoId, id)
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.GetAdminAlgorithmsResponse{
 		Data: algorithm,
 	})
 }

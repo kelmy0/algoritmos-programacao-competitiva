@@ -527,6 +527,88 @@
 									</svg>
 									<span>Dashboard</span>
 								</a>
+								<div class="ml-4 pl-3 border-l border-gray-800/80 my-1 space-y-0.5">
+									<!-- New / edit / trash -->
+									{#if page.data.user?.permissions?.includes("create:algorithms")}
+										<a
+											href="/admin/algorithms/new"
+											aria-current={page.url.pathname === "/admin/algorithms/new"
+												? "page"
+												: undefined}
+											class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                                    {page.url.pathname === '/admin/algorithms/new'
+												? 'text-emerald-400 bg-emerald-500/10'
+												: 'text-gray-400 hover:text-gray-200 hover:bg-app-bg/30'}"
+										>
+											<svg
+												class="w-3.5 h-3.5"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M12 4v16m8-8H4"
+												/>
+											</svg>
+											<span>Novo Algoritmo</span>
+										</a>
+
+										<a
+											href="/admin/algorithms/edit"
+											aria-current={page.url.pathname === "/admin/algorithms/edit"
+												? "page"
+												: undefined}
+											class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                                    {page.url.pathname === '/admin/algorithms/edit'
+												? 'text-amber-400 bg-amber-500/10'
+												: 'text-gray-400 hover:text-gray-200 hover:bg-app-bg/30'}"
+										>
+											<svg
+												class="w-3.5 h-3.5"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+												/>
+											</svg>
+											<span>Gerenciar & Editar</span>
+										</a>
+
+										<a
+											href="/admin/algorithms/trash"
+											aria-current={page.url.pathname === "/admin/algorithms/trash"
+												? "page"
+												: undefined}
+											class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                                    {page.url.pathname === '/admin/algorithms/trash'
+												? 'text-rose-400 bg-rose-500/10'
+												: 'text-gray-400 hover:text-gray-200 hover:bg-app-bg/30'}"
+										>
+											<svg
+												class="w-3.5 h-3.5"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+												/>
+											</svg>
+											<span>Lixeira</span>
+										</a>
+									{/if}
+								</div>
 							{/if}
 						</div>
 					</div>

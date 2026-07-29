@@ -8,6 +8,16 @@ type ListAlgorithmsResponse struct {
 	Data  []models.Algorithm `json:"data"`
 }
 
+type ListAdminAlgorithmsResponse struct {
+	Page       int                `json:"page"`
+	Limit      int                `json:"limit"`
+	Algorithms []models.Algorithm `json:"algorithms"`
+}
+
+type GetAdminAlgorithmsResponse struct {
+	Data *models.Algorithm `json:"data"`
+}
+
 type AlgorithmResponse struct {
 	Data *models.Algorithm `json:"data"`
 }

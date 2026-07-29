@@ -3,21 +3,14 @@ import type { AlgorithmPayload } from "$lib/schemas/algorithm";
 import type { Algorithm } from "$lib/types/algorithm";
 import type { ApiError } from "$lib/types/api";
 import { normalizeApiError, scrollToAndFocus } from "$lib/utils/errors";
+import { ADMIN_ALGORITHMS_ERRORS } from "../../new/newAlgorithm.svelte";
 
-export const ADMIN_ALGORITHMS_ERRORS: Record<string, string> = {
-	ALGORITHM_INVALID_NAME: "Nome do algoritmo não é válido.",
-	ALGORITHM_INVALID_CATEGORY: "Categoria do algoritmo não é válida.",
-	ALGORITHM_INVALID_CONTENT: "Conteudo no markdown não é válido.",
-	ALGORITHM_GENERATE_PUBLIC_ID_FAILED: "Falha interna ao gerar id público, tente novamente!",
-	ALGORITHM_POST_FAILED: "Falha interna ao postar algoritmo, tente novamente!",
-	ALGORITHM_INVALID_PUBLIC_ID: "Id público do algoritmo não é válido."
-};
-
-export class NewAlgorithmController {
+export class EditAlgorithmController {
 	isLoading = $state(false);
 	apiError = $state<ApiError | null>(null);
 	isSuccess = $state(false);
 	link = $state("");
+	publicId = $state("");
 
 	alertDiv = $state<HTMLDivElement | null>(null);
 
@@ -47,12 +40,20 @@ export class NewAlgorithmController {
 		}
 	}
 
-	async submit(content: AlgorithmPayload) {
-		this.isLoading = true;
+	async editAlgorithm(content: AlgorithmPayload) {
+		if (!this.publicId) {
+			this.apiError = normalizeApiError(
+				"ALGORITHM_INVALID_PUBLIC_ID",
+				"Id público do algoritmo não é valido!",
+				ADMIN_ALGORITHMS_ERRORS
+			);
+			return;
+		}
 
+		this.isLoading = true;
 		const { data, error } = await customFetch<{ algorithm: Algorithm }>(
 			window.fetch,
-			"/api/admin/algorithms/new",
+			`/api/admin/algorithms/edit/${this.publicId}`,
 			{
 				method: "POST",
 				headers: {

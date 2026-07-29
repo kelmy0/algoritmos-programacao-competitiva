@@ -15,7 +15,9 @@ import (
 
 type AlgorithmRepository interface {
 	List(ctx context.Context, limit, offset int) ([]models.Algorithm, error)
+	ListAdmin(ctx context.Context, limit, offset int, userId string) ([]models.Algorithm, error)
 	GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error)
+	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*models.Algorithm, error)
 	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*models.Algorithm, error)
 	DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error)
 	PutAlgorithm(ctx context.Context, data models.PutAlgorithm) (*models.Algorithm, error)
@@ -46,11 +48,49 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 
 	data, err := s.AlgoRepo.List(ctx, limit, offset)
 	if err != nil {
-		log.Printf("[AlgorithmService.List] failed to retrieve algorithms (page: %d, limit: %d): %v", page, limit, err)
+		if errors.Is(err, models.ErrAlgorithmsNotFound) {
+			return nil, page, models.ErrAlgorithmsNotFound
+		}
+
+		slog.Error("failed to query algorithms", "page", page, "limit", limit, "offset", offset, "error", err)
 		return nil, page, models.ErrFailQueryingAlgorithm
 	}
 
 	return data, page, err
+}
+
+func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser string) ([]models.Algorithm, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 1
+	}
+	offset := (page - 1) * limit
+
+	algorithms, err := s.AlgoRepo.ListAdmin(ctx, limit, offset, idUser)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmsNotFound) {
+			return nil, page, models.ErrAlgorithmsNotFound
+		}
+
+		slog.Error("failed to query admin algorithms", "id", idUser, "page", page, "limit", limit, "offset", offset, "error", err)
+		return nil, page, models.ErrFailQueryingAlgorithm
+	}
+
+	return algorithms, page, nil
+}
+
+func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, algoId, userId string) (*models.Algorithm, error) {
+	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, algoId, userId)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmNotFound) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		slog.Error("error querying admin algorithm", "id", algoId, "userId", userId, "error", err)
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+	return algo, nil
 }
 
 func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error) {
@@ -167,7 +207,7 @@ func validateAndSanitizeAlgorithmFields(name, category, content string) (string,
 		return "", "", "", models.ErrInvalidAlgorithmCategory
 	}
 
-	if contentSanitized == "" || utf8.RuneCountInString(categorySanitized) < 10 {
+	if contentSanitized == "" || utf8.RuneCountInString(contentSanitized) < 10 {
 		return "", "", "", models.ErrInvalidAlgorithmContent
 	}
 

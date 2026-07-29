@@ -43,7 +43,13 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	TOKEN_NO_LONGER_VALID: "Você foi desconectado, faça login novamente!",
 
 	// Internal User Operation Failures
-	AUTH_QUERY_USER_FAILED: "Erro interno ao consultar dados cadastrais."
+	AUTH_QUERY_USER_FAILED: "Erro interno ao consultar dados cadastrais.",
+
+	// Algorithms
+	ALGORITHMS_QUERY_FAILED: "Não foi possivel buscar os algoritmos.",
+	ALGORITHM_QUERY_FAILED: "Não foi possivel buscar este algoritmo.",
+	ALGORITHM_NOT_FOUND: "Não foi possivel achar este algoritmo.",
+	ALGORITHMS_NOT_FOUND: "Não foi possivel achar nenhum algoritmo."
 };
 
 export function normalizeApiError(

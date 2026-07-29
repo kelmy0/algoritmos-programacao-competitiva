@@ -14,11 +14,11 @@ interface ApiResponse {
 export const POST: RequestHandler = async (event) => {
 	checkAdminAccess(event.locals.user, "create:algorithms");
 
-	const adminSecret = event.request.headers.get("x-admin-secret");
+	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
 		const normalizedError = normalizeApiError(
-			"MISSING_HEADER",
+			"MISSING_COOKIE",
 			"Falta a senha das rotas admin.",
 			ADMIN_ALGORITHMS_ERRORS
 		);

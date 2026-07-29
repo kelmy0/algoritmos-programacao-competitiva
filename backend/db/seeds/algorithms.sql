@@ -1,4 +1,4 @@
-INSERT INTO algorithms (public_id, slug, name, category, difficulty, content) VALUES
+INSERT INTO algorithms (public_id, slug, name, category, difficulty, content, status) VALUES
 ('Ab3X9kPq', 'busca-binaria', 'Busca Binária', 'Busca', 'beginner', 
 CONCAT('# Busca Binária', CHR(10), CHR(10),
 'A **Busca Binária** é um algoritmo eficiente para encontrar um elemento em uma lista que já está **ordenada**.', CHR(10), CHR(10),
@@ -16,7 +16,7 @@ CONCAT('# Busca Binária', CHR(10), CHR(10),
 '    return 0;', CHR(10),
 '}', CHR(10),
 '```', CHR(10), CHR(10),
-'> **Complexidade de Tempo:** O(log n)')),
+'> **Complexidade de Tempo:** O(log n)'), 'approved'),
 
 ('F8mR2cQa', 'algoritmo-de-dijkstra', 'Algoritmo de Dijkstra', 'Grafos', 'intermediate', 
 CONCAT('# Algoritmo de Dijkstra', CHR(10), CHR(10),
@@ -33,7 +33,7 @@ CONCAT('# Algoritmo de Dijkstra', CHR(10), CHR(10),
 '    return 0;', CHR(10),
 '}', CHR(10),
 '```', CHR(10), CHR(10),
-'> **Nota:** Não suporta arestas com peso negativo.')),
+'> **Nota:** Não suporta arestas com peso negativo.'), 'approved'),
 
 ('12345678', 'segment-tree', 'Segment Tree', 'Estrutura de Dados', 'advanced', 
 CONCAT('# Segment Tree', CHR(10), CHR(10),
@@ -50,7 +50,7 @@ CONCAT('# Segment Tree', CHR(10), CHR(10),
 '    return 0;', CHR(10),
 '}', CHR(10),
 '```', CHR(10), CHR(10),
-'> **Memória:** Requer aproximadamente 4n de espaço.')),
+'> **Memória:** Requer aproximadamente 4n de espaço.'), 'approved'),
 
 ('1234abcd', 'heavy-light-decomposition', 'Heavy-Light Decomposition', 'Grafos', 'expert', 
 CONCAT('# Heavy-Light Decomposition (HLD)', CHR(10), CHR(10),
@@ -65,4 +65,4 @@ CONCAT('# Heavy-Light Decomposition (HLD)', CHR(10), CHR(10),
 '    return 0;', CHR(10),
 '}', CHR(10),
 '```', CHR(10), CHR(10),
-'> **Complexidade:** O(q log^2 n)'));
+'> **Complexidade:** O(q log^2 n)'), 'approved');

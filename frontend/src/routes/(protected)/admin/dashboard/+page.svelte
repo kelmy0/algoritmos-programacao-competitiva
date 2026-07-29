@@ -1,35 +1,35 @@
 <script>
-	import { page } from '$app/state';
+	import { page } from "$app/state";
 
 	const adminActions = [
 		{
-			title: 'Novo Algoritmo',
-			description: 'Cadastre um novo algoritmo ou estrutura de dados no sistema.',
-			href: '/admin/algorithms/new',
-			badge: 'Criar',
-			badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-			iconPath: 'M12 4v16m8-8H4',
-			permission: 'create:algorithms'
+			title: "Novo Algoritmo",
+			description: "Cadastre um novo algoritmo ou estrutura de dados no sistema.",
+			href: "/admin/algorithms/new",
+			badge: "Criar",
+			badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+			iconPath: "M12 4v16m8-8H4",
+			permission: "create:algorithms"
 		},
 		{
-			title: 'Gerenciar & Editar',
-			description: 'Edite informações, corrija conteúdos ou atualize os algoritmos existentes.',
-			href: '/admin/algorithms/edit',
-			badge: 'Editar',
-			badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+			title: "Gerenciar & Editar",
+			description: "Edite informações, corrija conteúdos ou atualize os algoritmos existentes.",
+			href: "/admin/algorithms/edit",
+			badge: "Editar",
+			badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/30",
 			iconPath:
-				'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
-			permission: 'update:algorithms'
+				"M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+			permission: "create:algorithms"
 		},
 		{
-			title: 'Lixeira & Removidos',
-			description: 'Visualize ou exclua permanentemente itens desativados da plataforma.',
-			href: '/admin/algorithms/trash',
-			badge: 'Deletar',
-			badgeColor: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+			title: "Lixeira & Removidos",
+			description: "Visualize ou exclua permanentemente itens desativados da plataforma.",
+			href: "/admin/algorithms/trash",
+			badge: "Deletar",
+			badgeColor: "bg-rose-500/10 text-rose-400 border-rose-500/30",
 			iconPath:
-				'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
-			permission: 'delete:algorithms'
+				"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
+			permission: "create:algorithms"
 		}
 	];
 </script>

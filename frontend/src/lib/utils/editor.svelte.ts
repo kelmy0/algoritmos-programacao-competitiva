@@ -3,6 +3,7 @@ import type { ApiError } from "$lib/types/api";
 import { normalizeApiError, scrollToAndFocus } from "./errors";
 import { sanitizeTitle } from "./sanitize";
 import { DIFFICULTIES, type Difficulty, type AlgorithmPayload } from "$lib/schemas/algorithm";
+import type { Algorithm } from "$lib/types/algorithm";
 
 export const EDITOR_ERRORS: Record<string, string> = {
 	INVALID_NAME: "Nome inválido.",
@@ -75,6 +76,13 @@ export class AlgorithmEditor {
 
 	get isContentValid() {
 		return this.content.length >= 10;
+	}
+
+	load(data: Algorithm) {
+		this.name = data.Name || "";
+		this.category = data.Category || "";
+		this.difficulty = data.Difficulty || "";
+		this.content = data.Content || "";
 	}
 
 	onNameBlur() {
