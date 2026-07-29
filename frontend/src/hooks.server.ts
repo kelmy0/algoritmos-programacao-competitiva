@@ -106,7 +106,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (adminSecret) {
-		setIdleCookie(event.cookies, "admin_secret", adminSecret, 60);
+		setIdleCookie(event.cookies, "admin_secret", adminSecret, 15);
 	}
 
 	return await resolve(event);
