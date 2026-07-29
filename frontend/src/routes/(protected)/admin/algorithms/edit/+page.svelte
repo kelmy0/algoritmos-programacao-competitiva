@@ -43,11 +43,9 @@
 	>
 		<div>
 			<h1 class="font-montserrat font-bold text-2xl md:text-3xl text-text-primary tracking-tight">
-				Algoritmos
+				Editar Algoritmos
 			</h1>
-			<p class="text-sm text-gray-400 mt-1">
-				Explore a coleção de algoritmos e estruturas de dados.
-			</p>
+			<p class="text-sm text-gray-400 mt-1">Gerencie e edite seus algoritmos.</p>
 		</div>
 	</header>
 

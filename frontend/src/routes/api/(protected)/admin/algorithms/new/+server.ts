@@ -18,7 +18,7 @@ export const POST: RequestHandler = async (event) => {
 
 	if (!adminSecret) {
 		const normalizedError = normalizeApiError(
-			"MISSING_COOKIE",
+			"MISSING_ADMIN_COOKIE",
 			"Falta a senha das rotas admin.",
 			ADMIN_ALGORITHMS_ERRORS
 		);

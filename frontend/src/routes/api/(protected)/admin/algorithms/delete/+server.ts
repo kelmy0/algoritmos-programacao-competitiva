@@ -1,10 +1,9 @@
-import { PUBLIC_API_URL } from "$env/static/public";
-import { customFetch } from "$lib/api/client";
-import type { Algorithm } from "$lib/types/algorithm";
 import { normalizeApiError } from "$lib/utils/errors";
 import { checkAdminAccess } from "$lib/utils/permissions";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { customFetch } from "$lib/api/client";
+import { PUBLIC_API_URL } from "$env/static/public";
 
 interface ApiResponse {
 	algorithms: Algorithm[];
@@ -29,13 +28,17 @@ export const GET: RequestHandler = async (event) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<ApiResponse>(event.fetch, `${PUBLIC_API_URL}/api/admin/algorithms`, {
-		method: "GET",
-		headers: {
-			"X-Admin-Secret": adminSecret,
-			Authorization: `Bearer ${event.locals.accessToken}`
+	} = await customFetch<ApiResponse>(
+		event.fetch,
+		`${PUBLIC_API_URL}/api/admin/algorithms?status=deleted`,
+		{
+			method: "GET",
+			headers: {
+				"X-Admin-Secret": adminSecret,
+				Authorization: `Bearer ${event.locals.accessToken}`
+			}
 		}
-	});
+	);
 
 	if (apiError) {
 		return json(apiError, { status });

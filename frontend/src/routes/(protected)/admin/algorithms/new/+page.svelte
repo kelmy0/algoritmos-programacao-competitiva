@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { AlgorithmEditor } from "$lib/utils/editor.svelte";
-	import { onMount } from "svelte";
 	import { NewAlgorithmController } from "./newAlgorithm.svelte";
-	import { createActivityKeeper } from "$lib/utils/idle-ping";
 
 	const editor = new AlgorithmEditor();
 	const controller = new NewAlgorithmController();
@@ -14,13 +12,6 @@
 			await controller.submit(payload);
 		}
 	}
-
-	onMount(() => {
-		const keeper = createActivityKeeper(8);
-		keeper.start();
-
-		return () => keeper.stop();
-	});
 </script>
 
 <svelte:head>
@@ -65,7 +56,7 @@
 					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
 					{editor.hasNameError || controller.hasNameError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'}"
+						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
 				/>
 				{#if editor.hasNameError || controller.hasNameError}
 					<p id="name-error" role="alert" class="text-xs text-amber-500">
@@ -97,7 +88,7 @@
 					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
 					{editor.hasCategoryError || controller.hasCategoryError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'}"
+						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
 				/>
 				{#if editor.hasCategoryError || controller.hasCategoryError}
 					<p id="category-error" role="alert" class="text-xs text-amber-500">
@@ -122,7 +113,7 @@
 					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
 					{editor.hasDifficultyError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'}"
+						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
 				>
 					<option value="beginner">Iniciante</option>
 					<option value="intermediate">Intermediário</option>
@@ -273,7 +264,8 @@
 					resize-none border focus:outline-none focus-visible:ring-2 leading-relaxed
 					{editor.hasContentError || controller.hasContentError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'}"></textarea>
+						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
+				></textarea>
 			</section>
 
 			<section
@@ -303,18 +295,18 @@
 		</div>
 
 		<div
-			class="flex {editor.hasContentError || controller.hasContentError
+			class="flex flex-col sm:flex-row {editor.hasContentError || controller.hasContentError
 				? 'justify-between'
-				: 'justify-end'}"
+				: 'justify-end'} items-stretch sm:items-center gap-4 pt-4 border-t border-gray-800/60"
 		>
 			{#if editor.hasContentError || controller.hasContentError}
-				<p id="content-error" role="alert" class="text-xs text-amber-500">
+				<p id="content-error" role="alert" class="text-xs text-amber-500 self-center">
 					O conteúdo precisa de no mínimo 10 letras.
 				</p>
 			{/if}
 			<button
 				type="submit"
-				class="px-6 py-2.5 rounded-lg bg-text-brand text-gray-950 font-semibold hover:bg-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-text-brand focus-visible:ring-offset-gray-900 transition-colors"
+				class="px-6 py-2.5 rounded-lg bg-text-brand text-gray-950 font-semibold hover:bg-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-text-brand focus-visible:ring-offset-gray-900 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
 			>
 				Salvar Algoritmo
 			</button>

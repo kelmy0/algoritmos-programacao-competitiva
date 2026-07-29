@@ -1,3 +1,4 @@
+import { browser } from "$app/env";
 import type { ApiError } from "$lib/types/api";
 import { normalizeApiError } from "$lib/utils/errors";
 import { AUTH_ERRORS } from "../../routes/(public)/auth/login/login.svelte";
@@ -28,7 +29,7 @@ export class AuthService {
 	}
 
 	static async silentRefresh(fetchImpl: typeof fetch = window.fetch): Promise<boolean> {
-		if (typeof window === "undefined") return false;
+		if (!browser) return false;
 
 		if (this.refreshPromise) {
 			return this.refreshPromise;
@@ -80,7 +81,7 @@ export class AuthService {
 		fetchImpl: typeof fetch,
 		pageExpiresAt?: number | null
 	): Promise<boolean> {
-		if (typeof window === "undefined") return true;
+		if (!browser) return true;
 
 		const expiresAt = this.currentExpiresAt ?? pageExpiresAt;
 		if (!expiresAt) return true;

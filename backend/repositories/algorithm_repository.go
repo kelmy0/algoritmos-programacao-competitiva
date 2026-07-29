@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -54,16 +55,23 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]mo
 	return list, nil
 }
 
-func (r *AlgorithmRepository) ListAdmin(ctx context.Context, limit, offset int, userId string) ([]models.Algorithm, error) {
+func (r *AlgorithmRepository) ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]models.Algorithm, error) {
 	query := `
 		SELECT id, public_id, slug, name, category, difficulty, status
 		FROM algorithms
 		WHERE author_id = $1
-		ORDER BY updated_at ASC
-		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(ctx, query, userId, limit, offset)
+	args := []any{userId}
+	if status != "" {
+		args = append(args, status)
+		query += fmt.Sprintf(" AND status = $%d", len(args))
+	}
+
+	args = append(args, limit, offset)
+	query += fmt.Sprintf(" ORDER BY updated_at ASC LIMIT $%d OFFSET $%d", len(args)-1, len(args))
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, models.ErrAlgorithmsNotFound
@@ -159,27 +167,23 @@ func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.New
 	return &algo, nil
 }
 
-func (r *AlgorithmRepository) DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error) {
+func (r *AlgorithmRepository) DeleteAlgorithm(ctx context.Context, publicId, userId string) error {
 	query := `
-		DELETE FROM algorithms 
-		WHERE public_id = $1
-		RETURNING id, public_id, slug, name, category, difficulty, content, created_at, updated_at;
+		UPDATE algorithms
+		SET status = 'deleted'
+		WHERE public_id = $1 AND author_id = $2;
 	`
 
-	var algo models.Algorithm
-	err := r.db.QueryRow(ctx, query, publicId).Scan(
-		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
-		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
-	)
-
+	res, err := r.db.Exec(ctx, query, publicId, userId)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, models.ErrAlgorithmNotFound
-		}
-		return nil, err
+		return err
 	}
 
-	return &algo, nil
+	if res.RowsAffected() == 0 {
+		return models.ErrAlgorithmNotFound
+	}
+
+	return nil
 }
 
 func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*models.Algorithm, error) {

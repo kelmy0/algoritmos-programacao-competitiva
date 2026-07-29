@@ -5,6 +5,8 @@ import type { ApiError } from "$lib/types/api";
 import { normalizeApiError } from "$lib/utils/errors";
 import { AuthService } from "$lib/services/auth_service";
 
+let isInvalidating = false;
+
 export async function customFetch<T>(
 	fetchImpl: typeof fetch,
 	url: string,
@@ -33,6 +35,19 @@ export async function customFetch<T>(
 				}
 			}
 
+			if (
+				normalizedError.code === "MISSING_ADMIN_COOKIE" &&
+				url.includes("/admin") &&
+				browser &&
+				!isInvalidating
+			) {
+				isInvalidating = true;
+				invalidateAll().finally(() => {
+					setTimeout(() => {
+						isInvalidating = false;
+					}, 500);
+				});
+			}
 			return {
 				data: null,
 				error: normalizedError,

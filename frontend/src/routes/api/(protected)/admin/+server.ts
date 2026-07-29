@@ -58,7 +58,7 @@ export const POST: RequestHandler = async (event) => {
 		return json({ correct: false });
 	}
 
-	setIdleCookie(event.cookies, "admin_secret", password, 30);
+	setIdleCookie(event.cookies, "admin_secret", password, 15);
 
 	return json({ correct: true });
 };

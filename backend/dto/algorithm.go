@@ -22,6 +22,10 @@ type AlgorithmResponse struct {
 	Data *models.Algorithm `json:"data"`
 }
 
+type AlgorithmDeleteResponse struct {
+	Deleted bool `json:"deleted"`
+}
+
 type PostAlgorithmRequest struct {
 	Name       string            `json:"name" binding:"required,min=3"`
 	Category   string            `json:"category" binding:"required,min=3"`

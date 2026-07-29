@@ -7,12 +7,17 @@ import { ADMIN_ALGORITHMS_ERRORS } from "../../new/newAlgorithm.svelte";
 
 export class EditAlgorithmController {
 	isLoading = $state(false);
+	isDeleting = $state(false);
 	apiError = $state<ApiError | null>(null);
 	isSuccess = $state(false);
 	link = $state("");
 	publicId = $state("");
+	slug = $state("");
+	isDeleteModalOpen = $state(false);
+	isSaved = $state(true);
 
 	alertDiv = $state<HTMLDivElement | null>(null);
+	actionErrorLabel = $state("salvar");
 
 	touched = $state({
 		password: false
@@ -34,6 +39,14 @@ export class EditAlgorithmController {
 		this.clearApiError(["ALGORITHM_INVALID_CONTENT"]);
 	}
 
+	openDeleteModal() {
+		this.isDeleteModalOpen = true;
+	}
+
+	closeDeleteModal() {
+		this.isDeleteModalOpen = false;
+	}
+
 	clearApiError(codes: string[]) {
 		if (this.apiError && codes.includes(this.apiError.code)) {
 			this.apiError = null;
@@ -41,6 +54,12 @@ export class EditAlgorithmController {
 	}
 
 	async editAlgorithm(content: AlgorithmPayload) {
+		if (this.isDeleting || this.isLoading) {
+			return;
+		}
+
+		this.actionErrorLabel = "salvar";
+
 		if (!this.publicId) {
 			this.apiError = normalizeApiError(
 				"ALGORITHM_INVALID_PUBLIC_ID",
@@ -64,28 +83,62 @@ export class EditAlgorithmController {
 			ADMIN_ALGORITHMS_ERRORS
 		);
 
-		if (error) {
-			this.apiError = error;
+		scrollToAndFocus(this.alertDiv);
+		this.isLoading = false;
+
+		if (error || !data) {
+			this.apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
 			this.isSuccess = false;
-			await scrollToAndFocus(this.alertDiv);
-			this.isLoading = false;
 			return;
 		}
 
-		if (!data) {
+		this.isSaved = true;
+		this.isSuccess = true;
+		this.apiError = null;
+		this.link = `/admin/algorithms/edit/${data.algorithm.Slug}-${data.algorithm.PublicId}`;
+	}
+
+	async handleDelete() {
+		if (this.isLoading || this.isDeleting) {
+			return;
+		}
+
+		if (!this.publicId || !this.slug) {
 			this.apiError = normalizeApiError(
-				"INTERNAL_SERVER_ERROR",
-				"Erro inesperado.",
+				"ALGORITHM_INVALID_PUBLIC_ID",
+				"Id público do algoritmo não é valido!",
 				ADMIN_ALGORITHMS_ERRORS
 			);
 			return;
 		}
 
-		this.isSuccess = true;
-		this.apiError = null;
-		this.link = `/admin/algorithms/edit/${data.algorithm.Slug}-${data.algorithm.PublicId}`;
-		await scrollToAndFocus(this.alertDiv);
+		this.actionErrorLabel = "deletar";
+		this.isDeleting = true;
 
-		this.isLoading = false;
+		const { data, error } = await customFetch<{ deleted: boolean }>(
+			window.fetch,
+			`/api/admin/algorithms/delete/${this.slug}-${this.publicId}`,
+			{
+				method: "DELETE",
+				headers: {
+					"Content-Type": "application/json"
+				}
+			},
+			ADMIN_ALGORITHMS_ERRORS
+		);
+
+		this.isDeleteModalOpen = false;
+		this.isDeleting = false;
+		scrollToAndFocus(this.alertDiv);
+
+		if (error || !data || !data.deleted) {
+			this.isSuccess = false;
+			this.apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
+			return;
+		}
+
+		this.isSaved = false;
+		this.isSuccess = true;
+		this.link = `/admin/algorithms/trash/${this.slug}-${this.publicId}`;
 	}
 }

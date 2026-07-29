@@ -3,6 +3,7 @@
 	import favicon from "$lib/assets/favicon.svg";
 	import { page, navigating } from "$app/state";
 	import { fade } from "svelte/transition";
+	import { clickOutside, focusTrap } from "$lib/utils/a11y";
 
 	let { children } = $props();
 
@@ -11,6 +12,7 @@
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === "Escape") {
+			event.preventDefault();
 			closeMobileMenu();
 			closeProfileMenu();
 		}
@@ -86,15 +88,6 @@
 		<!--Login button-->
 		<div class="items-center hidden md:flex relative">
 			{#if page.data.user}
-				{#if isProfileMenuOpen}
-					<div
-						aria-hidden="true"
-						tabindex="-1"
-						onclick={closeProfileMenu}
-						class="fixed inset-0 z-40 bg-transparent cursor-default"
-					></div>
-				{/if}
-
 				<!-- Profile Button -->
 				<button
 					type="button"
@@ -143,6 +136,8 @@
 						transition:fade={{ duration: 120 }}
 						id="user-profile-menu"
 						role="menu"
+						use:focusTrap
+						use:clickOutside={closeProfileMenu}
 						aria-label="Opções do perfil"
 						class="absolute right-0 top-full mt-2 w-56 bg-app-surface border border-gray-800 rounded-xl shadow-2xl py-2 z-50 flex flex-col text-sm"
 					>
@@ -278,9 +273,11 @@
 		<!--Mobile Overlay Backdrop-->
 		{#if isSidebarOpen}
 			<div
+				role="button"
 				onclick={closeMobileMenu}
-				aria-hidden="true"
 				tabindex="-1"
+				onkeydown={(e) => (e.key === "Enter" || e.key === "Space") && closeMobileMenu()}
+				aria-label="Fechar menu de navegação"
 				class="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm border-0 cursor-default"
 			></div>
 		{/if}
@@ -290,7 +287,8 @@
 		<aside
 			id="mobile-sidebar"
 			aria-label="Navegação mobile"
-			aria-hidden={!isSidebarOpen}
+			inert={!isSidebarOpen}
+			use:focusTrap
 			class="fixed top-16 bottom-0 right-0 z-50 w-64 bg-app-surface border-l border-gray-800 transform transition-transform duration-200 ease-in-out md:hidden
     		{isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}"
 		>

@@ -1,18 +1,22 @@
 <script lang="ts">
+	import { focusTrap } from "$lib/utils/a11y";
 	import { AlgorithmEditor } from "$lib/utils/editor.svelte";
-	import { onMount } from "svelte";
+	import type { PageData } from "./$types";
 	import { EditAlgorithmController } from "./editAlgorithm.svelte";
-	import { createActivityKeeper } from "$lib/utils/idle-ping";
 
-	let { data } = $props();
+	let { data }: { data: PageData } = $props();
 
 	const editor = new AlgorithmEditor();
 	const controller = new EditAlgorithmController();
 
+	let isInitialized = $state(false);
+
 	$effect(() => {
-		if (data) {
-			editor.load(data);
-			controller.publicId = data.PublicId;
+		if (data.algorithm && !isInitialized) {
+			editor.load(data.algorithm);
+			controller.publicId = data.algorithm.PublicId;
+			controller.slug = data.algorithm.Slug;
+			isInitialized = true;
 		}
 	});
 
@@ -23,13 +27,6 @@
 			await controller.editAlgorithm(payload);
 		}
 	}
-
-	onMount(() => {
-		const keeper = createActivityKeeper(8);
-		keeper.start();
-
-		return () => keeper.stop();
-	});
 </script>
 
 <svelte:head>
@@ -61,7 +58,7 @@
 					placeholder="Ex: Busca Binária"
 					required
 					autocomplete="off"
-					disabled={controller.isLoading}
+					disabled={controller.isLoading || controller.isDeleting}
 					bind:value={editor.name}
 					bind:this={editor.nameInput}
 					oninput={() => editor.onNameInput()}
@@ -74,7 +71,7 @@
 					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
 					{editor.hasNameError || controller.hasNameError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'}"
+						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
 				/>
 				{#if editor.hasNameError || controller.hasNameError}
 					<p id="name-error" role="alert" class="text-xs text-amber-500">
@@ -95,7 +92,7 @@
 					autocomplete="off"
 					bind:value={editor.category}
 					bind:this={editor.categoryInput}
-					disabled={controller.isLoading}
+					disabled={controller.isLoading || controller.isDeleting}
 					oninput={() => editor.onCategoryInput()}
 					onblur={() => editor.onCategoryBlur()}
 					aria-required="true"
@@ -106,7 +103,7 @@
 					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
 					{editor.hasCategoryError || controller.hasCategoryError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'}"
+						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
 				/>
 				{#if editor.hasCategoryError || controller.hasCategoryError}
 					<p id="category-error" role="alert" class="text-xs text-amber-500">
@@ -122,7 +119,7 @@
 					required
 					bind:value={editor.difficulty}
 					bind:this={editor.difficultyInput}
-					disabled={controller.isLoading}
+					disabled={controller.isLoading || controller.isDeleting}
 					oninput={() => editor.onDifficultyInput()}
 					onblur={() => editor.onDifficultyBlur()}
 					aria-required="true"
@@ -131,7 +128,7 @@
 					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
 					{editor.hasDifficultyError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'}"
+						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
 				>
 					<option value="beginner">Iniciante</option>
 					<option value="intermediate">Intermediário</option>
@@ -152,7 +149,7 @@
 				role="alert"
 				aria-live="assertive"
 				class="p-4 bg-red-950/40 border border-red-900/60 rounded-xl text-red-300 text-sm flex items-start gap-3 shadow-lg transition-all
-			{controller.isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}"
+			{controller.isLoading || controller.isDeleting ? 'opacity-50 pointer-events-none' : 'opacity-100'}"
 			>
 				<svg
 					class="w-5 h-5 shrink-0 mt-0.5 text-red-400"
@@ -169,7 +166,9 @@
 					/>
 				</svg>
 				<div class="space-y-0.5">
-					<span class="font-semibold block text-red-200">Erro ao salvar algoritmo</span>
+					<span class="font-semibold block text-red-200"
+						>Erro ao {controller.actionErrorLabel} algoritmo</span
+					>
 					<p class="text-xs text-red-300/80 leading-relaxed">
 						{controller.apiError.message || "Ocorreu um erro ao tentar salvar. Tente novamente."}
 					</p>
@@ -181,10 +180,13 @@
 			<div
 				role="status"
 				aria-live="polite"
-				class="p-4 bg-emerald-950/40 border border-emerald-900/60 rounded-xl text-emerald-300 text-sm flex items-start gap-3 shadow-lg transition-all"
+				class="p-4 border text-sm flex items-start gap-3 shadow-lg transition-all rounded-xl
+				{controller.isSaved
+					? 'bg-emerald-950/40 border-emerald-900/60 text-red-300'
+					: 'bg-red-950/40 border-red-900/60 text-red-300'}"
 			>
 				<svg
-					class="w-5 h-5 shrink-0 mt-0.5 text-emerald-400"
+					class="w-5 h-5 shrink-0 mt-0.5 {controller.isSaved ? 'text-emerald-400' : 'text-red-400'}"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -194,19 +196,30 @@
 						stroke-linecap="round"
 						stroke-linejoin="round"
 						stroke-width="2"
-						d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+						d={controller.isSaved
+							? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+							: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"}
 					/>
 				</svg>
 				<div class="space-y-0.5">
-					<span class="font-semibold block text-emerald-200">Algoritmo salvo com sucesso!</span>
-					<p class="text-xs text-emerald-300/80 leading-relaxed">
-						Suas alterações foram enviadas e já estão em espera para aprovação.
+					<span
+						class="font-semibold block {controller.isSaved ? 'text-emerald-200' : 'text-red-200'}"
+						>Algoritmo {controller.isSaved ? "salvo" : "deletado"} com sucesso!</span
+					>
+					<p
+						class="text-xs leading-relaxed {controller.isSaved
+							? 'text-emerald-300/80'
+							: 'text-red-300/80'}"
+					>
+						{controller.isSaved
+							? "Suas alterações foram enviadas e já estão em espera para aprovação."
+							: "Algoritmo movido para lixeira! Você tem até 7 dias para restaurá-lo."}
 						<a
 							href={controller.link}
 							class="underline hover:text-emerald-200"
 							onclick={() => (controller.isSuccess = false)}
 						>
-							Visualizar o algoritmo enviado
+							Visualizar o algoritmo {controller.isSaved ? "enviado" : "deletado"}
 						</a>.
 					</p>
 				</div>
@@ -274,7 +287,7 @@
 					required
 					bind:value={editor.content}
 					bind:this={editor.contentInput}
-					disabled={controller.isLoading}
+					disabled={controller.isLoading || controller.isDeleting}
 					oninput={() => editor.onContentInput()}
 					onblur={() => editor.onContentBlur()}
 					aria-required="true"
@@ -286,7 +299,8 @@
 					resize-none border focus:outline-none focus-visible:ring-2 leading-relaxed
 					{editor.hasContentError || controller.hasContentError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'}"></textarea>
+						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
+				></textarea>
 			</section>
 
 			<section
@@ -316,21 +330,112 @@
 		</div>
 
 		<div
-			class="flex {editor.hasContentError || controller.hasContentError
-				? 'justify-between'
-				: 'justify-end'}"
+			class="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-4 pt-4 border-t border-gray-800/60"
 		>
-			{#if editor.hasContentError || controller.hasContentError}
-				<p id="content-error" role="alert" class="text-xs text-amber-500">
-					O conteúdo precisa de no mínimo 10 letras.
-				</p>
-			{/if}
 			<button
-				type="submit"
-				class="px-6 py-2.5 rounded-lg bg-text-brand text-gray-950 font-semibold hover:bg-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-text-brand focus-visible:ring-offset-gray-900 transition-colors"
+				type="button"
+				onclick={() => controller.openDeleteModal()}
+				disabled={controller.isLoading || controller.isDeleting}
+				aria-haspopup="dialog"
+				aria-expanded={controller.isDeleteModalOpen}
+				class="px-5 py-2.5 rounded-lg border border-red-900/50 bg-red-950/30 text-red-400 font-semibold text-sm hover:bg-red-900/50 hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
 			>
-				Salvar Algoritmo
+				<svg
+					class="w-4 h-4"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+					aria-hidden="true"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+					/>
+				</svg>
+				Mover para lixeira
 			</button>
+
+			<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-end">
+				{#if editor.hasContentError || controller.hasContentError}
+					<p id="content-error" role="alert" class="text-xs text-amber-500 self-center">
+						O conteúdo precisa de no mínimo 10 letras.
+					</p>
+				{/if}
+				<button
+					type="submit"
+					disabled={controller.isLoading || controller.isDeleting}
+					class="px-6 py-2.5 rounded-lg bg-text-brand text-gray-950 font-semibold text-sm hover:bg-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-text-brand focus-visible:ring-offset-gray-900 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+				>
+					{controller.isLoading ? "Salvando..." : "Salvar Algoritmo"}
+				</button>
+			</div>
 		</div>
 	</form>
 </div>
+
+{#if controller.isDeleteModalOpen}
+	<div
+		use:focusTrap
+		class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+		role="dialog"
+		onkeydown={(e) => e.key === "Escape" && controller.closeDeleteModal()}
+		tabindex="-1"
+		aria-modal="true"
+		aria-labelledby="delete-modal-title"
+		aria-describedby="delete-modal-description"
+	>
+		<div
+			class="bg-app-surface border border-gray-800 rounded-xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+		>
+			<div class="flex items-start gap-3">
+				<div class="p-2 bg-red-950/80 border border-red-900/60 rounded-lg text-red-400 shrink-0">
+					<svg
+						class="w-6 h-6"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+						/>
+					</svg>
+				</div>
+				<div>
+					<h2 id="delete-modal-title" class="text-lg font-bold text-gray-100 font-montserrat">
+						Excluir Algoritmo?
+					</h2>
+					<p id="delete-modal-description" class="text-xs text-gray-300 mt-1 leading-relaxed">
+						Tem certeza que deseja mover para lixeira este algoritmo? Você terá 7 dias para
+						restaurá-lo.
+					</p>
+				</div>
+			</div>
+
+			<div class="flex justify-end gap-3 pt-2">
+				<button
+					type="button"
+					onclick={() => controller.closeDeleteModal()}
+					disabled={controller.isDeleting || controller.isLoading}
+					class="px-4 py-2 rounded-lg bg-gray-900 text-gray-300 hover:text-white border border-gray-700 text-sm font-medium hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 cursor-pointer disabled:cursor-not-allowed"
+				>
+					Cancelar
+				</button>
+				<button
+					type="button"
+					onclick={() => controller.handleDelete()}
+					disabled={controller.isDeleting || controller.isLoading}
+					aria-busy={controller.isDeleting}
+					class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500/40 text-white text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+				>
+					{controller.isDeleting ? "Excluindo..." : "Sim, Excluir"}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

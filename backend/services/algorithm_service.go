@@ -15,11 +15,11 @@ import (
 
 type AlgorithmRepository interface {
 	List(ctx context.Context, limit, offset int) ([]models.Algorithm, error)
-	ListAdmin(ctx context.Context, limit, offset int, userId string) ([]models.Algorithm, error)
+	ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]models.Algorithm, error)
 	GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error)
 	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*models.Algorithm, error)
 	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*models.Algorithm, error)
-	DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error)
+	DeleteAlgorithm(ctx context.Context, publicId, userId string) error
 	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*models.Algorithm, error)
 }
 
@@ -59,7 +59,7 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 	return data, page, err
 }
 
-func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser string) ([]models.Algorithm, int, error) {
+func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser, status string) ([]models.Algorithm, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -68,7 +68,11 @@ func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUse
 	}
 	offset := (page - 1) * limit
 
-	algorithms, err := s.AlgoRepo.ListAdmin(ctx, limit, offset, idUser)
+	if !slices.Contains(models.AllStatuses, models.Status(status)) && status != "" {
+		status = "approved"
+	}
+
+	algorithms, err := s.AlgoRepo.ListAdmin(ctx, limit, offset, idUser, status)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmsNotFound) {
 			return nil, page, models.ErrAlgorithmsNotFound
@@ -153,16 +157,50 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 	return res, nil
 }
 
-func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, publicId string) (*models.Algorithm, error) {
-	algo, err := s.AlgoRepo.DeleteAlgorithm(ctx, publicId)
+func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, algoId, userId string) error {
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
+
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return models.ErrUserNotFound
+		}
+		slog.Error("database error querying user ID during update algoritm", "error", err)
+		return models.ErrFailQueryUser
+	}
+
+	if !user.Enable {
+		return models.ErrUserNotEnabled
+	}
+
+	if !slices.Contains(user.Permissions, "create:algorithms") {
+		return models.ErrAlgorithmNoCreatePermission
+	}
+
+	publicId := utils.SanitizeTitle(algoId)
+
+	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, user.Id)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
-			return nil, models.ErrAlgorithmNotFound
+			return models.ErrAlgorithmNotFound
 		}
-		log.Printf("[AlgorithmService.DeleteAlgorithm] database error during deletion of %s: %v", publicId, err)
-		return nil, models.ErrFailQueryingAlgorithm
+		slog.Error("database error during delete of algorithm", "publicId", publicId, "error", err)
+		return models.ErrFailQueryingAlgorithm
 	}
-	return algo, nil
+
+	if algo.AuthorId != user.Id {
+		return models.ErrAlgorithmAuthorMismatch
+	}
+
+	err = s.AlgoRepo.DeleteAlgorithm(ctx, publicId, user.Id)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmNotFound) {
+			return models.ErrAlgorithmNotFound
+		}
+		slog.Error("database error during delete of algorithm", "publicId", publicId, "error", err)
+		return models.ErrFailQueryingAlgorithm
+	}
+
+	return nil
 }
 
 func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest, userId string) (*models.Algorithm, error) {

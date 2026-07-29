@@ -14,8 +14,11 @@ export const GET: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
-		const normalizedError = normalizeApiError("MISSING_COOKIE", "Falta a senha das rotas admin.");
-		return json(normalizedError, { status: 400 });
+		const normalizedError = normalizeApiError(
+			"MISSING_ADMIN_COOKIE",
+			"Falta a senha das rotas admin."
+		);
+		return json(normalizedError, { status: 401 });
 	}
 
 	const { slug } = event.params;
@@ -54,7 +57,7 @@ export const POST: RequestHandler = async (event) => {
 
 	if (!adminSecret) {
 		const normalizedError = normalizeApiError(
-			"MISSING_COOKIE",
+			"MISSING_ADMIN_COOKIE",
 			"Falta a senha das rotas admin.",
 			ADMIN_ALGORITHMS_ERRORS
 		);

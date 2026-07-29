@@ -1,6 +1,14 @@
 import { customFetch } from "$lib/api/client";
 
-export function createActivityKeeper(intervalMinutes = 5) {
+interface ActivityKeeperOptions {
+	intervalMinutes?: number;
+	onUnauthorized?: () => void;
+}
+
+export function createActivityKeeper({
+	intervalMinutes = 5,
+	onUnauthorized
+}: ActivityKeeperOptions = {}) {
 	let timer: ReturnType<typeof setInterval> | null = null;
 	let userHasInteracted = false;
 
@@ -18,7 +26,10 @@ export function createActivityKeeper(intervalMinutes = 5) {
 			async () => {
 				if (userHasInteracted) {
 					userHasInteracted = false;
-					await customFetch(fetch, "/api/admin/session", { method: "GET" });
+					const { status, error } = await customFetch(fetch, "/api/admin/session");
+					if (status === 401 || error) {
+						onUnauthorized?.();
+					}
 				}
 			},
 			intervalMinutes * 60 * 1000

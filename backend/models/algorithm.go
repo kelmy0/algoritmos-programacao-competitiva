@@ -15,10 +15,17 @@ type Status string
 
 const (
 	StatusApproved Status = "approved"
-	StatusPeding   Status = "pending"
+	StatusPending  Status = "pending"
 	StatusRejected Status = "rejected"
 	StatusDeleted  Status = "deleted"
 )
+
+var AllStatuses = []Status{
+	StatusApproved,
+	StatusPending,
+	StatusRejected,
+	StatusDeleted,
+}
 
 type Algorithm struct {
 	Id         string     `db:"id"`

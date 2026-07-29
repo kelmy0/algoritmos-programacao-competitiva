@@ -3,6 +3,7 @@ import type { Algorithm } from "$lib/types/algorithm";
 import { error } from "@sveltejs/kit";
 import { normalizeApiError } from "$lib/utils/errors";
 import type { PageLoad } from "./$types";
+import { renderMarkdown } from "$lib/services/markdown";
 
 export const load: PageLoad = async ({ fetch: svelteFetch, params }) => {
 	const { slug } = params;
@@ -28,5 +29,13 @@ export const load: PageLoad = async ({ fetch: svelteFetch, params }) => {
 		);
 	}
 
-	return { algorithm: data.data };
+	const algorithmData = data.data;
+	const contentHtml = await renderMarkdown(algorithmData.Content || "");
+
+	return {
+		algorithm: {
+			...algorithmData,
+			contentHtml
+		}
+	};
 };

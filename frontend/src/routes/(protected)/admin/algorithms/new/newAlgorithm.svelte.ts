@@ -49,6 +49,10 @@ export class NewAlgorithmController {
 	}
 
 	async submit(content: AlgorithmPayload) {
+		if (this.isLoading) {
+			return;
+		}
+
 		this.isLoading = true;
 
 		const { data, error } = await customFetch<{ algorithm: Algorithm }>(

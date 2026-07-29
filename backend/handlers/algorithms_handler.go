@@ -60,10 +60,11 @@ func (h *AlgorithmHandler) GetAdminAlgorithms(c *gin.Context) {
 		return
 	}
 
+	status := c.DefaultQuery("status", "")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	algorithms, finalPage, err := h.Service.ListAdmin(c.Request.Context(), page, limit, id)
+	algorithms, finalPage, err := h.Service.ListAdmin(c.Request.Context(), page, limit, id, status)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -125,19 +126,24 @@ func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
 }
 
 func (h *AlgorithmHandler) DeleteAlgorithm(c *gin.Context) {
+	id, _, _, _, ok := GetAuthContext(c)
+	if !ok {
+		return
+	}
+
 	publicId, ok := parsePublicId(c)
 	if !ok {
 		return
 	}
 
-	algorithm, err := h.Service.DeleteAlgorithm(c.Request.Context(), publicId)
+	err := h.Service.DeleteAlgorithm(c.Request.Context(), publicId, id)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.AlgorithmResponse{
-		Data: algorithm,
+	c.JSON(http.StatusOK, dto.AlgorithmDeleteResponse{
+		Deleted: true,
 	})
 }
 

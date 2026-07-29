@@ -2,6 +2,8 @@ import type { ApiError } from "$lib/types/api";
 import { tick } from "svelte";
 
 export const GLOBAL_ERRORS: Record<string, string> = {
+	TEST_ERROR: "Isso é apenas um erro de teste.",
+
 	// Network and Operating System (Captured by the Fetch chat)
 	NETWORK_ERROR: "Não foi possível conectar ao servidor. Verifique sua conexão com a internet.",
 
@@ -23,6 +25,8 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	RESTRICTED_AREA: "Esta é uma área restrita do sistema.",
 	NO_PERMISSION: "Você não tem permissão para realizar esta ação.",
 	AUTH_UNEXPECTED_ERROR: "Falha inesperada no login. Tente novamente!",
+	MISSING_ADMIN_COOKIE:
+		"Cookie de autenticação das rotas administradoras está ausente. Tente novamente!",
 
 	// Two Factor
 	"2FA_NOT_INITIATED": "A autenticação em dois fatores não está ativa.",
