@@ -31,6 +31,7 @@ var (
 	ErrAlgorithmNotFound           = &AppError{StatusCode: http.StatusNotFound, Code: "ALGORITHM_NOT_FOUND", Message: "Algorithm not found."}
 	ErrAlgorithmsNotFound          = &AppError{StatusCode: http.StatusNotFound, Code: "ALGORITHMS_NOT_FOUND", Message: "Algorithms not found."}
 	ErrAlgorithmNoCreatePermission = &AppError{StatusCode: http.StatusForbidden, Code: "ALGORITHM_NO_PERMISSION_CREATE", Message: "You don't have permission to create algorithms."}
+	ErrAlgorithmAuthorMismatch     = &AppError{StatusCode: http.StatusForbidden, Code: "ALGORITHM_AUTHOR_MISMATCH", Message: "Author id and user id don't matches."}
 	ErrFailQueryingAlgorithm       = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_QUERY_FAILED", Message: "Failed to query algorithm."}
 	ErrFailPostingAlgorithm        = &AppError{StatusCode: http.StatusInternalServerError, Code: "ALGORITHM_POST_FAILED", Message: "Failed to post algorithm."}
 	ErrInvalidAlgorithmName        = &AppError{StatusCode: http.StatusBadRequest, Code: "ALGORITHM_INVALID_NAME", Message: "Invalid algorithm name."}

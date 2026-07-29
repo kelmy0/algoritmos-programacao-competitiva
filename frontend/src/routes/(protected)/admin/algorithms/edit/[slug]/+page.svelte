@@ -201,7 +201,11 @@
 					<span class="font-semibold block text-emerald-200">Algoritmo salvo com sucesso!</span>
 					<p class="text-xs text-emerald-300/80 leading-relaxed">
 						Suas alterações foram enviadas e já estão em espera para aprovação.
-						<a href={controller.link} class="underline hover:text-emerald-200">
+						<a
+							href={controller.link}
+							class="underline hover:text-emerald-200"
+							onclick={() => (controller.isSuccess = false)}
+						>
 							Visualizar o algoritmo enviado
 						</a>.
 					</p>

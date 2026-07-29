@@ -20,13 +20,15 @@
 	const statusStyles: Record<string, string> = {
 		approved: difficultyStyles.beginner,
 		pending: difficultyStyles.intermediate,
-		rejected: difficultyStyles.expert
+		rejected: difficultyStyles.advanced,
+		deleted: difficultyStyles.expert
 	};
 
 	const statusLabels: Record<string, string> = {
 		approved: "Aprovado",
 		pending: "Pendente",
-		rejected: "Rejeitado"
+		rejected: "Rejeitado",
+		deleted: "Deletado"
 	};
 </script>
 

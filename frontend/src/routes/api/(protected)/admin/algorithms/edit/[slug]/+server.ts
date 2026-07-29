@@ -5,6 +5,8 @@ import type { RequestHandler } from "./$types";
 import { customFetch } from "$lib/api/client";
 import { PUBLIC_API_URL } from "$env/static/public";
 import type { Algorithm } from "$lib/types/algorithm";
+import { ADMIN_ALGORITHMS_ERRORS } from "../../../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
+import { algorithmSchema } from "$lib/schemas/algorithm";
 
 export const GET: RequestHandler = async (event) => {
 	checkAdminAccess(event.locals.user, "create:algorithms");
@@ -43,4 +45,50 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	return json(data);
+};
+
+export const POST: RequestHandler = async (event) => {
+	checkAdminAccess(event.locals.user, "create:algorithms");
+
+	const adminSecret = event.cookies.get("admin_secret");
+
+	if (!adminSecret) {
+		const normalizedError = normalizeApiError(
+			"MISSING_COOKIE",
+			"Falta a senha das rotas admin.",
+			ADMIN_ALGORITHMS_ERRORS
+		);
+		return json(normalizedError, { status: 401 });
+	}
+
+	const body = await event.request.json().catch(() => null);
+	const result = algorithmSchema.safeParse(body);
+
+	const { slug } = event.params;
+
+	const content = JSON.stringify({ public_id: slug, ...result.data });
+
+	const {
+		data,
+		error: apiError,
+		status
+	} = await customFetch<{ data: Algorithm }>(
+		event.fetch,
+		`${PUBLIC_API_URL}/api/admin/algorithms`,
+		{
+			method: "PUT",
+			headers: {
+				"X-Admin-Secret": adminSecret,
+				Authorization: `Bearer ${event.locals.accessToken}`
+			},
+			body: content
+		},
+		ADMIN_ALGORITHMS_ERRORS
+	);
+
+	if (apiError) {
+		return json(apiError, { status });
+	}
+
+	return json({ algorithm: data?.data });
 };

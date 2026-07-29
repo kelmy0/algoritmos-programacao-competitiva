@@ -18,6 +18,13 @@ export async function load({ fetch: svelteFetch }: Parameters<PageLoad>[0]) {
 		method: "GET"
 	});
 
+	if (status === 401) {
+		return {
+			algorithms: [],
+			pagination: { page: 1, limit: 10 }
+		};
+	}
+
 	if (apiError) {
 		error(status, apiError);
 	}

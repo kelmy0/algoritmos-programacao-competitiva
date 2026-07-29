@@ -22,7 +22,7 @@ export const POST: RequestHandler = async (event) => {
 			"Falta a senha das rotas admin.",
 			ADMIN_ALGORITHMS_ERRORS
 		);
-		return json(normalizedError, { status: 400 });
+		return json(normalizedError, { status: 401 });
 	}
 
 	const body = await event.request.json().catch(() => null);

@@ -17,6 +17,7 @@ const (
 	StatusApproved Status = "approved"
 	StatusPeding   Status = "pending"
 	StatusRejected Status = "rejected"
+	StatusDeleted  Status = "deleted"
 )
 
 type Algorithm struct {
@@ -27,7 +28,7 @@ type Algorithm struct {
 	Category   string     `db:"category"`
 	Difficulty Difficulty `db:"difficulty"`
 	Content    string     `db:"content"`
-	Status     string     `db:"status,oneof=approved pending rejected"`
+	Status     Status     `db:"status"`
 	AuthorId   string     `db:"author_id"`
 	CreatedAt  time.Time  `db:"created_at"`
 	UpdatedAt  time.Time  `db:"updated_at"`

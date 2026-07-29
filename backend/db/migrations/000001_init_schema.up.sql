@@ -1,6 +1,6 @@
 -- ENUM AND FUNCTIONS
 CREATE TYPE difficulty_level AS ENUM ('beginner', 'intermediate', 'advanced', 'expert');
-CREATE TYPE status_text AS ENUM('approved', 'pending', 'rejected');
+CREATE TYPE status_text AS ENUM('approved', 'pending', 'rejected', 'deleted');
 
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$

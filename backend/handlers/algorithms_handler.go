@@ -142,6 +142,11 @@ func (h *AlgorithmHandler) DeleteAlgorithm(c *gin.Context) {
 }
 
 func (h *AlgorithmHandler) PutAlgorithm(c *gin.Context) {
+	id, _, _, _, ok := GetAuthContext(c)
+	if !ok {
+		return
+	}
+
 	var requestBody dto.PutAlgorithmRequest
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
@@ -151,7 +156,7 @@ func (h *AlgorithmHandler) PutAlgorithm(c *gin.Context) {
 		return
 	}
 
-	algorithm, err := h.Service.PutAlgorithm(c.Request.Context(), requestBody)
+	algorithm, err := h.Service.PutAlgorithm(c.Request.Context(), requestBody, id)
 	if err != nil {
 		HandleAPIError(c, err)
 		return

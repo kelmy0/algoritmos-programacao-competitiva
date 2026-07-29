@@ -19,7 +19,7 @@ export const GET: RequestHandler = async (event) => {
 
 	if (!adminSecret) {
 		const normalizedError = normalizeApiError("MISSING_COOKIE", "Falta a senha das rotas admin.");
-		return json(normalizedError, { status: 400 });
+		return json(normalizedError, { status: 401 });
 	}
 
 	const {

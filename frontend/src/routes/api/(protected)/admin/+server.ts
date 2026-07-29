@@ -19,7 +19,7 @@ export const POST: RequestHandler = async (event) => {
 			"Falta a senha das rotas administradoras.",
 			ADMIN_PASSWORD_ERRORS
 		);
-		return json(normalizedError, { status: 400 });
+		return json(normalizedError, { status: 401 });
 	}
 
 	const { data, error, status } = await customFetch<AdminPasswordResponse>(
@@ -58,7 +58,7 @@ export const POST: RequestHandler = async (event) => {
 		return json({ correct: false });
 	}
 
-	setIdleCookie(event.cookies, "admin_secret", password, 60);
+	setIdleCookie(event.cookies, "admin_secret", password, 30);
 
 	return json({ correct: true });
 };
