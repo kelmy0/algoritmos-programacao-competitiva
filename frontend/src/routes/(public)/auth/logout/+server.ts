@@ -19,6 +19,7 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, locals, cookies
 
 	deleteAuthCookie(cookies, "access_token");
 	deleteAuthCookie(cookies, "refresh_token");
+	deleteAuthCookie(cookies, "admin_secret");
 
 	locals.user = null;
 	locals.accessToken = null;

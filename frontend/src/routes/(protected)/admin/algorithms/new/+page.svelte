@@ -110,7 +110,7 @@
 					aria-required="true"
 					aria-invalid={editor.hasDifficultyError}
 					aria-describedby={editor.hasDifficultyError ? "difficulty-error" : undefined}
-					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
+					class="hover:cursor-pointer w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
 					{editor.hasDifficultyError
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
 						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
@@ -199,49 +199,49 @@
 				<div
 					role="toolbar"
 					aria-label="Ferramentas de formatação Markdown"
-					class="flex flex-wrap items-center gap-1.5 p-3 bg-gray-900 border-b border-gray-800 text-xs"
+					class="min-h-12 flex flex-wrap items-center gap-1.5 px-3 py-2 bg-gray-900 border-b border-gray-800 text-xs"
 				>
 					<button
 						type="button"
 						onclick={() => editor.insertSnippet("## ", "", "Título")}
 						aria-label="Inserir Título Nível 2"
-						class="btn-toolbar">H2</button
+						class="btn-toolbar hover:cursor-pointer">H2</button
 					>
 					<button
 						type="button"
 						onclick={() => editor.insertSnippet("### ", "", "Subtítulo")}
 						aria-label="Inserir Subtítulo Nível 3"
-						class="btn-toolbar">H3</button
+						class="btn-toolbar hover:cursor-pointer">H3</button
 					>
 					<button
 						type="button"
 						onclick={() => editor.insertSnippet("**", "**", "negrito")}
 						aria-label="Texto em Negrito"
-						class="btn-toolbar"><b aria-hidden="true">B</b></button
+						class="btn-toolbar hover:cursor-pointer"><b aria-hidden="true">B</b></button
 					>
 					<button
 						type="button"
 						onclick={() => editor.insertSnippet("*", "*", "itálico")}
 						aria-label="Texto em Itálico"
-						class="btn-toolbar"><i aria-hidden="true">I</i></button
+						class="btn-toolbar hover:cursor-pointer"><i aria-hidden="true">I</i></button
 					>
 					<button
 						type="button"
 						onclick={() => editor.insertSnippet("\n```cpp\n", "\n```\n", "// seu código C++ aqui")}
 						aria-label="Inserir bloco de código C++"
-						class="btn-toolbar font-mono text-text-brand">C++ Code</button
+						class="btn-toolbar hover:cursor-pointer font-mono text-text-brand">C++ Code</button
 					>
 					<button
 						type="button"
 						onclick={() => editor.insertSnippet("> ", "", "Nota importante")}
 						aria-label="Inserir citação"
-						class="btn-toolbar">Quote</button
+						class="btn-toolbar hover:cursor-pointer">Quote</button
 					>
 					<button
 						type="button"
 						onclick={() => editor.insertSnippet("1. ", "", "Item")}
 						aria-label="Inserir lista numerada"
-						class="btn-toolbar">Lista</button
+						class="btn-toolbar hover:cursor-pointer">Lista</button
 					>
 				</div>
 
@@ -261,32 +261,34 @@
 						? "content-error"
 						: undefined}
 					class="w-full flex-1 p-4 bg-transparent text-gray-200 font-mono text-sm
-					resize-none border focus:outline-none focus-visible:ring-2 leading-relaxed
-					{editor.hasContentError || controller.hasContentError
-						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
-				></textarea>
+            resize-none focus:outline-none focus-visible:ring-2 leading-relaxed border
+            {editor.hasContentError || controller.hasContentError
+						? 'border-red-500 focus:ring-red-500'
+						: 'border-transparent focus:ring-text-brand'} 
+						disabled:cursor-not-allowed"></textarea>
 			</section>
 
 			<section
 				class="flex flex-col h-150 bg-app-surface border border-gray-800 rounded-xl overflow-hidden"
 				aria-label="Preview do conteúdo"
 			>
-				<div class="p-3 bg-gray-900 border-b border-gray-800 text-xs font-mono text-gray-400">
-					Preview em Tempo Real
+				<div
+					class="min-h-12 px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between gap-2"
+				>
+					<span class="text-xs font-mono font-medium text-gray-300">Preview em Tempo Real</span>
 				</div>
 				<div
 					aria-live="polite"
-					class="p-6 overflow-y-auto prose prose-invert max-w-none font-mono text-sm text-gray-200"
+					class="p-6 whitespace-pre-wrap wrap-break-word overflow-y-auto prose prose-invert max-w-none font-mono text-sm text-gray-200 prose-pre:whitespace-pre-wrap prose-pre:wrap-break-words"
 				>
 					{#if editor.content.trim()}
 						{#await editor.previewPromise}
-							<p role="status" class="text-gray-400 italic font-sans text-xs">Gerando preview...</p>
+							<p role="status" class="text-gray-400 italic font-sans text-sm">Gerando preview...</p>
 						{:then html}
 							{@html html}
 						{/await}
 					{:else}
-						<p class="text-gray-400 italic font-sans text-xs">
+						<p class="text-gray-400 italic font-sans text-sm">
 							O preview aparecerá aqui conforme você digita...
 						</p>
 					{/if}

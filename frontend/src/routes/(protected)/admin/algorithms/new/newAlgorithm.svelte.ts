@@ -87,7 +87,7 @@ export class NewAlgorithmController {
 
 		this.isSuccess = true;
 		this.apiError = null;
-		this.link = `/admin/algorithms/edit/${data.algorithm.Slug}-${data.algorithm.PublicId}`;
+		this.link = `/admin/algorithms/my-algorithms/${data.algorithm.Slug}-${data.algorithm.PublicId}`;
 		await scrollToAndFocus(this.alertDiv);
 
 		this.isLoading = false;

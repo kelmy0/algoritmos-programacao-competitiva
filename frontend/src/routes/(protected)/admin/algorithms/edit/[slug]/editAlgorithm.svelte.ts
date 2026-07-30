@@ -96,7 +96,7 @@ export class EditAlgorithmController {
 		this.apiError = null;
 		this.slug = data.algorithm.Slug;
 		this.publicId = data.algorithm.PublicId;
-		this.link = `/admin/algorithms/edit/${this.slug}-${this.publicId}`;
+		this.link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
 		return true;
 	}
 
@@ -141,7 +141,7 @@ export class EditAlgorithmController {
 
 		this.isSuccess = true;
 		this.apiError = null;
-		this.link = `/admin/algorithms/trash/${this.slug}-${this.publicId}`;
+		this.link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
 		return true;
 	}
 
@@ -184,7 +184,7 @@ export class EditAlgorithmController {
 
 		this.isSuccess = true;
 		this.apiError = null;
-		this.link = `/admin/algorithms/edit/${this.slug}-${this.publicId}`;
+		this.link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
 		return true;
 	}
 }

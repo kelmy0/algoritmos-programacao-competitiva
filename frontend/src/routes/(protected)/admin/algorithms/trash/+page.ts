@@ -14,7 +14,10 @@ export async function load({ fetch: svelteFetch }: Parameters<PageLoad>[0]) {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<ApiResponse>(svelteFetch, `/api/admin/algorithms/delete`);
+	} = await customFetch<ApiResponse>(
+		svelteFetch,
+		`/api/admin/algorithms/my-algorithms?status=deleted`
+	);
 
 	if (status === 401) {
 		return {

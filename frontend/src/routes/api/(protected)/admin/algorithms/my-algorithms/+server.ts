@@ -25,17 +25,23 @@ export const GET: RequestHandler = async (event) => {
 		return json(normalizedError, { status: 401 });
 	}
 
+	const queryString = event.url.searchParams.get("status");
+
 	const {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<ApiResponse>(event.fetch, `${PUBLIC_API_URL}/api/admin/algorithms`, {
-		method: "GET",
-		headers: {
-			"X-Admin-Secret": adminSecret,
-			Authorization: `Bearer ${event.locals.accessToken}`
+	} = await customFetch<ApiResponse>(
+		event.fetch,
+		`${PUBLIC_API_URL}/api/admin/algorithms${queryString ? `?status=${queryString}` : ""}`,
+		{
+			method: "GET",
+			headers: {
+				"X-Admin-Secret": adminSecret,
+				Authorization: `Bearer ${event.locals.accessToken}`
+			}
 		}
-	});
+	);
 
 	if (apiError) {
 		return json(apiError, { status });

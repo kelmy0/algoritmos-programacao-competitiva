@@ -71,9 +71,6 @@
 <svelte:head>
 	{#if algorithm}
 		<title>{algorithm.Name}</title>
-		<meta name="description" content="Implementação do algoritmo {algorithm.Name}." />
-		<meta property="og:title" content="{algorithm.Name} em C++" />
-		<meta property="og:description" content="Veja a implementação do algoritmo {algorithm.Name}." />
 		<meta name="robots" content="noindex, nofollow" />
 	{:else}
 		<title>Algoritmo</title>
@@ -412,12 +409,6 @@
 							{apiError.message}
 						{:else}
 							Algoritmo restaurado com sucesso!
-							<a
-								href="/admin/algorithms/edit/{algorithm?.Slug}-{algorithm?.PublicId}"
-								class="underline hover:text-white transition-colors"
-							>
-								Clique aqui para vê-lo
-							</a>.
 						{/if}
 					</p>
 				</div>

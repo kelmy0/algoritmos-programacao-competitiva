@@ -33,7 +33,7 @@
 </script>
 
 <svelte:head>
-	<title>Algoritmos deletados</title>
+	<title>Editar Algoritmos</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
@@ -43,9 +43,9 @@
 	>
 		<div>
 			<h1 class="font-montserrat font-bold text-2xl md:text-3xl text-text-primary tracking-tight">
-				Lixeira
+				Editar Algoritmos
 			</h1>
-			<p class="text-sm text-gray-400 mt-1">Veja seus algoritmos que estão na lixeira.</p>
+			<p class="text-sm text-gray-400 mt-1">Gerencie e edite seus algoritmos.</p>
 		</div>
 	</header>
 
