@@ -22,7 +22,7 @@
 
 	onMount(() => {
 		const keeper = createActivityKeeper({
-			intervalMinutes: 8,
+			intervalMinutes: 5,
 			onUnauthorized: () => {
 				invalidateAll();
 			}
