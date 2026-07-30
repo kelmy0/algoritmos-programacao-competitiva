@@ -168,13 +168,21 @@ func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.New
 }
 
 func (r *AlgorithmRepository) DeleteAlgorithm(ctx context.Context, publicId, userId string) error {
+	return r.setStatus(ctx, publicId, userId, "deleted")
+}
+
+func (r *AlgorithmRepository) RestoreAlgorithm(ctx context.Context, publicId, userId string) error {
+	return r.setStatus(ctx, publicId, userId, "pending")
+}
+
+func (r *AlgorithmRepository) setStatus(ctx context.Context, publicId, userId, status string) error {
 	query := `
 		UPDATE algorithms
-		SET status = 'deleted'
-		WHERE public_id = $1 AND author_id = $2;
+		SET status = $1
+		WHERE public_id = $2 AND author_id = $3;
 	`
 
-	res, err := r.db.Exec(ctx, query, publicId, userId)
+	res, err := r.db.Exec(ctx, query, status, publicId, userId)
 	if err != nil {
 		return err
 	}

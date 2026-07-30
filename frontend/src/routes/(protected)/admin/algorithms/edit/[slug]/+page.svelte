@@ -10,6 +10,8 @@
 	const controller = new EditAlgorithmController();
 
 	let isInitialized = $state(false);
+	let localStatus = $state<string>();
+	let status = $derived(localStatus ?? data.algorithm?.Status);
 
 	$effect(() => {
 		if (data.algorithm && !isInitialized) {
@@ -24,9 +26,45 @@
 		e.preventDefault();
 		const payload = editor.getPayload();
 		if (payload) {
-			await controller.editAlgorithm(payload);
+			const success = await controller.handleSubmit(payload);
+
+			if (success) {
+				localStatus = "pending";
+			}
 		}
 	}
+
+	async function handleDelete() {
+		const success = await controller.handleDelete();
+		if (success) {
+			localStatus = "deleted";
+		}
+	}
+
+	async function handleRestore() {
+		const success = await controller.handleRestore();
+		if (success) {
+			localStatus = "pending";
+		}
+	}
+
+	const errorLabels: Record<string, string> = {
+		save: "salvar",
+		delete: "deletar",
+		restore: "restaurar"
+	};
+
+	const successLabels: Record<string, string> = {
+		save: "salvo",
+		delete: "deletado",
+		restore: "restaurado"
+	};
+
+	const successText: Record<string, string> = {
+		save: "Suas alterações foram enviadas e já estão em espera para aprovação.",
+		delete: "Algoritmo movido para lixeira! Você tem até 7 dias para restaurá-lo.",
+		restore: "Algoritmo restaurado com sucesso! Ele já está em espera para aprovação."
+	};
 </script>
 
 <svelte:head>
@@ -167,7 +205,7 @@
 				</svg>
 				<div class="space-y-0.5">
 					<span class="font-semibold block text-red-200"
-						>Erro ao {controller.actionErrorLabel} algoritmo</span
+						>Erro ao {errorLabels[controller.lastAction] ?? controller.lastAction} algoritmo</span
 					>
 					<p class="text-xs text-red-300/80 leading-relaxed">
 						{controller.apiError.message || "Ocorreu um erro ao tentar salvar. Tente novamente."}
@@ -181,12 +219,14 @@
 				role="status"
 				aria-live="polite"
 				class="p-4 border text-sm flex items-start gap-3 shadow-lg transition-all rounded-xl
-				{controller.isSaved
+				{controller.lastAction !== 'delete'
 					? 'bg-emerald-950/40 border-emerald-900/60 text-red-300'
 					: 'bg-red-950/40 border-red-900/60 text-red-300'}"
 			>
 				<svg
-					class="w-5 h-5 shrink-0 mt-0.5 {controller.isSaved ? 'text-emerald-400' : 'text-red-400'}"
+					class="w-5 h-5 shrink-0 mt-0.5 {controller.lastAction !== 'delete'
+						? 'text-emerald-400'
+						: 'text-red-400'}"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -196,30 +236,32 @@
 						stroke-linecap="round"
 						stroke-linejoin="round"
 						stroke-width="2"
-						d={controller.isSaved
+						d={controller.lastAction !== "delete"
 							? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
 							: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"}
 					/>
 				</svg>
 				<div class="space-y-0.5">
 					<span
-						class="font-semibold block {controller.isSaved ? 'text-emerald-200' : 'text-red-200'}"
-						>Algoritmo {controller.isSaved ? "salvo" : "deletado"} com sucesso!</span
+						class="font-semibold block {controller.lastAction !== 'delete'
+							? 'text-emerald-200'
+							: 'text-red-200'}"
+						>Algoritmo {successLabels[controller.lastAction] ?? controller.lastAction} com sucesso!</span
 					>
 					<p
-						class="text-xs leading-relaxed {controller.isSaved
+						class="text-xs leading-relaxed {controller.lastAction !== 'delete'
 							? 'text-emerald-300/80'
 							: 'text-red-300/80'}"
 					>
-						{controller.isSaved
-							? "Suas alterações foram enviadas e já estão em espera para aprovação."
-							: "Algoritmo movido para lixeira! Você tem até 7 dias para restaurá-lo."}
+						{successText[controller.lastAction] ?? controller.lastAction}
 						<a
 							href={controller.link}
-							class="underline hover:text-emerald-200"
+							class="underline {controller.lastAction !== 'delete'
+								? 'hover:text-emerald-200'
+								: 'hover:text-red-200'}"
 							onclick={() => (controller.isSuccess = false)}
 						>
-							Visualizar o algoritmo {controller.isSaved ? "enviado" : "deletado"}
+							Visualizar o algoritmo {successLabels[controller.lastAction] ?? controller.lastAction}
 						</a>.
 					</p>
 				</div>
@@ -332,30 +374,55 @@
 		<div
 			class="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-4 pt-4 border-t border-gray-800/60"
 		>
-			<button
-				type="button"
-				onclick={() => controller.openDeleteModal()}
-				disabled={controller.isLoading || controller.isDeleting}
-				aria-haspopup="dialog"
-				aria-expanded={controller.isDeleteModalOpen}
-				class="px-5 py-2.5 rounded-lg border border-red-900/50 bg-red-950/30 text-red-400 font-semibold text-sm hover:bg-red-900/50 hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-			>
-				<svg
-					class="w-4 h-4"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
+			{#if status !== "deleted"}
+				<button
+					type="button"
+					onclick={() => controller.openDeleteModal()}
+					disabled={controller.isLoading || controller.isDeleting}
+					aria-haspopup="dialog"
+					aria-expanded={controller.isDeleteModalOpen}
+					class="px-5 py-2.5 rounded-lg border border-red-900/50 bg-red-950/30 text-red-400 font-semibold text-sm hover:bg-red-900/50 hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-					/>
-				</svg>
-				Mover para lixeira
-			</button>
+					<svg
+						class="w-4 h-4"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+						/>
+					</svg>
+					Mover para lixeira
+				</button>
+			{:else}
+				<button
+					type="button"
+					onclick={() => handleRestore()}
+					disabled={controller.isLoading || controller.isDeleting}
+					class="px-5 py-2.5 rounded-lg border border-emerald-900/50 bg-emerald-950/30 text-emerald-400 font-semibold text-sm hover:bg-emerald-900/50 hover:text-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+				>
+					<svg
+						class="w-4 h-4"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+						/>
+					</svg>
+					Restaurar
+				</button>
+			{/if}
 
 			<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-end">
 				{#if editor.hasContentError || controller.hasContentError}
@@ -380,17 +447,20 @@
 		use:focusTrap
 		class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
 		role="dialog"
-		onkeydown={(e) => e.key === "Escape" && controller.closeDeleteModal()}
-		tabindex="-1"
 		aria-modal="true"
+		aria-busy={controller.isDeleting}
 		aria-labelledby="delete-modal-title"
 		aria-describedby="delete-modal-description"
+		onkeydown={(e) => e.key === "Escape" && controller.closeDeleteModal()}
+		tabindex="-1"
 	>
 		<div
-			class="bg-app-surface border border-gray-800 rounded-xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+			class="bg-app-surface border border-gray-800 rounded-xl p-6 max-w-md w-full flex flex-col gap-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 relative"
 		>
 			<div class="flex items-start gap-3">
-				<div class="p-2 bg-red-950/80 border border-red-900/60 rounded-lg text-red-400 shrink-0">
+				<div
+					class="p-2.5 self-start rounded-lg shrink-0 border bg-red-950/80 border-red-900/60 text-red-400"
+				>
 					<svg
 						class="w-6 h-6"
 						fill="none"
@@ -406,32 +476,58 @@
 						/>
 					</svg>
 				</div>
-				<div>
+
+				<div class="flex-1 pr-6">
 					<h2 id="delete-modal-title" class="text-lg font-bold text-gray-100 font-montserrat">
 						Excluir Algoritmo?
 					</h2>
-					<p id="delete-modal-description" class="text-xs text-gray-300 mt-1 leading-relaxed">
+					<p id="delete-modal-description" class="text-sm text-gray-300 mt-1 leading-relaxed">
 						Tem certeza que deseja mover para lixeira este algoritmo? Você terá 7 dias para
 						restaurá-lo.
 					</p>
 				</div>
-			</div>
 
-			<div class="flex justify-end gap-3 pt-2">
 				<button
 					type="button"
 					onclick={() => controller.closeDeleteModal()}
 					disabled={controller.isDeleting || controller.isLoading}
-					class="px-4 py-2 rounded-lg bg-gray-900 text-gray-300 hover:text-white border border-gray-700 text-sm font-medium hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 cursor-pointer disabled:cursor-not-allowed"
+					aria-label="Fechar modal"
+					class="hover:cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:opacity-50 transition-colors"
+				>
+					<svg
+						class="w-5 h-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			</div>
+
+			<div
+				class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-800"
+			>
+				<button
+					type="button"
+					onclick={() => controller.closeDeleteModal()}
+					disabled={controller.isDeleting || controller.isLoading}
+					class="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-900 text-gray-300 hover:text-white border border-gray-700 text-sm font-medium hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
 				>
 					Cancelar
 				</button>
 				<button
 					type="button"
-					onclick={() => controller.handleDelete()}
+					onclick={handleDelete}
 					disabled={controller.isDeleting || controller.isLoading}
 					aria-busy={controller.isDeleting}
-					class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500/40 text-white text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+					class="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500/80 text-white text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
 				>
 					{controller.isDeleting ? "Excluindo..." : "Sim, Excluir"}
 				</button>

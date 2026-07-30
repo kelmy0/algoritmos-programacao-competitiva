@@ -33,7 +33,7 @@
 </script>
 
 <svelte:head>
-	<title>Deletar algoritmos</title>
+	<title>Algoritmos deletados</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 

@@ -50,7 +50,7 @@ export const GET: RequestHandler = async (event) => {
 	return json(data);
 };
 
-export const POST: RequestHandler = async (event) => {
+export const PUT: RequestHandler = async (event) => {
 	checkAdminAccess(event.locals.user, "create:algorithms");
 
 	const adminSecret = event.cookies.get("admin_secret");
@@ -69,22 +69,20 @@ export const POST: RequestHandler = async (event) => {
 
 	const { slug } = event.params;
 
-	const content = JSON.stringify({ public_id: slug, ...result.data });
-
 	const {
 		data,
 		error: apiError,
 		status
 	} = await customFetch<{ data: Algorithm }>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms`,
+		`${PUBLIC_API_URL}/api/admin/algorithms/${slug}`,
 		{
 			method: "PUT",
 			headers: {
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
 			},
-			body: content
+			body: JSON.stringify(result.data)
 		},
 		ADMIN_ALGORITHMS_ERRORS
 	);

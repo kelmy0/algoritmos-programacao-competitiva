@@ -1,11 +1,10 @@
+import { PUBLIC_API_URL } from "$env/static/public";
+import { customFetch } from "$lib/api/client";
 import { normalizeApiError } from "$lib/utils/errors";
 import { checkAdminAccess } from "$lib/utils/permissions";
-import { json } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { customFetch } from "$lib/api/client";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { json, type RequestHandler } from "@sveltejs/kit";
 
-export const DELETE: RequestHandler = async (event) => {
+export const PATCH: RequestHandler = async (event) => {
 	checkAdminAccess(event.locals.user, "create:algorithms");
 
 	const adminSecret = event.cookies.get("admin_secret");
@@ -22,9 +21,9 @@ export const DELETE: RequestHandler = async (event) => {
 
 	const { error: apiError, status } = await customFetch<null>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms/${slug}`,
+		`${PUBLIC_API_URL}/api/admin/algorithms/restore/${slug}`,
 		{
-			method: "DELETE",
+			method: "PATCH",
 			headers: {
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`

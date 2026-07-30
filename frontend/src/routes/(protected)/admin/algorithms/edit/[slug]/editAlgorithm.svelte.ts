@@ -1,3 +1,4 @@
+import { invalidateAll } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
 import type { AlgorithmPayload } from "$lib/schemas/algorithm";
 import type { Algorithm } from "$lib/types/algorithm";
@@ -14,10 +15,9 @@ export class EditAlgorithmController {
 	publicId = $state("");
 	slug = $state("");
 	isDeleteModalOpen = $state(false);
-	isSaved = $state(true);
+	lastAction = $state<"save" | "delete" | "restore">("save");
 
 	alertDiv = $state<HTMLDivElement | null>(null);
-	actionErrorLabel = $state("salvar");
 
 	touched = $state({
 		password: false
@@ -53,12 +53,11 @@ export class EditAlgorithmController {
 		}
 	}
 
-	async editAlgorithm(content: AlgorithmPayload) {
+	async handleSubmit(content: AlgorithmPayload): Promise<boolean> {
 		if (this.isDeleting || this.isLoading) {
-			return;
+			return false;
 		}
-
-		this.actionErrorLabel = "salvar";
+		this.lastAction = "save";
 
 		if (!this.publicId) {
 			this.apiError = normalizeApiError(
@@ -66,15 +65,16 @@ export class EditAlgorithmController {
 				"Id público do algoritmo não é valido!",
 				ADMIN_ALGORITHMS_ERRORS
 			);
-			return;
+			scrollToAndFocus(this.alertDiv);
+			return false;
 		}
 
 		this.isLoading = true;
 		const { data, error } = await customFetch<{ algorithm: Algorithm }>(
 			window.fetch,
-			`/api/admin/algorithms/edit/${this.publicId}`,
+			`/api/admin/algorithms/edit/${this.slug}-${this.publicId}`,
 			{
-				method: "POST",
+				method: "PUT",
 				headers: {
 					"Content-Type": "application/json"
 				},
@@ -89,19 +89,23 @@ export class EditAlgorithmController {
 		if (error || !data) {
 			this.apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
 			this.isSuccess = false;
-			return;
+			return false;
 		}
 
-		this.isSaved = true;
 		this.isSuccess = true;
 		this.apiError = null;
-		this.link = `/admin/algorithms/edit/${data.algorithm.Slug}-${data.algorithm.PublicId}`;
+		this.slug = data.algorithm.Slug;
+		this.publicId = data.algorithm.PublicId;
+		this.link = `/admin/algorithms/edit/${this.slug}-${this.publicId}`;
+		return true;
 	}
 
-	async handleDelete() {
+	async handleDelete(): Promise<boolean> {
 		if (this.isLoading || this.isDeleting) {
-			return;
+			return false;
 		}
+
+		this.lastAction = "delete";
 
 		if (!this.publicId || !this.slug) {
 			this.apiError = normalizeApiError(
@@ -109,20 +113,18 @@ export class EditAlgorithmController {
 				"Id público do algoritmo não é valido!",
 				ADMIN_ALGORITHMS_ERRORS
 			);
-			return;
+			this.isDeleteModalOpen = false;
+			scrollToAndFocus(this.alertDiv);
+			return false;
 		}
 
-		this.actionErrorLabel = "deletar";
 		this.isDeleting = true;
 
-		const { data, error } = await customFetch<{ deleted: boolean }>(
+		const { error, status } = await customFetch<null>(
 			window.fetch,
 			`/api/admin/algorithms/delete/${this.slug}-${this.publicId}`,
 			{
-				method: "DELETE",
-				headers: {
-					"Content-Type": "application/json"
-				}
+				method: "DELETE"
 			},
 			ADMIN_ALGORITHMS_ERRORS
 		);
@@ -131,14 +133,58 @@ export class EditAlgorithmController {
 		this.isDeleting = false;
 		scrollToAndFocus(this.alertDiv);
 
-		if (error || !data || !data.deleted) {
+		if (error || status !== 204) {
 			this.isSuccess = false;
 			this.apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
-			return;
+			return false;
 		}
 
-		this.isSaved = false;
 		this.isSuccess = true;
+		this.apiError = null;
 		this.link = `/admin/algorithms/trash/${this.slug}-${this.publicId}`;
+		return true;
+	}
+
+	async handleRestore(): Promise<boolean> {
+		if (this.isLoading || this.isDeleting) {
+			return false;
+		}
+
+		this.lastAction = "restore";
+
+		if (!this.publicId || !this.slug) {
+			this.apiError = normalizeApiError(
+				"ALGORITHM_INVALID_PUBLIC_ID",
+				"Id público do algoritmo não é valido!",
+				ADMIN_ALGORITHMS_ERRORS
+			);
+			scrollToAndFocus(this.alertDiv);
+			return false;
+		}
+
+		this.isLoading = true;
+
+		const { error, status } = await customFetch<null>(
+			window.fetch,
+			`/api/admin/algorithms/restore/${this.slug}-${this.publicId}`,
+			{
+				method: "PATCH"
+			},
+			ADMIN_ALGORITHMS_ERRORS
+		);
+
+		this.isLoading = false;
+		scrollToAndFocus(this.alertDiv);
+
+		if (error || status !== 204) {
+			this.isSuccess = false;
+			this.apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
+			return false;
+		}
+
+		this.isSuccess = true;
+		this.apiError = null;
+		this.link = `/admin/algorithms/edit/${this.slug}-${this.publicId}`;
+		return true;
 	}
 }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,11 +20,9 @@ func NewAlgorithmHandler(service *services.AlgorithmService) *AlgorithmHandler {
 }
 
 func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	page, limit := parsePaginationQuery(c, 10)
 
 	algorithms, finalPage, err := h.Service.List(c.Request.Context(), page, limit)
-
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -37,7 +36,6 @@ func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 }
 
 func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
-	//algorithm-slug-publicId
 	publicId, ok := parsePublicId(c)
 	if !ok {
 		return
@@ -55,16 +53,15 @@ func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 }
 
 func (h *AlgorithmHandler) GetAdminAlgorithms(c *gin.Context) {
-	id, _, _, _, ok := GetAuthContext(c)
+	userID, _, _, _, ok := GetAuthContext(c)
 	if !ok {
 		return
 	}
 
 	status := c.DefaultQuery("status", "")
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	page, limit := parsePaginationQuery(c, 10)
 
-	algorithms, finalPage, err := h.Service.ListAdmin(c.Request.Context(), page, limit, id, status)
+	algorithms, finalPage, err := h.Service.ListAdmin(c.Request.Context(), page, limit, userID, status)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -83,12 +80,12 @@ func (h *AlgorithmHandler) GetAdminAlgorithm(c *gin.Context) {
 		return
 	}
 
-	id, _, _, _, ok := GetAuthContext(c)
+	userID, _, _, _, ok := GetAuthContext(c)
 	if !ok {
 		return
 	}
 
-	algorithm, err := h.Service.GetAdminAlgorithm(c.Request.Context(), algoId, id)
+	algorithm, err := h.Service.GetAdminAlgorithm(c.Request.Context(), algoId, userID)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -100,33 +97,29 @@ func (h *AlgorithmHandler) GetAdminAlgorithm(c *gin.Context) {
 }
 
 func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
-	id, _, _, _, ok := GetAuthContext(c)
+	userID, _, _, _, ok := GetAuthContext(c)
 	if !ok {
 		return
 	}
 
 	var requestBody dto.PostAlgorithmRequest
-	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.CodeInvalidRequestBody,
-			err.Error(),
-		))
+	if !bindJSON(c, &requestBody) {
 		return
 	}
 
-	algorithm, err := h.Service.PostAlgorithm(c.Request.Context(), requestBody, id)
+	algorithm, err := h.Service.PostAlgorithm(c.Request.Context(), requestBody, userID)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.AlgorithmResponse{
+	c.JSON(http.StatusCreated, dto.AlgorithmResponse{
 		Data: algorithm,
 	})
 }
 
 func (h *AlgorithmHandler) DeleteAlgorithm(c *gin.Context) {
-	id, _, _, _, ok := GetAuthContext(c)
+	userID, _, _, _, ok := GetAuthContext(c)
 	if !ok {
 		return
 	}
@@ -136,33 +129,52 @@ func (h *AlgorithmHandler) DeleteAlgorithm(c *gin.Context) {
 		return
 	}
 
-	err := h.Service.DeleteAlgorithm(c.Request.Context(), publicId, id)
+	err := h.Service.DeleteAlgorithm(c.Request.Context(), publicId, userID)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.AlgorithmDeleteResponse{
-		Deleted: true,
-	})
+	c.Status(http.StatusNoContent)
+}
+
+func (h *AlgorithmHandler) RestoreAlgorithm(c *gin.Context) {
+	userID, _, _, _, ok := GetAuthContext(c)
+	if !ok {
+		return
+	}
+
+	publicId, ok := parsePublicId(c)
+	if !ok {
+		return
+	}
+
+	err := h.Service.RestoreAlgorithm(c.Request.Context(), publicId, userID)
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 func (h *AlgorithmHandler) PutAlgorithm(c *gin.Context) {
-	id, _, _, _, ok := GetAuthContext(c)
+	userID, _, _, _, ok := GetAuthContext(c)
+	if !ok {
+		return
+	}
+
+	publicId, ok := parsePublicId(c)
 	if !ok {
 		return
 	}
 
 	var requestBody dto.PutAlgorithmRequest
-	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.CodeInvalidRequestBody,
-			err.Error(),
-		))
+	if !bindJSON(c, &requestBody) {
 		return
 	}
 
-	algorithm, err := h.Service.PutAlgorithm(c.Request.Context(), requestBody, id)
+	algorithm, err := h.Service.PutAlgorithm(c.Request.Context(), requestBody, publicId, userID)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -186,4 +198,22 @@ func parsePublicId(c *gin.Context) (string, bool) {
 	}
 
 	return slugAndId[lastHifen+1:], true
+}
+
+func parsePaginationQuery(c *gin.Context, defaultLimit int) (int, int) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", strconv.Itoa(defaultLimit)))
+	return page, limit
+}
+
+func bindJSON[T any](c *gin.Context, target *T) bool {
+	if err := c.ShouldBindJSON(target); err != nil {
+		slog.Warn("bindJSON validation error", "error", err.Error())
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			err.Error(),
+		))
+		return false
+	}
+	return true
 }

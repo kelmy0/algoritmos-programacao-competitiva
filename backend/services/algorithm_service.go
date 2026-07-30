@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 	"log/slog"
 	"slices"
 	"unicode/utf8"
@@ -20,6 +19,7 @@ type AlgorithmRepository interface {
 	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*models.Algorithm, error)
 	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*models.Algorithm, error)
 	DeleteAlgorithm(ctx context.Context, publicId, userId string) error
+	RestoreAlgorithm(ctx context.Context, publicId, userId string) error
 	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*models.Algorithm, error)
 }
 
@@ -37,14 +37,7 @@ func NewAlgorithmService(algoRepo AlgorithmRepository, userRepo AlgorithmUserRep
 }
 
 func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.Algorithm, int, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 10
-	}
-
-	offset := (page - 1) * limit
+	page, limit, offset := normalizePagination(page, limit, 10)
 
 	data, err := s.AlgoRepo.List(ctx, limit, offset)
 	if err != nil {
@@ -60,15 +53,10 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 }
 
 func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser, status string) ([]models.Algorithm, int, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 1
-	}
-	offset := (page - 1) * limit
+	page, limit, offset := normalizePagination(page, limit, 1)
 
 	if !slices.Contains(models.AllStatuses, models.Status(status)) && status != "" {
+		slog.Warn("invalid algorithm status provided, defaulting to approved", "providedStatus", status, "userId", idUser)
 		status = "approved"
 	}
 
@@ -103,29 +91,16 @@ func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId 
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
 		}
-		log.Printf("[AlgorithmService.GetAlgorithmByPublicID] database error for public_id %s: %v", publicId, err)
+		slog.Error("database error querying algorithm by public id", "publicId", publicId, "error", err)
 		return nil, models.ErrFailQueryingAlgorithm
 	}
 	return algo, nil
 }
 
 func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, userId string) (*models.Algorithm, error) {
-	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
-
+	user, err := s.getAndValidateAuthor(ctx, userId, "post algorithm")
 	if err != nil {
-		if errors.Is(err, models.ErrUserNotFound) {
-			return nil, models.ErrUserNotFound
-		}
-		slog.Error("database error querying user ID during post algoritm", "error", err)
-		return nil, models.ErrFailQueryUser
-	}
-
-	if !user.Enable {
-		return nil, models.ErrUserNotEnabled
-	}
-
-	if !slices.Contains(user.Permissions, "create:algorithms") {
-		return nil, models.ErrAlgorithmNoCreatePermission
+		return nil, err
 	}
 
 	name, category, content, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
@@ -135,7 +110,7 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 
 	publicId, err := utils.GeneratePublicID()
 	if err != nil {
-		log.Printf("[AlgorithmService.PostAlgorithm] failed to generate secure public ID: %v", err)
+		slog.Error("failed to generate secure public ID", "userId", userId, "error", err)
 		return nil, models.ErrFailGeneratePublicId
 	}
 
@@ -151,44 +126,27 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 
 	res, err := s.AlgoRepo.PostAlgorithm(ctx, algorithm)
 	if err != nil {
-		log.Printf("[AlgorithmService.PostAlgorithm] repository failed to save algorithm (slug: %s): %v", algorithm.Slug, err)
+		slog.Error("repository failed to save algorithm", "slug", algorithm.Slug, "userId", userId, "error", err)
 		return nil, models.ErrFailPostingAlgorithm
 	}
 	return res, nil
 }
 
 func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, algoId, userId string) error {
-	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
-
+	user, err := s.getAndValidateAuthor(ctx, userId, "delete algorithm")
 	if err != nil {
-		if errors.Is(err, models.ErrUserNotFound) {
-			return models.ErrUserNotFound
-		}
-		slog.Error("database error querying user ID during update algoritm", "error", err)
-		return models.ErrFailQueryUser
-	}
-
-	if !user.Enable {
-		return models.ErrUserNotEnabled
-	}
-
-	if !slices.Contains(user.Permissions, "create:algorithms") {
-		return models.ErrAlgorithmNoCreatePermission
+		return err
 	}
 
 	publicId := utils.SanitizeTitle(algoId)
 
-	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, user.Id)
+	algo, err := s.validateOwnership(ctx, publicId, user.Id, "delete")
 	if err != nil {
-		if errors.Is(err, models.ErrAlgorithmNotFound) {
-			return models.ErrAlgorithmNotFound
-		}
-		slog.Error("database error during delete of algorithm", "publicId", publicId, "error", err)
-		return models.ErrFailQueryingAlgorithm
+		return err
 	}
 
-	if algo.AuthorId != user.Id {
-		return models.ErrAlgorithmAuthorMismatch
+	if algo.Status == "deleted" {
+		return nil
 	}
 
 	err = s.AlgoRepo.DeleteAlgorithm(ctx, publicId, user.Id)
@@ -196,30 +154,46 @@ func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, algoId, userId s
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return models.ErrAlgorithmNotFound
 		}
-		slog.Error("database error during delete of algorithm", "publicId", publicId, "error", err)
+		slog.Error("database error during delete execution of algorithm", "publicId", publicId, "userId", userId, "error", err)
 		return models.ErrFailQueryingAlgorithm
 	}
 
 	return nil
 }
 
-func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest, userId string) (*models.Algorithm, error) {
-	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
-
+func (s *AlgorithmService) RestoreAlgorithm(ctx context.Context, algoId, userId string) error {
+	user, err := s.getAndValidateAuthor(ctx, userId, "restore algorithm")
 	if err != nil {
-		if errors.Is(err, models.ErrUserNotFound) {
-			return nil, models.ErrUserNotFound
+		return err
+	}
+
+	publicId := utils.SanitizeTitle(algoId)
+
+	algo, err := s.validateOwnership(ctx, publicId, user.Id, "delete")
+	if err != nil {
+		return err
+	}
+
+	if algo.Status != "deleted" {
+		return nil
+	}
+
+	err = s.AlgoRepo.RestoreAlgorithm(ctx, publicId, user.Id)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmNotFound) {
+			return models.ErrAlgorithmNotFound
 		}
-		slog.Error("database error querying user ID during update algoritm", "error", err)
-		return nil, models.ErrFailQueryUser
+		slog.Error("database error during restore execution of algorithm", "publicId", publicId, "userId", userId, "error", err)
+		return models.ErrFailQueryingAlgorithm
 	}
 
-	if !user.Enable {
-		return nil, models.ErrUserNotEnabled
-	}
+	return nil
+}
 
-	if !slices.Contains(user.Permissions, "create:algorithms") {
-		return nil, models.ErrAlgorithmNoCreatePermission
+func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest, publicId, userId string) (*models.Algorithm, error) {
+	user, err := s.getAndValidateAuthor(ctx, userId, "update algorithm")
+	if err != nil {
+		return nil, err
 	}
 
 	name, category, content, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
@@ -227,10 +201,14 @@ func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorit
 		return nil, err
 	}
 
-	publicId := utils.SanitizeTitle(data.PublicId)
+	algoId := utils.SanitizeTitle(publicId)
+
+	if _, err := s.validateOwnership(ctx, algoId, user.Id, "update"); err != nil {
+		return nil, err
+	}
 
 	algorithm := models.PutAlgorithm{
-		PublicId:   publicId,
+		PublicId:   algoId,
 		Name:       name,
 		Slug:       utils.Slug(name),
 		Category:   category,
@@ -238,25 +216,12 @@ func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorit
 		Content:    content,
 	}
 
-	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, user.Id)
-	if err != nil {
-		if errors.Is(err, models.ErrAlgorithmNotFound) {
-			return nil, models.ErrAlgorithmNotFound
-		}
-		slog.Error("database error during update of algorithm", "publicId", publicId, "error", err)
-		return nil, models.ErrFailQueryingAlgorithm
-	}
-
-	if algo.AuthorId != user.Id {
-		return nil, models.ErrAlgorithmAuthorMismatch
-	}
-
 	res, err := s.AlgoRepo.PutAlgorithm(ctx, algorithm, user.Id)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
 		}
-		slog.Error("database error during update of algorithm", "publicId", publicId, "error", err)
+		slog.Error("database error during update execution of algorithm", "publicId", algoId, "userId", userId, "error", err)
 		return nil, models.ErrFailQueryingAlgorithm
 	}
 
@@ -281,4 +246,53 @@ func validateAndSanitizeAlgorithmFields(name, category, content string) (string,
 	}
 
 	return nameSanitized, categorySanitized, contentSanitized, nil
+}
+
+func normalizePagination(page, limit, defaultLimit int) (int, int, int) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = defaultLimit
+	}
+	offset := (page - 1) * limit
+	return page, limit, offset
+}
+
+func (s *AlgorithmService) getAndValidateAuthor(ctx context.Context, userId, action string) (*models.User, error) {
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return nil, models.ErrUserNotFound
+		}
+		slog.Error("database error querying user ID during "+action, "userId", userId, "error", err)
+		return nil, models.ErrFailQueryUser
+	}
+
+	if !user.Enable {
+		return nil, models.ErrUserNotEnabled
+	}
+
+	if !slices.Contains(user.Permissions, "create:algorithms") {
+		return nil, models.ErrAlgorithmNoCreatePermission
+	}
+
+	return user, nil
+}
+
+func (s *AlgorithmService) validateOwnership(ctx context.Context, publicId, userId, action string) (*models.Algorithm, error) {
+	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, userId)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmNotFound) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		slog.Error("database error during "+action+" of algorithm", "publicId", publicId, "userId", userId, "error", err)
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+
+	if algo.AuthorId != userId {
+		return nil, models.ErrAlgorithmAuthorMismatch
+	}
+
+	return algo, nil
 }

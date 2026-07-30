@@ -139,11 +139,19 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 			admin.GET("/ping", handlers.AnswerPing)
 
-			admin.GET("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.GetAdminAlgorithms)
-			admin.GET("/algorithms/:slugAndId", middleware.PermissionMiddleware("create:algorithms"), algoHandler.GetAdminAlgorithm)
-			admin.POST("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.PostAlgorithm)
-			admin.DELETE("/algorithms/:slugAndId", middleware.PermissionMiddleware("create:algorithms"), algoHandler.DeleteAlgorithm)
-			admin.PUT("/algorithms", middleware.PermissionMiddleware("create:algorithms"), algoHandler.PutAlgorithm)
+			algorithms := admin.Group("/algorithms")
+			{
+				create := algorithms.Group("", middleware.PermissionMiddleware("create:algorithms"))
+				{
+					create.GET("", algoHandler.GetAdminAlgorithms)
+					create.POST("", algoHandler.PostAlgorithm)
+					create.PUT("/:slugAndId", algoHandler.PutAlgorithm)
+					create.GET("/:slugAndId", algoHandler.GetAdminAlgorithm)
+					create.DELETE("/:slugAndId", algoHandler.DeleteAlgorithm)
+					create.PATCH("/restore/:slugAndId", algoHandler.RestoreAlgorithm)
+				}
+			}
+
 		}
 	}
 }

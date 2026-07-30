@@ -19,7 +19,6 @@ export async function customFetch<T>(
 		}
 
 		const response = await fetchImpl(url, options);
-
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({}));
 			const normalizedError = normalizeApiError(
