@@ -1,4 +1,3 @@
-import { PUBLIC_API_URL } from "$env/static/public";
 import { error } from "@sveltejs/kit";
 import type { PageLoad } from "./$types";
 import type { Algorithm } from "$lib/types/algorithm";
@@ -15,7 +14,14 @@ export const load: PageLoad = async (event) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<ApiResponse>(event.fetch, `${PUBLIC_API_URL}/api/algorithms`);
+	} = await customFetch<ApiResponse>(event.fetch, `/api/admin/algorithms/moderation`);
+
+	if (status === 401) {
+		return {
+			algorithms: [],
+			pagination: { page: 1, limit: 10 }
+		};
+	}
 
 	if (apiError) {
 		error(status, apiError);

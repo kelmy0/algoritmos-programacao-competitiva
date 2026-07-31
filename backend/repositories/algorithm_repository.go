@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -102,6 +103,62 @@ func (r *AlgorithmRepository) ListAdmin(ctx context.Context, limit, offset int, 
 
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	return list, nil
+}
+
+func (r *AlgorithmRepository) ListModeration(ctx context.Context, limit, offset int, status string) ([]dto.AlgorithmDTO, error) {
+
+	if limit <= 0 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var query strings.Builder
+	query.WriteString(`
+		SELECT public_id, slug, name, category, difficulty, status
+		FROM algorithms
+		WHERE status != $1
+	`)
+
+	args := []any{"deleted"}
+
+	if status != "" && status != "deleted" {
+		args = append(args, status)
+		fmt.Fprintf(&query, " AND status = $%d", len(args))
+	}
+
+	args = append(args, limit, offset)
+	fmt.Fprintf(&query, " ORDER BY updated_at DESC LIMIT $%d OFFSET $%d;", len(args)-1, len(args))
+
+	rows, err := r.db.Query(ctx, query.String(), args...)
+	if err != nil {
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+	defer rows.Close()
+
+	list := make([]dto.AlgorithmDTO, 0, limit)
+
+	for rows.Next() {
+		var algo dto.AlgorithmDTO
+		if err := rows.Scan(
+			&algo.PublicId,
+			&algo.Slug,
+			&algo.Name,
+			&algo.Category,
+			&algo.Difficulty,
+			&algo.Status,
+		); err != nil {
+			return nil, models.ErrFailQueryingAlgorithm
+		}
+		list = append(list, algo)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, models.ErrFailQueryingAlgorithm
 	}
 
 	return list, nil

@@ -79,6 +79,7 @@ CREATE TABLE algorithms (
 CREATE INDEX idx_algorithms_author_id ON algorithms(author_id);
 CREATE INDEX idx_algorithms_status ON algorithms(status);
 CREATE INDEX idx_algorithms_author_status_updated ON algorithms (author_id, status, updated_at DESC);
+CREATE INDEX idx_algorithms_status_updated ON algorithms (status, updated_at DESC);
 
 CREATE TRIGGER trigger_algorithms_updated_at
 BEFORE UPDATE ON algorithms

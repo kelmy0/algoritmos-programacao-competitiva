@@ -29,9 +29,9 @@ func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.ListAlgorithmsResponse{
-		Page:  finalPage,
-		Limit: limit,
-		Data:  algorithms,
+		Page:       finalPage,
+		Limit:      limit,
+		Algorithms: algorithms,
 	})
 }
 
@@ -52,7 +52,7 @@ func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 	})
 }
 
-func (h *AlgorithmHandler) GetAdminAlgorithms(c *gin.Context) {
+func (h *AlgorithmHandler) ListAdminAlgorithms(c *gin.Context) {
 	userID, _, _, _, ok := GetAuthContext(c)
 	if !ok {
 		return
@@ -67,7 +67,7 @@ func (h *AlgorithmHandler) GetAdminAlgorithms(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.ListAdminAlgorithmsResponse{
+	c.JSON(http.StatusOK, dto.ListAlgorithmsResponse{
 		Page:       finalPage,
 		Limit:      limit,
 		Algorithms: algorithms,
@@ -194,6 +194,28 @@ func (h *AlgorithmHandler) SitemapAlgorithms(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, dto.SitemapResponse{
 		Data: algorithms,
+	})
+}
+
+func (h *AlgorithmHandler) ListModerationAlgorithms(c *gin.Context) {
+	userID, _, _, _, ok := GetAuthContext(c)
+	if !ok {
+		return
+	}
+
+	status := c.DefaultQuery("status", "")
+	page, limit := parsePaginationQuery(c, 10)
+
+	algorithms, finalPage, err := h.Service.ListModeration(c.Request.Context(), page, limit, userID, status)
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ListAlgorithmsResponse{
+		Page:       finalPage,
+		Limit:      limit,
+		Algorithms: algorithms,
 	})
 }
 

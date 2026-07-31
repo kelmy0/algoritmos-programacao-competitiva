@@ -20,12 +20,6 @@ type AlgorithmDTO struct {
 }
 
 type ListAlgorithmsResponse struct {
-	Page  int            `json:"page"`
-	Limit int            `json:"limit"`
-	Data  []AlgorithmDTO `json:"data"`
-}
-
-type ListAdminAlgorithmsResponse struct {
 	Page       int            `json:"page"`
 	Limit      int            `json:"limit"`
 	Algorithms []AlgorithmDTO `json:"algorithms"`

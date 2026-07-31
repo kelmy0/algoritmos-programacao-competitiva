@@ -15,6 +15,7 @@ import (
 type AlgorithmRepository interface {
 	List(ctx context.Context, limit, offset int) ([]dto.AlgorithmDTO, error)
 	ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]dto.AlgorithmDTO, error)
+	ListModeration(ctx context.Context, limit, offset int, status string) ([]dto.AlgorithmDTO, error)
 	GetByPublicID(ctx context.Context, publicId string) (*dto.AlgorithmDTO, error)
 	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*dto.AlgorithmDTO, error)
 	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*dto.AlgorithmDTO, error)
@@ -236,6 +237,49 @@ func (s *AlgorithmService) SitemapAlgorithms(ctx context.Context) ([]dto.Sitemap
 	}
 
 	return algorithms, nil
+}
+
+func (s *AlgorithmService) ListModeration(ctx context.Context, page, limit int, userId, status string) ([]dto.AlgorithmDTO, int, error) {
+	if !slices.Contains(models.AllStatuses, models.Status(status)) && status != "" || status == "deleted" {
+		slog.Warn("invalid algorithm status provided, defaulting to approved", "providedStatus", status, "userId", userId)
+		status = "approved"
+	}
+
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return nil, page, models.ErrUserNotFound
+		}
+		slog.Error("database error querying user ID during list moderation", "userId", userId, "error", err)
+		return nil, page, models.ErrFailQueryUser
+	}
+
+	if !user.Enable {
+		return nil, page, models.ErrUserNotEnabled
+	}
+
+	if !slices.Contains(user.Permissions, "moderate:algorithms") {
+		return nil, page, models.ErrAlgorithmNoCreatePermission
+	}
+
+	page, limit, offset := normalizePagination(page, limit, 1)
+
+	if !slices.Contains(models.AllStatuses, models.Status(status)) && status != "" {
+		slog.Warn("invalid algorithm status provided, defaulting to approved", "providedStatus", status, "userId", userId)
+		status = "approved"
+	}
+
+	algorithms, err := s.AlgoRepo.ListModeration(ctx, limit, offset, status)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmsNotFound) {
+			return nil, page, models.ErrAlgorithmsNotFound
+		}
+
+		slog.Error("failed to query moderation algorithms", "id", userId, "page", page, "limit", limit, "offset", offset, "error", err)
+		return nil, page, models.ErrFailQueryingAlgorithm
+	}
+
+	return algorithms, page, nil
 }
 
 func validateAndSanitizeAlgorithmFields(name, category, content string) (string, string, string, error) {
