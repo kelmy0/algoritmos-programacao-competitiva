@@ -1,4 +1,4 @@
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { normalizeApiError } from "$lib/utils/errors";
 import { error } from "@sveltejs/kit";
 import { renderMarkdown } from "$lib/services/markdown";
@@ -14,10 +14,7 @@ export const load: PageServerLoad = async (event) => {
 		error: apiError,
 		status,
 		headers
-	} = await customFetch<{ data: Algorithm }>(
-		event.fetch,
-		`${PUBLIC_API_URL}/api/algorithms/${slug}`
-	);
+	} = await customFetch<{ data: Algorithm }>(event.fetch, `${API_URL}/api/algorithms/${slug}`);
 
 	if (apiError) {
 		error(status, apiError);

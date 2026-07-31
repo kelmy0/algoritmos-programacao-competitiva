@@ -22,6 +22,7 @@ type AlgorithmDTO struct {
 type ListAlgorithmsResponse struct {
 	Page       int            `json:"page"`
 	Limit      int            `json:"limit"`
+	HasMore    bool           `json:"hasMore"`
 	Algorithms []AlgorithmDTO `json:"algorithms"`
 }
 

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { SignUpController } from "./sign_up.svelte";
 	import { page } from "$app/state";
-	import { PUBLIC_API_URL } from "$env/static/public";
 	import { onMount } from "svelte";
 
 	const controller = new SignUpController();
@@ -511,7 +510,7 @@
 		<div class="grid grid-cols-2 gap-3">
 			<!-- Google -->
 			<a
-				href="{PUBLIC_API_URL}/api/auth/google"
+				href="/api/auth/social/google"
 				class="flex items-center justify-center gap-2 py-2.5 px-3 bg-app-bg/50 border border-gray-800 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-800/40 hover:border-gray-700 hover:text-white transition-all focus:outline-none focus:ring-1 focus:ring-text-brand"
 				aria-label="Entrar com o Google"
 			>
@@ -538,7 +537,7 @@
 
 			<!-- GitHub -->
 			<a
-				href="{PUBLIC_API_URL}/api/auth/github"
+				href="/api/auth/social/github"
 				class="flex items-center justify-center gap-2 py-2.5 px-3 bg-app-bg/50 border border-gray-800 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-800/40 hover:border-gray-700 hover:text-white transition-all focus:outline-none focus:ring-1 focus:ring-text-brand"
 				aria-label="Entrar com o GitHub"
 			>

@@ -1,4 +1,4 @@
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
 import type { Algorithm } from "$lib/types/algorithm";
 import { normalizeApiError } from "$lib/utils/errors";
@@ -33,7 +33,7 @@ export const GET: RequestHandler = async (event) => {
 		status
 	} = await customFetch<ApiResponse>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms${queryString ? `?status=${queryString}` : ""}`,
+		`${API_URL}/api/admin/algorithms${queryString ? `?status=${queryString}` : ""}`,
 		{
 			method: "GET",
 			headers: {

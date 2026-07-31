@@ -38,20 +38,26 @@ func NewAlgorithmService(algoRepo AlgorithmRepository, userRepo AlgorithmUserRep
 	return &AlgorithmService{AlgoRepo: algoRepo, UserRepo: userRepo}
 }
 
-func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]dto.AlgorithmDTO, int, error) {
+func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]dto.AlgorithmDTO, int, bool, error) {
 	page, limit, offset := normalizePagination(page, limit, 10)
 
-	data, err := s.AlgoRepo.List(ctx, limit, offset)
+	data, err := s.AlgoRepo.List(ctx, limit+1, offset)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmsNotFound) {
-			return nil, page, models.ErrAlgorithmsNotFound
+			return nil, page, false, models.ErrAlgorithmsNotFound
 		}
 
 		slog.Error("failed to query algorithms", "page", page, "limit", limit, "offset", offset, "error", err)
-		return nil, page, models.ErrFailQueryingAlgorithm
+		return nil, page, false, models.ErrFailQueryingAlgorithm
 	}
 
-	return data, page, err
+	hasMore := false
+	if len(data) > limit {
+		hasMore = true
+		data = data[:limit]
+	}
+
+	return data, page, hasMore, nil
 }
 
 func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser, status string) ([]dto.AlgorithmDTO, int, error) {
@@ -309,6 +315,10 @@ func normalizePagination(page, limit, defaultLimit int) (int, int, int) {
 	if limit < 1 {
 		limit = defaultLimit
 	}
+	if limit > 50 {
+		limit = 50
+	}
+
 	offset := (page - 1) * limit
 	return page, limit, offset
 }

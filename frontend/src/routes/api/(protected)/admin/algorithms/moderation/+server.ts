@@ -3,7 +3,7 @@ import { checkAdminAccess } from "$lib/utils/permissions";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { customFetch } from "$lib/api/client";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 
 interface ApiResponse {
 	algorithms: Algorithm[];
@@ -32,7 +32,7 @@ export const GET: RequestHandler = async (event) => {
 		status
 	} = await customFetch<ApiResponse>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms/moderation${queryString ? `?status=${queryString}` : ""}`,
+		`${API_URL}/api/admin/algorithms/moderation${queryString ? `?status=${queryString}` : ""}`,
 		{
 			method: "GET",
 			headers: {

@@ -1,5 +1,5 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { normalizeApiError } from "$lib/utils/errors";
 import { setAuthCookie } from "$lib/server/cookies";
 import {
@@ -12,7 +12,7 @@ import type { LoginResponse } from "../login/+server";
 export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookies }) => {
 	const { data, error, status, headers } = await customFetch<LoginResponse>(
 		svelteFetch,
-		`${PUBLIC_API_URL}/api/auth/verify-2fa`,
+		`${API_URL}/api/auth/verify-2fa`,
 		{
 			method: "POST",
 			headers: { "Content-Type": "application/json" },

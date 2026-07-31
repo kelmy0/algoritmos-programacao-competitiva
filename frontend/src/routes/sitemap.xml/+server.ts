@@ -1,5 +1,5 @@
 import { SITEMAP_SECRET } from "$env/static/private";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
 import type { RequestHandler } from "./$types";
 
@@ -21,7 +21,7 @@ export const GET: RequestHandler = async (event) => {
 
 	const { data, error, status } = await customFetch<ApiResponse>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/sitemap/algorithms`,
+		`${API_URL}/api/sitemap/algorithms`,
 		{
 			headers: {
 				"x-sitemap-secret": SITEMAP_SECRET

@@ -1,4 +1,4 @@
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
 import { normalizeApiError } from "$lib/utils/errors";
 import { checkAdminAccess } from "$lib/utils/permissions";
@@ -21,7 +21,7 @@ export const PATCH: RequestHandler = async (event) => {
 
 	const { error: apiError, status } = await customFetch<null>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms/restore/${slug}`,
+		`${API_URL}/api/admin/algorithms/restore/${slug}`,
 		{
 			method: "PATCH",
 			headers: {

@@ -1,5 +1,5 @@
 import { json, redirect, type Handle, type HandleServerError } from "@sveltejs/kit";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { jwtDecode } from "jwt-decode";
 import { normalizeApiError } from "$lib/utils/errors";
 import { setAuthCookie, setIdleCookie } from "$lib/server/cookies";
@@ -57,7 +57,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 		const { data, error: apiError } = await customFetch<RefreshResponse>(
 			event.fetch,
-			`${PUBLIC_API_URL}/api/auth/refresh`,
+			`${API_URL}/api/auth/refresh`,
 			{
 				method: "POST",
 				headers: {

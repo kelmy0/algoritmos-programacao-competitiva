@@ -1,6 +1,5 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "@sveltejs/kit";
-import { PUBLIC_API_URL } from "$env/static/public";
 import { normalizeApiError } from "$lib/utils/errors";
 import {
 	AUTH_ERRORS,
@@ -8,6 +7,7 @@ import {
 } from "../../../../(public)/auth/login/login.svelte";
 import { setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
+import { API_URL } from "$env/static/private";
 
 export interface LoginResponse {
 	access_token?: string;
@@ -18,7 +18,7 @@ export interface LoginResponse {
 export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookies }) => {
 	const { data, error, status, headers } = await customFetch<LoginResponse>(
 		svelteFetch,
-		`${PUBLIC_API_URL}/api/auth/login`,
+		`${API_URL}/api/auth/login`,
 		{
 			method: "POST",
 			headers: { "Content-Type": "application/json" },

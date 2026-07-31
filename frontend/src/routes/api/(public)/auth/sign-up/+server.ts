@@ -1,5 +1,5 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { normalizeApiError } from "$lib/utils/errors";
 import { setAuthCookie } from "$lib/server/cookies";
 import {
@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	const { data, error, status, headers } = await customFetch<SignUpResponse>(
 		svelteFetch,
-		`${PUBLIC_API_URL}/api/auth/sign-up`,
+		`${API_URL}/api/auth/sign-up`,
 		{
 			method: "POST",
 			headers: { "Content-Type": "application/json" },

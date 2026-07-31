@@ -10,3 +10,10 @@ export interface Algorithm {
 	createdAt: Date;
 	updatedAt: Date;
 }
+
+export interface ListAlgorithmsResponse {
+	page: number;
+	limit: number;
+	hasMore: boolean;
+	algorithms: Algorithm[];
+}

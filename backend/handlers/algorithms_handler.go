@@ -22,7 +22,7 @@ func NewAlgorithmHandler(service *services.AlgorithmService) *AlgorithmHandler {
 func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 	page, limit := parsePaginationQuery(c, 10)
 
-	algorithms, finalPage, err := h.Service.List(c.Request.Context(), page, limit)
+	algorithms, finalPage, hasMore, err := h.Service.List(c.Request.Context(), page, limit)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -31,6 +31,7 @@ func (h *AlgorithmHandler) ListAlgorithms(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.ListAlgorithmsResponse{
 		Page:       finalPage,
 		Limit:      limit,
+		HasMore:    hasMore,
 		Algorithms: algorithms,
 	})
 }

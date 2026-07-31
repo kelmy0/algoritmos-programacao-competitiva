@@ -2,7 +2,7 @@ import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { ADMIN_PASSWORD_ERRORS } from "../../../(protected)/admin/admin_controller.svelte";
 import { customFetch } from "$lib/api/client";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { setIdleCookie } from "$lib/server/cookies";
 
 interface AdminPasswordResponse {
@@ -24,7 +24,7 @@ export const POST: RequestHandler = async (event) => {
 
 	const { data, error, status } = await customFetch<AdminPasswordResponse>(
 		fetch,
-		`${PUBLIC_API_URL}/api/admin/ping`,
+		`${API_URL}/api/admin/ping`,
 		{
 			method: "GET",
 			headers: {

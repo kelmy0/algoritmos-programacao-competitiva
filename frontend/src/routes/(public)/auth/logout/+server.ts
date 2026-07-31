@@ -1,12 +1,12 @@
 import { redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import { deleteAuthCookie } from "$lib/server/cookies";
 
 export const POST: RequestHandler = async ({ fetch: svelteFetch, locals, cookies }) => {
 	if (locals.accessToken) {
 		try {
-			await svelteFetch(`${PUBLIC_API_URL}/api/auth/logout`, {
+			await svelteFetch(`${API_URL}/api/auth/logout`, {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${locals.accessToken}`

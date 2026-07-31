@@ -3,7 +3,7 @@ import { checkAdminAccess } from "$lib/utils/permissions";
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { ADMIN_ALGORITHMS_ERRORS } from "../../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
 import { normalizeApiError } from "$lib/utils/errors";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
 import { customFetch } from "$lib/api/client";
 
@@ -44,7 +44,7 @@ export const POST: RequestHandler = async (event) => {
 		status
 	} = await customFetch<ApiResponse>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms`,
+		`${API_URL}/api/admin/algorithms`,
 		{
 			method: "POST",
 			headers: {

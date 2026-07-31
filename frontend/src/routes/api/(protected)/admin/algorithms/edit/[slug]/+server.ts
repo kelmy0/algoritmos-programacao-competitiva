@@ -3,7 +3,7 @@ import { checkAdminAccess } from "$lib/utils/permissions";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { customFetch } from "$lib/api/client";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
 import { ADMIN_ALGORITHMS_ERRORS } from "../../../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
 import { algorithmSchema } from "$lib/schemas/algorithm";
@@ -29,7 +29,7 @@ export const GET: RequestHandler = async (event) => {
 		status
 	} = await customFetch<{ data: Algorithm }>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms/${slug}`,
+		`${API_URL}/api/admin/algorithms/${slug}`,
 		{
 			method: "GET",
 			headers: {
@@ -75,7 +75,7 @@ export const PUT: RequestHandler = async (event) => {
 		status
 	} = await customFetch<{ data: Algorithm }>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms/${slug}`,
+		`${API_URL}/api/admin/algorithms/${slug}`,
 		{
 			method: "PUT",
 			headers: {

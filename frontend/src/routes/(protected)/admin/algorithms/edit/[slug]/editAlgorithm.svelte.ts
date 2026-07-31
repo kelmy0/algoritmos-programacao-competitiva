@@ -1,4 +1,3 @@
-import { invalidateAll } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
 import type { AlgorithmPayload } from "$lib/schemas/algorithm";
 import type { Algorithm } from "$lib/types/algorithm";
@@ -94,8 +93,8 @@ export class EditAlgorithmController {
 
 		this.isSuccess = true;
 		this.apiError = null;
-		this.slug = data.algorithm.Slug;
-		this.publicId = data.algorithm.PublicId;
+		this.slug = data.algorithm.slug;
+		this.publicId = data.algorithm.publicId;
 		this.link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
 		return true;
 	}

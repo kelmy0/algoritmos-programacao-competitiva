@@ -3,7 +3,7 @@ import { checkAdminAccess } from "$lib/utils/permissions";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { customFetch } from "$lib/api/client";
-import { PUBLIC_API_URL } from "$env/static/public";
+import { API_URL } from "$env/static/private";
 
 export const DELETE: RequestHandler = async (event) => {
 	checkAdminAccess(event.locals.user, "create:algorithms");
@@ -22,7 +22,7 @@ export const DELETE: RequestHandler = async (event) => {
 
 	const { error: apiError, status } = await customFetch<null>(
 		event.fetch,
-		`${PUBLIC_API_URL}/api/admin/algorithms/${slug}`,
+		`${API_URL}/api/admin/algorithms/${slug}`,
 		{
 			method: "DELETE",
 			headers: {
