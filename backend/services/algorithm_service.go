@@ -21,6 +21,7 @@ type AlgorithmRepository interface {
 	DeleteAlgorithm(ctx context.Context, publicId, userId string) error
 	RestoreAlgorithm(ctx context.Context, publicId, userId string) error
 	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*dto.AlgorithmDTO, error)
+	SitemapAlgorithms(ctx context.Context) ([]dto.SitemapItem, error)
 }
 
 type AlgorithmUserRepository interface {
@@ -226,6 +227,15 @@ func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorit
 	}
 
 	return res, nil
+}
+
+func (s *AlgorithmService) SitemapAlgorithms(ctx context.Context) ([]dto.SitemapItem, error) {
+	algorithms, err := s.AlgoRepo.SitemapAlgorithms(ctx)
+	if err != nil {
+		return nil, models.ErrSitemapAlgorithms
+	}
+
+	return algorithms, nil
 }
 
 func validateAndSanitizeAlgorithmFields(name, category, content string) (string, string, string, error) {

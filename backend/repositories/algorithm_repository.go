@@ -24,7 +24,7 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]dt
 		SELECT public_id, slug, name, category, difficulty
 		FROM algorithms
 		WHERE status = 'approved'
-		ORDER BY updated_at ASC
+		ORDER BY updated_at DESC 
 		LIMIT $1 OFFSET $2
 	`
 
@@ -34,12 +34,16 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]dt
 	}
 	defer rows.Close()
 
-	var list []dto.AlgorithmDTO
+	list := make([]dto.AlgorithmDTO, 0, limit)
+
 	for rows.Next() {
 		var algo dto.AlgorithmDTO
 
 		err := rows.Scan(
-			&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+			&algo.PublicId,
+			&algo.Slug,
+			&algo.Name,
+			&algo.Category,
 			&algo.Difficulty,
 		)
 
@@ -70,7 +74,7 @@ func (r *AlgorithmRepository) ListAdmin(ctx context.Context, limit, offset int, 
 	}
 
 	args = append(args, limit, offset)
-	query += fmt.Sprintf(" ORDER BY updated_at ASC LIMIT $%d OFFSET $%d", len(args)-1, len(args))
+	query += fmt.Sprintf(" ORDER BY updated_at DESC LIMIT $%d OFFSET $%d", len(args)-1, len(args))
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
@@ -176,25 +180,6 @@ func (r *AlgorithmRepository) RestoreAlgorithm(ctx context.Context, publicId, us
 	return r.setStatus(ctx, publicId, userId, "pending")
 }
 
-func (r *AlgorithmRepository) setStatus(ctx context.Context, publicId, userId, status string) error {
-	query := `
-		UPDATE algorithms
-		SET status = $1
-		WHERE public_id = $2 AND author_id = $3;
-	`
-
-	res, err := r.db.Exec(ctx, query, status, publicId, userId)
-	if err != nil {
-		return err
-	}
-
-	if res.RowsAffected() == 0 {
-		return models.ErrAlgorithmNotFound
-	}
-
-	return nil
-}
-
 func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*dto.AlgorithmDTO, error) {
 	query := `
 		UPDATE algorithms 
@@ -219,4 +204,59 @@ func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutA
 	}
 
 	return &algo, nil
+}
+
+func (r *AlgorithmRepository) SitemapAlgorithms(ctx context.Context) ([]dto.SitemapItem, error) {
+	query := `
+		SELECT 
+			CONCAT(slug, '-', public_id) AS slug, 
+			updated_at
+		FROM algorithms
+		WHERE status = 'approved'
+		ORDER BY updated_at DESC
+		LIMIT 49000;
+	`
+
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := make([]dto.SitemapItem, 0)
+
+	for rows.Next() {
+		var item dto.SitemapItem
+
+		if err := rows.Scan(&item.Slug, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+
+		list = append(list, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
+func (r *AlgorithmRepository) setStatus(ctx context.Context, publicId, userId, status string) error {
+	query := `
+		UPDATE algorithms
+		SET status = $1
+		WHERE public_id = $2 AND author_id = $3;
+	`
+
+	res, err := r.db.Exec(ctx, query, status, publicId, userId)
+	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		return models.ErrAlgorithmNotFound
+	}
+
+	return nil
 }

@@ -33,6 +33,7 @@ const (
 	CodeTooManyRequests        = "TOO_MANY_REQUESTS"
 	CodeUnverifiedGithubEmail  = "GITHUB_EMAIL_UNVERIFIED"
 	CodeTokenNolongerValid     = "TOKEN_NO_LONGER_VALID"
+	CodeInvalidSecret          = "INVALID_SECRET"
 )
 
 const (

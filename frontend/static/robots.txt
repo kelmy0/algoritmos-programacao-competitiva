@@ -5,4 +5,4 @@ Disallow: /auth/
 Disallow: /admin/
 Disallow: /api/
 
-Sitemap:
+Sitemap: https://algoritmos-programacao.com.br/sitemap.xml

@@ -69,7 +69,7 @@ var (
 	ErrFailedToSendEmail           = &AppError{StatusCode: http.StatusInternalServerError, Code: "EMAIL_SEND_FAILED", Message: "Failed to send email."}
 	ErrSocialAccountAlreadyLinked  = &AppError{StatusCode: http.StatusConflict, Code: "SOCIAL_ACCOUNT_ALREADY_LINKED", Message: "This social account is already linked to another account."}
 	ErrEmailMismatchForSocialLink  = &AppError{StatusCode: http.StatusUnauthorized, Code: "EMAIL_MISMATCH_SOCIAL_LINK", Message: "Email mismatch during social link attempt."}
-	//ErrTokenNoLongerValid          = &AppError{StatusCode: http.StatusUnauthorized, Code: "TOKEN_NO_LONGER_VALID", Message: "Access token is no longer valid."}
+	ErrSitemapAlgorithms           = &AppError{StatusCode: http.StatusInternalServerError, Code: "SITEMAP_ALGORITHMS_QUERY", Message: "Failed to query algorithms to sitemap."}
 )
 
 var ErrPasswordChangeButNotLogout = errors.New("password changed, but failed to log out other devices.")

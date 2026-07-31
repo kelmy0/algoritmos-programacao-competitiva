@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"crypto/subtle"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,7 +11,7 @@ import (
 func Fake404Middleware(expectedHash string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		clientHash := c.GetHeader("x-admin-secret")
-		if clientHash != expectedHash {
+		if subtle.ConstantTimeCompare([]byte(clientHash), []byte(expectedHash)) != 1 {
 			c.JSON(http.StatusNotFound, dto.NewErrorResponse(
 				dto.CodePageNotFound,
 				dto.MsgPageNotFound,

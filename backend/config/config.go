@@ -43,6 +43,7 @@ type Config struct {
 	RedisAddr               string
 	RedisPassword           string
 	RedisTls                bool
+	SitemapSecret           string
 }
 
 func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
@@ -230,6 +231,11 @@ func LoadConfig() *Config {
 		redisTls = true
 	}
 
+	sitemapSecret := os.Getenv("SITEMAP_SECRET")
+	if sitemapSecret == "" {
+		log.Fatal("❌ SITEMAP_SECRET is required.")
+	}
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -263,5 +269,6 @@ func LoadConfig() *Config {
 		RedisAddr:               redisAddr,
 		RedisPassword:           redisPassword,
 		RedisTls:                redisTls,
+		SitemapSecret:           sitemapSecret,
 	}
 }

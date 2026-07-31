@@ -185,6 +185,18 @@ func (h *AlgorithmHandler) PutAlgorithm(c *gin.Context) {
 	})
 }
 
+func (h *AlgorithmHandler) SitemapAlgorithms(c *gin.Context) {
+	algorithms, err := h.Service.SitemapAlgorithms(c.Request.Context())
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, dto.SitemapResponse{
+		Data: algorithms,
+	})
+}
+
 func parsePublicId(c *gin.Context) (string, bool) {
 	slugAndId := c.Param("slugAndId")
 	lastHifen := strings.LastIndex(slugAndId, "-")

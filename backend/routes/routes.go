@@ -68,6 +68,11 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	api := router.Group("/api")
 	{
+		sitemaps := api.Group("/sitemap", strictAbuseLimiter, cache24Hours, middleware.SitemapMiddleware(cfg.SitemapSecret))
+		{
+			sitemaps.GET("/algorithms", algoHandler.SitemapAlgorithms)
+		}
+
 		publicStandard := api.Group("", standardApiLimiter)
 		{
 			publicStandard.GET("/ping", handlers.AnswerPing)
