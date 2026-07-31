@@ -13,7 +13,7 @@
 	let apiError = $state<ApiError | null>(null);
 	let isInfoModalOpen = $state(false);
 	let localStatus = $state<string>();
-	let status = $derived(localStatus ?? data.algorithm?.Status);
+	let status = $derived(localStatus ?? data.algorithm?.status);
 
 	const modalStatusClass = $derived(
 		isLoading
@@ -36,7 +36,7 @@
 
 		isInfoModalOpen = true;
 
-		if (!algorithm?.Slug || !algorithm.PublicId) {
+		if (!algorithm?.slug || !algorithm.publicId) {
 			apiError = normalizeApiError(
 				"ALGORITHM_INVALID_PUBLIC_ID",
 				"Id público do algoritmo não é valido!",
@@ -49,7 +49,7 @@
 
 		const { error, status } = await customFetch<null>(
 			window.fetch,
-			`/api/admin/algorithms/restore/${algorithm.Slug}-${algorithm.PublicId}`,
+			`/api/admin/algorithms/restore/${algorithm.slug}-${algorithm.publicId}`,
 			{
 				method: "PATCH"
 			},
@@ -70,7 +70,7 @@
 
 <svelte:head>
 	{#if algorithm}
-		<title>{algorithm.Name}</title>
+		<title>{algorithm.name}</title>
 		<meta name="robots" content="noindex, nofollow" />
 	{:else}
 		<title>Algoritmo</title>
@@ -143,17 +143,17 @@
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<span
 						class="text-text-brand bg-text-brand/10 border-text-brand/20 rounded-md border px-2.5 py-1 font-mono text-xs"
-						aria-label="Categoria: {algorithm.Category}"
+						aria-label="Categoria: {algorithm.category}"
 					>
-						{algorithm.Category}
+						{algorithm.category}
 					</span>
 					<span class="font-mono text-xs text-gray-400">
-						<span class="sr-only">Identificador: </span>ID: {algorithm.PublicId}
+						<span class="sr-only">Identificador: </span>ID: {algorithm.publicId}
 					</span>
 				</div>
 
 				<h1 class="text-text-primary font-montserrat text-3xl font-bold tracking-tight">
-					{algorithm.Name}
+					{algorithm.name}
 				</h1>
 			</header>
 

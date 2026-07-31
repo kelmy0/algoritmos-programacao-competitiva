@@ -13,14 +13,14 @@ import (
 )
 
 type AlgorithmRepository interface {
-	List(ctx context.Context, limit, offset int) ([]models.Algorithm, error)
-	ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]models.Algorithm, error)
-	GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error)
-	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*models.Algorithm, error)
-	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*models.Algorithm, error)
+	List(ctx context.Context, limit, offset int) ([]dto.AlgorithmDTO, error)
+	ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]dto.AlgorithmDTO, error)
+	GetByPublicID(ctx context.Context, publicId string) (*dto.AlgorithmDTO, error)
+	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*dto.AlgorithmDTO, error)
+	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*dto.AlgorithmDTO, error)
 	DeleteAlgorithm(ctx context.Context, publicId, userId string) error
 	RestoreAlgorithm(ctx context.Context, publicId, userId string) error
-	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*models.Algorithm, error)
+	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*dto.AlgorithmDTO, error)
 }
 
 type AlgorithmUserRepository interface {
@@ -36,7 +36,7 @@ func NewAlgorithmService(algoRepo AlgorithmRepository, userRepo AlgorithmUserRep
 	return &AlgorithmService{AlgoRepo: algoRepo, UserRepo: userRepo}
 }
 
-func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.Algorithm, int, error) {
+func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]dto.AlgorithmDTO, int, error) {
 	page, limit, offset := normalizePagination(page, limit, 10)
 
 	data, err := s.AlgoRepo.List(ctx, limit, offset)
@@ -52,7 +52,7 @@ func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]models.
 	return data, page, err
 }
 
-func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser, status string) ([]models.Algorithm, int, error) {
+func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser, status string) ([]dto.AlgorithmDTO, int, error) {
 	page, limit, offset := normalizePagination(page, limit, 1)
 
 	if !slices.Contains(models.AllStatuses, models.Status(status)) && status != "" {
@@ -73,7 +73,7 @@ func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUse
 	return algorithms, page, nil
 }
 
-func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, algoId, userId string) (*models.Algorithm, error) {
+func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, algoId, userId string) (*dto.AlgorithmDTO, error) {
 	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, algoId, userId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
@@ -85,7 +85,7 @@ func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, algoId, userId
 	return algo, nil
 }
 
-func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error) {
+func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (*dto.AlgorithmDTO, error) {
 	algo, err := s.AlgoRepo.GetByPublicID(ctx, publicId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
@@ -97,7 +97,7 @@ func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId 
 	return algo, nil
 }
 
-func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, userId string) (*models.Algorithm, error) {
+func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, userId string) (*dto.AlgorithmDTO, error) {
 	user, err := s.getAndValidateAuthor(ctx, userId, "post algorithm")
 	if err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func (s *AlgorithmService) RestoreAlgorithm(ctx context.Context, algoId, userId 
 	return nil
 }
 
-func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest, publicId, userId string) (*models.Algorithm, error) {
+func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest, publicId, userId string) (*dto.AlgorithmDTO, error) {
 	user, err := s.getAndValidateAuthor(ctx, userId, "update algorithm")
 	if err != nil {
 		return nil, err
@@ -280,7 +280,7 @@ func (s *AlgorithmService) getAndValidateAuthor(ctx context.Context, userId, act
 	return user, nil
 }
 
-func (s *AlgorithmService) validateOwnership(ctx context.Context, publicId, userId, action string) (*models.Algorithm, error) {
+func (s *AlgorithmService) validateOwnership(ctx context.Context, publicId, userId, action string) (*dto.AlgorithmDTO, error) {
 	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, userId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {

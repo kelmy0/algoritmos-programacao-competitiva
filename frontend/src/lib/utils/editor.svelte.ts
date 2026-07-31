@@ -79,10 +79,10 @@ export class AlgorithmEditor {
 	}
 
 	load(data: Algorithm) {
-		this.name = data.Name || "";
-		this.category = data.Category || "";
-		this.difficulty = data.Difficulty || "";
-		this.content = data.Content || "";
+		this.name = data.name || "";
+		this.category = data.category || "";
+		this.difficulty = data.difficulty || "beginner";
+		this.content = data.content || "";
 	}
 
 	onNameBlur() {

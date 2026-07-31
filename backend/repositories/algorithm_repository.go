@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 )
 
@@ -18,9 +19,9 @@ func NewAlgorithmRepository(db *pgxpool.Pool) *AlgorithmRepository {
 	return &AlgorithmRepository{db: db}
 }
 
-func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]models.Algorithm, error) {
+func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]dto.AlgorithmDTO, error) {
 	query := `
-		SELECT id, public_id, slug, name, category, difficulty
+		SELECT public_id, slug, name, category, difficulty
 		FROM algorithms
 		WHERE status = 'approved'
 		ORDER BY updated_at ASC
@@ -33,12 +34,12 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]mo
 	}
 	defer rows.Close()
 
-	var list []models.Algorithm
+	var list []dto.AlgorithmDTO
 	for rows.Next() {
-		var algo models.Algorithm
+		var algo dto.AlgorithmDTO
 
 		err := rows.Scan(
-			&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+			&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
 			&algo.Difficulty,
 		)
 
@@ -55,9 +56,9 @@ func (r *AlgorithmRepository) List(ctx context.Context, limit, offset int) ([]mo
 	return list, nil
 }
 
-func (r *AlgorithmRepository) ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]models.Algorithm, error) {
+func (r *AlgorithmRepository) ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]dto.AlgorithmDTO, error) {
 	query := `
-		SELECT id, public_id, slug, name, category, difficulty, status
+		SELECT public_id, slug, name, category, difficulty, status
 		FROM algorithms
 		WHERE author_id = $1
 	`
@@ -80,12 +81,12 @@ func (r *AlgorithmRepository) ListAdmin(ctx context.Context, limit, offset int, 
 	}
 	defer rows.Close()
 
-	var list []models.Algorithm
+	var list []dto.AlgorithmDTO
 	for rows.Next() {
-		var algo models.Algorithm
+		var algo dto.AlgorithmDTO
 
 		err := rows.Scan(
-			&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+			&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
 			&algo.Difficulty, &algo.Status,
 		)
 
@@ -102,16 +103,16 @@ func (r *AlgorithmRepository) ListAdmin(ctx context.Context, limit, offset int, 
 	return list, nil
 }
 
-func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error) {
+func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string) (*dto.AlgorithmDTO, error) {
 	query := `
-		SELECT id, public_id, slug, name, category, difficulty, content, created_at, updated_at
+		SELECT public_id, slug, name, category, difficulty, content, created_at, updated_at
 		FROM algorithms
 		WHERE public_id = $1 AND status = 'approved'
 	`
 
-	var algo models.Algorithm
+	var algo dto.AlgorithmDTO
 	err := r.db.QueryRow(ctx, query, publicId).Scan(
-		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+		&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
 		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
 	)
 
@@ -125,16 +126,16 @@ func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string
 	return &algo, nil
 }
 
-func (r *AlgorithmRepository) GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*models.Algorithm, error) {
+func (r *AlgorithmRepository) GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*dto.AlgorithmDTO, error) {
 	query := `
-		SELECT id, public_id, slug, name, category, difficulty, content, author_id, status, created_at, updated_at
+		SELECT public_id, slug, name, category, difficulty, content, author_id, status, created_at, updated_at
 		FROM algorithms
 		WHERE public_id = $1 AND author_id = $2;
 	`
 
-	var algo models.Algorithm
+	var algo dto.AlgorithmDTO
 	err := r.db.QueryRow(ctx, query, algoId, userId).Scan(
-		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+		&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
 		&algo.Difficulty, &algo.Content, &algo.AuthorId, &algo.Status, &algo.CreatedAt, &algo.UpdatedAt,
 	)
 
@@ -148,14 +149,14 @@ func (r *AlgorithmRepository) GetAdminAlgorithmById(ctx context.Context, algoId,
 	return &algo, nil
 }
 
-func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*models.Algorithm, error) {
+func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*dto.AlgorithmDTO, error) {
 	query := `
 		INSERT INTO algorithms (public_id, slug, name, category, difficulty, content, author_id) VALUES
 		($1, $2, $3, $4, $5, $6, $7)
 		RETURNING public_id, slug;
 	`
 
-	var algo models.Algorithm
+	var algo dto.AlgorithmDTO
 	err := r.db.QueryRow(ctx, query, data.PublicId, data.Slug,
 		data.Name, data.Category, data.Difficulty, data.Content, data.AuthorId,
 	).Scan(&algo.PublicId, &algo.Slug)
@@ -194,19 +195,19 @@ func (r *AlgorithmRepository) setStatus(ctx context.Context, publicId, userId, s
 	return nil
 }
 
-func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*models.Algorithm, error) {
+func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*dto.AlgorithmDTO, error) {
 	query := `
 		UPDATE algorithms 
 		SET slug = $1, name = $2, category = $3, difficulty = $4, content = $5, status = 'pending'
 		WHERE public_id = $6 AND author_id = $7
-		RETURNING id, public_id, slug, name, category, difficulty, content, created_at, updated_at;
+		RETURNING public_id, slug, name, category, difficulty, content, created_at, updated_at;
 	`
 
-	var algo models.Algorithm
+	var algo dto.AlgorithmDTO
 	err := r.db.QueryRow(ctx, query, data.Slug, data.Name,
 		data.Category, data.Difficulty, data.Content, data.PublicId, userId,
 	).Scan(
-		&algo.Id, &algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
+		&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
 		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
 	)
 

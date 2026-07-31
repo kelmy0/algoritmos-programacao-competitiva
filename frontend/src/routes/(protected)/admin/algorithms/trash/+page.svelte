@@ -51,7 +51,7 @@
 
 	<!-- Algorithm Grid -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-		{#each data.algorithms as item (item.Id)}
+		{#each data.algorithms as item (item.publicId)}
 			<article
 				class="relative bg-app-surface border border-gray-800 rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-gray-700 hover:shadow-xl transition-all duration-200 group"
 			>
@@ -59,36 +59,36 @@
 					<div class="flex items-start justify-between gap-3">
 						<h2
 							class="font-montserrat font-semibold text-base text-text-primary group-hover:text-text-brand transition-colors line-clamp-2"
-							title={item.Name}
+							title={item.name}
 						>
 							<a
-								href="/admin/algorithms/my-algorithms/{item.Slug}-{item.PublicId}"
+								href="/admin/algorithms/my-algorithms/{item.slug}-{item.publicId}"
 								class="after:absolute after:inset-0 focus:outline-none focus:ring-2 focus:ring-text-brand focus:ring-offset-2 focus:ring-offset-app-surface rounded-xl"
 							>
-								{item.Name}
+								{item.name}
 							</a>
 						</h2>
 
 						<span
 							class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border shrink-0 relative z-10 {difficultyStyles[
-								item.Difficulty
+								item.difficulty
 							] ?? 'bg-gray-800 text-gray-300 border-gray-700'}"
 						>
-							{difficultyLabels[item.Difficulty] ?? item.Difficulty}
+							{difficultyLabels[item.difficulty] ?? item.difficulty}
 						</span>
 					</div>
 					<div class="flex items-start justify-between gap-3">
 						<p class="text-xs font-medium text-gray-400 flex items-center gap-2">
 							<span class="inline-block w-2 h-2 rounded-full bg-text-brand" aria-hidden="true"
 							></span>
-							{item.Category}
+							{item.category}
 						</p>
 						<span
 							class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border shrink-0 relative z-10 {statusStyles[
-								item.Status
+								item.status
 							] ?? 'bg-gray-800 text-gray-300 border-gray-700'}"
 						>
-							{statusLabels[item.Status] ?? item.Status}
+							{statusLabels[item.status] ?? item.status}
 						</span>
 					</div>
 				</div>
@@ -98,7 +98,7 @@
 						class="text-xs font-mono text-gray-400 truncate max-w-30 relative z-10 select-all"
 						title="Copiar ID"
 					>
-						{item.PublicId}
+						{item.publicId}
 					</span>
 
 					<div

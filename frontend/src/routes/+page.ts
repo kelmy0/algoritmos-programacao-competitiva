@@ -10,7 +10,7 @@ interface ApiResponse {
 	data: Algorithm[];
 }
 
-export async function load({ fetch: svelteFetch }: Parameters<PageLoad>[0]) {
+export const load: PageLoad = async ({ fetch: svelteFetch }) => {
 	const {
 		data,
 		error: apiError,
@@ -32,4 +32,4 @@ export async function load({ fetch: svelteFetch }: Parameters<PageLoad>[0]) {
 			limit: data.limit
 		}
 	};
-}
+};

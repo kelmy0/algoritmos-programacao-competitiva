@@ -11,13 +11,13 @@
 
 	let isInitialized = $state(false);
 	let localStatus = $state<string>();
-	let status = $derived(localStatus ?? data.algorithm?.Status);
+	let status = $derived(localStatus ?? data.algorithm?.status);
 
 	$effect(() => {
 		if (data.algorithm && !isInitialized) {
 			editor.load(data.algorithm);
-			controller.publicId = data.algorithm.PublicId;
-			controller.slug = data.algorithm.Slug;
+			controller.publicId = data.algorithm.publicId;
+			controller.slug = data.algorithm.slug;
 			isInitialized = true;
 		}
 	});
@@ -356,7 +356,7 @@
 					{#if controller.slug}
 						<a
 							href="/admin/algorithms/my-algorithms/{controller.slug ??
-								data.algorithm?.Slug}-{controller.publicId ?? data.algorithm?.PublicId}"
+								data.algorithm?.slug}-{controller.publicId ?? data.algorithm?.publicId}"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-gray-300 bg-gray-800/60 hover:bg-gray-800 hover:text-white border border-gray-700/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-text-brand transition-all"

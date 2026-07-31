@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();
 
@@ -8,10 +8,10 @@
 
 <svelte:head>
 	{#if algorithm}
-		<title>{algorithm.Name}</title>
-		<meta name="description" content="Implementação do algoritmo {algorithm.Name}." />
-		<meta property="og:title" content="{algorithm.Name} em C++" />
-		<meta property="og:description" content="Veja a implementação do algoritmo {algorithm.Name}." />
+		<title>{algorithm.name}</title>
+		<meta name="description" content="Implementação do algoritmo {algorithm.name}." />
+		<meta property="og:title" content="{algorithm.name} em C++" />
+		<meta property="og:description" content="Veja a implementação do algoritmo {algorithm.name}." />
 	{:else}
 		<title>Algoritmo</title>
 	{/if}
@@ -36,17 +36,17 @@
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<span
 						class="text-text-brand bg-text-brand/10 border-text-brand/20 rounded-md border px-2.5 py-1 font-mono text-xs"
-						aria-label="Categoria: {algorithm.Category}"
+						aria-label="Categoria: {algorithm.category}"
 					>
-						{algorithm.Category}
+						{algorithm.category}
 					</span>
 					<span class="font-mono text-xs text-gray-400">
-						<span class="sr-only">Identificador: </span>ID: {algorithm.PublicId}
+						<span class="sr-only">Identificador: </span>ID: {algorithm.publicId}
 					</span>
 				</div>
 
 				<h1 class="text-text-primary font-montserrat text-3xl font-bold tracking-tight">
-					{algorithm.Name}
+					{algorithm.name}
 				</h1>
 			</header>
 

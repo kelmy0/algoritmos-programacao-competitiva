@@ -91,7 +91,7 @@ func (h *AlgorithmHandler) GetAdminAlgorithm(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.GetAdminAlgorithmsResponse{
+	c.JSON(http.StatusOK, dto.AlgorithmResponse{
 		Data: algorithm,
 	})
 }

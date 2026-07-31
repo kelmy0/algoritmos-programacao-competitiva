@@ -30,7 +30,7 @@ export const load: PageLoad = async ({ fetch: svelteFetch, params }) => {
 	}
 
 	const algorithmData = data.data;
-	const contentHtml = await renderMarkdown(algorithmData.Content || "");
+	const contentHtml = await renderMarkdown(algorithmData.content || "");
 
 	return {
 		algorithm: {

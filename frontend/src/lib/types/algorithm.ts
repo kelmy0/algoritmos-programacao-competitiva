@@ -1,10 +1,12 @@
 export interface Algorithm {
-	Id: string;
-	PublicId: string;
-	Slug: string;
-	Name: string;
-	Category: string;
-	Content: string;
-	Status: string;
-	Difficulty: string;
+	publicId: string;
+	slug: string;
+	name: string;
+	category: string;
+	content: string;
+	difficulty: string;
+	status: string;
+	authorId: string;
+	createdAt: Date;
+	updatedAt: Date;
 }
