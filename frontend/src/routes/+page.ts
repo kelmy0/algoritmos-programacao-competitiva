@@ -10,12 +10,12 @@ interface ApiResponse {
 	data: Algorithm[];
 }
 
-export const load: PageLoad = async ({ fetch: svelteFetch }) => {
+export const load: PageLoad = async (event) => {
 	const {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<ApiResponse>(svelteFetch, `${PUBLIC_API_URL}/api/algorithms`, {});
+	} = await customFetch<ApiResponse>(event.fetch, `${PUBLIC_API_URL}/api/algorithms`);
 
 	if (apiError) {
 		error(status, apiError);

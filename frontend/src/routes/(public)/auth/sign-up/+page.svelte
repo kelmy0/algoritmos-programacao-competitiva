@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { SignUpController } from './sign_up.svelte';
-	import { page } from '$app/state';
-	import { PUBLIC_API_URL } from '$env/static/public';
-	import { onMount } from 'svelte';
+	import { SignUpController } from "./sign_up.svelte";
+	import { page } from "$app/state";
+	import { PUBLIC_API_URL } from "$env/static/public";
+	import { onMount } from "svelte";
 
 	const controller = new SignUpController();
 
 	onMount(() => {
-		const error = page.url.searchParams.get('error');
+		const error = page.url.searchParams.get("error");
 
-		if (error == 'social_auth_failed') {
+		if (error == "social_auth_failed") {
 		}
 	});
 </script>
@@ -17,6 +17,10 @@
 <svelte:head>
 	<title>Criar conta</title>
 	<meta name="robots" content="noindex, nofollow" />
+	<meta
+		name="description"
+		content="Criar conta. Crie uma conta para salvar seus algoritmos favoritos!"
+	/>
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4 scroll-smooth">
@@ -50,7 +54,7 @@
 					aria-describedby={controller.touched.name &&
 					controller.name.length > 0 &&
 					!controller.isNameValid
-						? 'name-error'
+						? "name-error"
 						: undefined}
 					placeholder="Pedro da Silva"
 					required
@@ -83,14 +87,14 @@
 					aria-invalid={(controller.touched.username &&
 						controller.username.length > 0 &&
 						!controller.isUsernameValid) ||
-						controller.apiError?.code === 'USERNAME_ALREADY_USED' ||
-						controller.apiError?.code === 'REGISTRATION_INVALID_USERNAME'}
+						controller.apiError?.code === "USERNAME_ALREADY_USED" ||
+						controller.apiError?.code === "REGISTRATION_INVALID_USERNAME"}
 					aria-describedby={(controller.touched.username &&
 						controller.username.length > 0 &&
 						!controller.isUsernameValid) ||
-					controller.apiError?.code === 'USERNAME_ALREADY_USED' ||
-					controller.apiError?.code === 'REGISTRATION_INVALID_USERNAME'
-						? 'username-error'
+					controller.apiError?.code === "USERNAME_ALREADY_USED" ||
+					controller.apiError?.code === "REGISTRATION_INVALID_USERNAME"
+						? "username-error"
 						: undefined}
 					oninput={() => controller.onUsernameInput()}
 					onblur={() => controller.onUsernameBlur()}
@@ -104,7 +108,7 @@
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
 						: 'border-gray-800 focus:border-text-brand focus:ring-text-brand'}"
 				/>
-				{#if (controller.touched.username && controller.username.length > 0 && !controller.isUsernameValid) || controller.apiError?.code === 'USERNAME_ALREADY_USED'}
+				{#if (controller.touched.username && controller.username.length > 0 && !controller.isUsernameValid) || controller.apiError?.code === "USERNAME_ALREADY_USED"}
 					<p
 						id="username-error"
 						role="alert"
@@ -112,9 +116,9 @@
 							? 'text-red-400'
 							: 'text-amber-500'}"
 					>
-						{controller.apiError?.code === 'USERNAME_ALREADY_USED'
-							? 'Nome de usuário já usado, tente outro nome de usuário.'
-							: 'Apenas letras, números, _ e - (mínimo 6 caracteres).'}
+						{controller.apiError?.code === "USERNAME_ALREADY_USED"
+							? "Nome de usuário já usado, tente outro nome de usuário."
+							: "Apenas letras, números, _ e - (mínimo 6 caracteres)."}
 					</p>
 				{/if}
 			</div>
@@ -133,11 +137,11 @@
 					onblur={() => controller.onEmailBlur()}
 					aria-required="true"
 					aria-invalid={(controller.touched.email && !controller.isEmailValid) ||
-						controller.apiError?.code === 'EMAIL_ALREADY_USED' ||
-						controller.apiError?.code === 'REGISTRATION_INVALID_EMAIL'}
+						controller.apiError?.code === "EMAIL_ALREADY_USED" ||
+						controller.apiError?.code === "REGISTRATION_INVALID_EMAIL"}
 					aria-describedby={(controller.touched.email && !controller.isEmailValid) ||
-					controller.apiError?.code === 'EMAIL_ALREADY_USED'
-						? 'email-error'
+					controller.apiError?.code === "EMAIL_ALREADY_USED"
+						? "email-error"
 						: undefined}
 					placeholder="seu@email.com"
 					required
@@ -149,11 +153,11 @@
 						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
 						: 'border-gray-800 focus:border-text-brand focus:ring-text-brand'}"
 				/>
-				{#if (controller.touched.email && !controller.isEmailValid) || controller.apiError?.code === 'EMAIL_ALREADY_USED'}
+				{#if (controller.touched.email && !controller.isEmailValid) || controller.apiError?.code === "EMAIL_ALREADY_USED"}
 					<p id="email-error" role="alert" class="text-xs text-red-400">
-						{controller.apiError?.code === 'EMAIL_ALREADY_USED'
-							? 'Email já cadastrado em uma conta, tente fazer login.'
-							: 'Digite um endereço de e-mail válido.'}
+						{controller.apiError?.code === "EMAIL_ALREADY_USED"
+							? "Email já cadastrado em uma conta, tente fazer login."
+							: "Digite um endereço de e-mail válido."}
 					</p>
 				{/if}
 			</div>
@@ -163,14 +167,14 @@
 				<label for="password" class="block text-sm font-medium text-gray-300">Senha</label>
 				<div class="relative flex items-center">
 					<input
-						type={controller.showPassword ? 'text' : 'password'}
+						type={controller.showPassword ? "text" : "password"}
 						id="password"
 						name="password"
 						autocomplete="new-password"
 						bind:value={controller.password}
 						bind:this={controller.passwordInput}
 						aria-required="true"
-						aria-invalid={controller.apiError?.code === 'USER_PASSWORD_NOT_VALID'}
+						aria-invalid={controller.apiError?.code === "USER_PASSWORD_NOT_VALID"}
 						oninput={() => controller.onPasswordInput()}
 						onblur={() => controller.onPasswordBlur()}
 						placeholder="••••••••"
@@ -185,7 +189,7 @@
 						type="button"
 						onclick={() => controller.togglePassword()}
 						class="absolute right-3 p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-						aria-label={controller.showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+						aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
 					>
 						{#if controller.showPassword}
 							<svg
@@ -343,7 +347,7 @@
 				</label>
 				<div class="relative flex items-center">
 					<input
-						type={controller.showConfirmPassword ? 'text' : 'password'}
+						type={controller.showConfirmPassword ? "text" : "password"}
 						id="confirmPassword"
 						name="confirmPassword"
 						autocomplete="new-password"
@@ -351,12 +355,12 @@
 						bind:this={controller.confirmPasswordInput}
 						aria-required="true"
 						aria-invalid={(controller.touched.confirmPassword && !controller.isPasswordsMatching) ||
-							controller.apiError?.code === 'USER_PASSWORDS_DONT_MATCH'}
+							controller.apiError?.code === "USER_PASSWORDS_DONT_MATCH"}
 						aria-describedby={(controller.touched.confirmPassword &&
 							controller.confirmPassword.length > 0 &&
 							!controller.isPasswordsMatching) ||
-						controller.apiError?.code === 'USER_PASSWORDS_DONT_MATCH'
-							? 'confirm-password-error'
+						controller.apiError?.code === "USER_PASSWORDS_DONT_MATCH"
+							? "confirm-password-error"
 							: undefined}
 						oninput={() => controller.onPasswordInput()}
 						onblur={() => controller.onConfirmPasswordBlur()}
@@ -374,8 +378,8 @@
 						onclick={() => controller.toggleConfirmPassword()}
 						class="absolute right-3 p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
 						aria-label={controller.showConfirmPassword
-							? 'Ocultar confirmação de senha'
-							: 'Mostrar confirmação de senha'}
+							? "Ocultar confirmação de senha"
+							: "Mostrar confirmação de senha"}
 					>
 						{#if controller.showConfirmPassword}
 							<svg
@@ -498,7 +502,7 @@
 			<div class="absolute inset-0 flex items-center">
 				<div class="w-full border-t border-gray-800"></div>
 			</div>
-			<div class="relative bg-app-bg px-3 text-xs text-gray-500 uppercase tracking-wider">
+			<div class="relative bg-app-bg px-3 text-xs text-gray-400 uppercase tracking-wider">
 				ou continue com
 			</div>
 		</div>

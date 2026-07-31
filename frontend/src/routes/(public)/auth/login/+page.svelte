@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { LoginController } from './login.svelte';
-	import { PUBLIC_API_URL } from '$env/static/public';
-	import { untrack } from 'svelte';
+	import { LoginController } from "./login.svelte";
+	import { PUBLIC_API_URL } from "$env/static/public";
+	import { untrack } from "svelte";
 
 	let { data } = $props();
 
@@ -11,6 +11,7 @@
 <svelte:head>
 	<title>Entrar</title>
 	<meta name="robots" content="noindex, nofollow" />
+	<meta name="description" content="Login. Entre para salvar seus algoritmos favoritos!" />
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4">
@@ -41,7 +42,7 @@
 					aria-required="true"
 					aria-invalid={controller.touched.email && !controller.isEmailValid}
 					aria-describedby={controller.touched.email && !controller.isEmailValid
-						? 'email-error'
+						? "email-error"
 						: undefined}
 					placeholder="seu@email.com"
 					required
@@ -64,7 +65,7 @@
 				<label for="password" class="block text-sm font-medium text-gray-300">Senha</label>
 				<div class="relative flex items-center">
 					<input
-						type={controller.showPassword ? 'text' : 'password'}
+						type={controller.showPassword ? "text" : "password"}
 						id="password"
 						name="password"
 						autocomplete="current-password"
@@ -75,7 +76,7 @@
 						aria-required="true"
 						aria-invalid={controller.touched.password && !controller.isPasswordValid}
 						aria-describedby={controller.touched.password && !controller.isPasswordValid
-							? 'password-error'
+							? "password-error"
 							: undefined}
 						placeholder="••••••••"
 						required
@@ -90,7 +91,7 @@
 						type="button"
 						onclick={() => controller.togglePassword()}
 						class="absolute right-3 p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-						aria-label={controller.showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+						aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
 					>
 						{#if controller.showPassword}
 							<svg
@@ -212,7 +213,7 @@
 			<div class="absolute inset-0 flex items-center">
 				<div class="w-full border-t border-gray-800"></div>
 			</div>
-			<div class="relative bg-app-bg px-3 text-xs text-gray-500 uppercase tracking-wider">
+			<div class="relative bg-app-bg px-3 text-xs text-gray-400 uppercase tracking-wider">
 				ou continue com
 			</div>
 		</div>
