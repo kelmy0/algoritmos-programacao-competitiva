@@ -7,9 +7,9 @@ export const ssr = false;
 const ROUTE_PERMISSIONS: Record<string, string> = {
 	"/admin/algorithms/new": "create:algorithms",
 	"/admin/algorithms/edit": "create:algorithms",
-	"/admin/algorithms/trash": "create:algorithms"
-	//'/admin/algorithms/edit': 'update:algorithms',
-	//"/admin/algorithms/trash": "delete:algorithms"
+	"/admin/algorithms/trash": "create:algorithms",
+	"/admin/algorithms/my-algorithms": "create:algorithms",
+	"/admin/algorithms/moderation": "moderate:algorithms"
 };
 
 export const load: LayoutLoad = async ({ url, parent, fetch: svelteFetch }) => {

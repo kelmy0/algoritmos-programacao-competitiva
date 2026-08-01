@@ -1,5 +1,11 @@
 import { normalizeApiError } from "$lib/utils/errors";
-import { error, type RequestEvent, type RequestHandler } from "@sveltejs/kit";
+import { error, json, type RequestEvent, type RequestHandler } from "@sveltejs/kit";
+import { redis } from "./redis";
+
+interface TokenBucketOptions {
+	capacity: number;
+	fillRate: number;
+}
 
 export type Middleware = (event: RequestEvent) => Promise<Response | void> | Response | void;
 
@@ -35,6 +41,77 @@ export function requirePermission(permission?: string): Middleware {
 
 		if (permission && !user.permissions?.includes(permission)) {
 			error(404, normalizeApiError("PAGE_NOT_FOUND", "Página não encontrada."));
+		}
+	};
+}
+
+const TOKEN_BUCKET_LUA = `
+local key = KEYS[1]
+local capacity = tonumber(ARGV[1])
+local fill_rate = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+local ttl = math.ceil(capacity / fill_rate)
+
+local data = redis.call("HMGET", key, "tokens", "last_updated")
+local tokens = tonumber(data[1])
+local last_updated = tonumber(data[2])
+
+if not tokens then
+    tokens = capacity
+    last_updated = now
+else
+    local delta = math.max(0, now - last_updated)
+    tokens = math.min(capacity, tokens + (delta * fill_rate))
+    last_updated = now
+end
+
+if tokens >= 1 then
+    tokens = tokens - 1
+    redis.call("HMSET", key, "tokens", tokens, "last_updated", last_updated)
+    redis.call("EXPIRE", key, ttl)
+    return {1, math.floor(tokens)}
+else
+    redis.call("EXPIRE", key, ttl)
+    return {0, 0}
+end
+`;
+
+export function rateLimit(options: TokenBucketOptions = { capacity: 60, fillRate: 1 }): Middleware {
+	return async (event) => {
+		try {
+			const userId = event.locals.user?.id;
+			const identifier = userId ? `usr_${userId}` : `ip_${event.getClientAddress()}`;
+			const redisKey = `ratelimit:tb:${event.url.pathname}:${identifier}`;
+			const now = Math.floor(Date.now() / 1000);
+
+			const result = (await redis.eval(
+				TOKEN_BUCKET_LUA,
+				1,
+				redisKey,
+				options.capacity.toString(),
+				options.fillRate.toString(),
+				now.toString()
+			)) as [number, number];
+
+			const [allowed, remainingTokens] = result;
+
+			event.setHeaders({
+				"X-RateLimit-Limit": options.capacity.toString(),
+				"X-RateLimit-Remaining": remainingTokens.toString()
+			});
+
+			if (allowed === 0) {
+				const normalizedError = normalizeApiError("TOO_MANY_REQUESTS");
+
+				return json(normalizedError, {
+					status: 429,
+					headers: {
+						"Retry-After": "3"
+					}
+				});
+			}
+		} catch (err) {
+			console.error("[RateLimit Error - Redis offline?]:", err);
 		}
 	};
 }

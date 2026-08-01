@@ -30,9 +30,9 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	tenMbSize := middleware.LimitBodySize(10 * 1024 * 1024)
 
 	//RATE LIMIT
-	standardApiLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(5), 10))
-	authFlowLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.1), 5))
-	strictAbuseLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(rate.Limit(0.0055), 2))
+	standardApiLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(redisClient, rate.Limit(5), 10))
+	authFlowLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(redisClient, rate.Limit(0.1), 5))
+	strictAbuseLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(redisClient, rate.Limit(0.0055), 2))
 
 	//CACHE CONTROL
 	cache10Minutes := middleware.CacheControl(10 * time.Minute)
@@ -90,7 +90,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 				authFlow.GET("/google/callback", authSocialHandler.GoogleCallback)
 				authFlow.GET("/github", authSocialHandler.GithubLogin)
 				authFlow.GET("/github/callback", authSocialHandler.GithubCallback)
-				auth.POST("/sign-up", signUpHandler.SignUp)
+				authFlow.POST("/sign-up", signUpHandler.SignUp)
 			}
 
 			authStrict := auth.Group("", strictAbuseLimiter)

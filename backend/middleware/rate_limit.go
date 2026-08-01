@@ -1,69 +1,70 @@
 package middleware
 
 import (
+	"fmt"
+	"log"
+	"math"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
 )
 
-type client struct {
-	limiter  *rate.Limiter
-	lastSeen time.Time
-}
+var tokenBucketScript = redis.NewScript(`
+local key = KEYS[1]
+local capacity = tonumber(ARGV[1])
+local fill_rate = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+local ttl = math.ceil(capacity / fill_rate)
+
+local data = redis.call("HMGET", key, "tokens", "last_updated")
+local tokens = tonumber(data[1])
+local last_updated = tonumber(data[2])
+
+if not tokens then
+    tokens = capacity
+    last_updated = now
+else
+    local delta = math.max(0, now - last_updated)
+    tokens = math.min(capacity, tokens + (delta * fill_rate))
+    last_updated = now
+end
+
+if tokens >= 1 then
+    tokens = tokens - 1
+    redis.call("HMSET", key, "tokens", tokens, "last_updated", last_updated)
+    redis.call("EXPIRE", key, ttl)
+    return {1, math.floor(tokens)}
+else
+    redis.call("EXPIRE", key, ttl)
+    return {0, 0}
+end
+`)
 
 type RateLimiter struct {
-	clients map[string]*client
-	mu      sync.RWMutex
-	r       rate.Limit
-	b       int
+	rdb      *redis.Client
+	fillRate float64
+	capacity int
 }
 
-func NewRateLimiter(r rate.Limit, b int) *RateLimiter {
-	i := &RateLimiter{
-		clients: make(map[string]*client),
-		r:       r,
-		b:       b,
-	}
-
-	go i.cleanupClients()
-
-	return i
-}
-
-func (i *RateLimiter) getLimiter(key string) *rate.Limiter {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	v, exists := i.clients[key]
-	if !exists {
-		limiter := rate.NewLimiter(i.r, i.b)
-		i.clients[key] = &client{limiter: limiter, lastSeen: time.Now()}
-		return limiter
-	}
-
-	v.lastSeen = time.Now()
-	return v.limiter
-}
-
-func (i *RateLimiter) cleanupClients() {
-	for {
-		time.Sleep(10 * time.Minute)
-		i.mu.Lock()
-		for key, client := range i.clients {
-			if time.Since(client.lastSeen) > 30*time.Minute {
-				delete(i.clients, key)
-			}
-		}
-		i.mu.Unlock()
+func NewRateLimiter(rdb *redis.Client, r rate.Limit, b int) *RateLimiter {
+	return &RateLimiter{
+		rdb:      rdb,
+		fillRate: float64(r),
+		capacity: b,
 	}
 }
 
 func RateLimitMiddleware(limiterManager *RateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if limiterManager == nil || limiterManager.rdb == nil {
+			c.Next()
+			return
+		}
+
 		var key string
 
 		if userId, exists := c.Get("userId"); exists {
@@ -84,8 +85,43 @@ func RateLimitMiddleware(limiterManager *RateLimiter) gin.HandlerFunc {
 			key = "ip_" + clientIP
 		}
 
-		limiter := limiterManager.getLimiter(key)
-		if !limiter.Allow() {
+		redisKey := fmt.Sprintf("ratelimit:tb:%s:%s", c.FullPath(), key)
+		now := time.Now().Unix()
+
+		ctx := c.Request.Context()
+
+		res, err := tokenBucketScript.Run(
+			ctx,
+			limiterManager.rdb,
+			[]string{redisKey},
+			fmt.Sprintf("%d", limiterManager.capacity),
+			fmt.Sprintf("%f", limiterManager.fillRate),
+			fmt.Sprintf("%d", now),
+		).Result()
+
+		if err != nil {
+			log.Printf("❌ [RateLimit Redis Error Go]: %v", err)
+			c.Next()
+			return
+		}
+
+		results, ok := res.([]any)
+		if !ok || len(results) < 2 {
+			log.Printf("❌ [RateLimit Parse Error Go]: %v", res)
+			c.Next()
+			return
+		}
+
+		allowed := results[0].(int64)
+		remainingTokens := results[1].(int64)
+
+		c.Header("X-RateLimit-Limit", fmt.Sprintf("%d", limiterManager.capacity))
+		c.Header("X-RateLimit-Remaining", fmt.Sprintf("%d", remainingTokens))
+
+		if allowed == 0 {
+			retryAfter := math.Ceil(1.0 / limiterManager.fillRate)
+			c.Header("Retry-After", fmt.Sprintf("%.0f", retryAfter))
+
 			c.JSON(http.StatusTooManyRequests, dto.NewErrorResponse(dto.CodeTooManyRequests, dto.MsgTooManyRequests))
 			c.Abort()
 			return
