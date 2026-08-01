@@ -3,7 +3,13 @@ import { customFetch } from "$lib/api/client";
 import type { Algorithm } from "$lib/types/algorithm";
 import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import {
+	authFlowLimiter,
+	requireAuth,
+	requirePermission,
+	thousandQuerySize,
+	useMiddlewares
+} from "$lib/server/middlewares";
 
 interface ApiResponse {
 	algorithms: Algorithm[];
@@ -54,7 +60,8 @@ const myAlgorithms: RequestHandler = async (event) => {
 };
 
 export const GET = useMiddlewares(
-	rateLimit({ capacity: 5, fillRate: 0.1 }),
+	thousandQuerySize,
+	authFlowLimiter,
 	requireAuth,
 	requirePermission("create:algorithms")
 )(myAlgorithms);

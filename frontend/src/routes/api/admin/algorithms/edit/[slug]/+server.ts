@@ -5,7 +5,15 @@ import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
 import { ADMIN_ALGORITHMS_ERRORS } from "../../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
 import { algorithmSchema } from "$lib/schemas/algorithm";
-import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import {
+	authFlowLimiter,
+	fiveHundredQuerySize,
+	requireAuth,
+	requirePermission,
+	tenMbBodySize,
+	thousandQuerySize,
+	useMiddlewares
+} from "$lib/server/middlewares";
 
 const myAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
@@ -94,13 +102,16 @@ const editAlgorithm: RequestHandler = async (event) => {
 };
 
 export const GET = useMiddlewares(
-	rateLimit({ capacity: 3, fillRate: 0.1 }),
+	thousandQuerySize,
+	authFlowLimiter,
 	requireAuth,
 	requirePermission("create:algorithms")
 )(myAlgorithm);
 
 export const PUT = useMiddlewares(
-	rateLimit({ capacity: 3, fillRate: 0.1 }),
+	fiveHundredQuerySize,
+	tenMbBodySize,
+	authFlowLimiter,
 	requireAuth,
 	requirePermission("create:algorithms")
 )(editAlgorithm);

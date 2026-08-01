@@ -1,7 +1,8 @@
 import { SITEMAP_SECRET } from "$env/static/private";
 import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
-import type { RequestHandler } from "./$types";
+import { fiveHundredQuerySize, strictAbuseLimiter, useMiddlewares } from "$lib/server/middlewares";
+import type { RequestHandler } from "@sveltejs/kit";
 
 interface SitemapItem {
 	slug: string;
@@ -12,7 +13,7 @@ interface ApiResponse {
 	data: SitemapItem[];
 }
 
-export const GET: RequestHandler = async (event) => {
+const sitemap: RequestHandler = async (event) => {
 	const siteUrl = "https://algoritmos-programacao.com.br";
 
 	const staticPages = [{ url: "", priority: "1.0", changefreq: "daily" }];
@@ -70,3 +71,5 @@ export const GET: RequestHandler = async (event) => {
 		}
 	});
 };
+
+export const GET = useMiddlewares(fiveHundredQuerySize, strictAbuseLimiter)(sitemap);

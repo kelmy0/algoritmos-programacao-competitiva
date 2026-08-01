@@ -34,6 +34,7 @@ const (
 	CodeUnverifiedGithubEmail  = "GITHUB_EMAIL_UNVERIFIED"
 	CodeTokenNolongerValid     = "TOKEN_NO_LONGER_VALID"
 	CodeInvalidSecret          = "INVALID_SECRET"
+	CodeUrlTooLarge            = "URL_TOO_LARGE"
 )
 
 const (
@@ -45,4 +46,5 @@ const (
 	MsgPageNotFound           = "Page not found."
 	MsgNoPermission           = "You don't have permission to do it."
 	MsgTooManyRequests        = "Too many requests. Please try again later."
+	MsgUrlTooLarge            = "The request URL exceeds the allowed character limit."
 )

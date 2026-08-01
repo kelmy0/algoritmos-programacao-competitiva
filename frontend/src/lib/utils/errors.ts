@@ -13,6 +13,8 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	INVALID_REQUEST_BODY: "Os dados enviados estão corrompidos ou em formato inválido.",
 	PAGE_NOT_FOUND: "A página ou recurso solicitado não foi encontrado.",
 	TOO_MANY_REQUESTS: "Você fez muitas requisições seguidas. Aguarde um momento e tente novamente.",
+	PAYLOAD_TOO_LARGE: "O tamanho da requisição excede o limite permitido de caracteres.",
+	URL_TOO_LARGE: "A URL da requisição excede o limite permitido de caracteres.",
 
 	// Generic Authentication and Session
 	USER_NOT_FOUND: "Usuário não encontrado.",

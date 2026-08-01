@@ -4,7 +4,12 @@ import { normalizeApiError } from "$lib/utils/errors";
 import { deleteAuthCookie, setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
-import { rateLimit, useMiddlewares } from "$lib/server/middlewares";
+import {
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	rateLimit,
+	useMiddlewares
+} from "$lib/server/middlewares";
 
 interface JwtPayload extends BaseJwtPayload {
 	username: string;
@@ -64,4 +69,8 @@ const refreshToken: RequestHandler = async (event) => {
 	return response;
 };
 
-export const POST = useMiddlewares(rateLimit({ capacity: 5, fillRate: 0.1 }))(refreshToken);
+export const POST = useMiddlewares(
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	rateLimit({ capacity: 5, fillRate: 0.1 })
+)(refreshToken);

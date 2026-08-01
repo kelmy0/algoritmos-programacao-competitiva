@@ -2,7 +2,14 @@ import { normalizeApiError } from "$lib/utils/errors";
 import { type RequestHandler, json } from "@sveltejs/kit";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
-import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import {
+	authFlowLimiter,
+	hundredKbBodySize,
+	requireAuth,
+	requirePermission,
+	thousandQuerySize,
+	useMiddlewares
+} from "$lib/server/middlewares";
 
 const deleteMyAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
@@ -39,7 +46,9 @@ const deleteMyAlgorithm: RequestHandler = async (event) => {
 };
 
 export const DELETE = useMiddlewares(
-	rateLimit({ capacity: 3, fillRate: 1 }),
+	thousandQuerySize,
+	hundredKbBodySize,
+	authFlowLimiter,
 	requireAuth,
 	requirePermission("create:algorithms")
 )(deleteMyAlgorithm);

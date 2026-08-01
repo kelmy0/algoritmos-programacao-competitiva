@@ -26,11 +26,16 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		KeyLength:   cfg.KeyLength,
 	}
 	//BODY SIZE
-	oneMbSize := middleware.LimitBodySize(1 * 1024 * 1024)
+	hundredKbSize := middleware.LimitBodySize(1024 * 128)
 	tenMbSize := middleware.LimitBodySize(10 * 1024 * 1024)
 
+	//Query Limit
+	fiveHundredQuerySize := middleware.LimitQueryParamsSize(512)
+	thousandQuerySize := middleware.LimitQueryParamsSize(1024)
+	twoThousandUrlSize := middleware.LimitQueryParamsSize(2048)
+
 	//RATE LIMIT
-	standardApiLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(redisClient, rate.Limit(5), 10))
+	standardApiLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(redisClient, rate.Limit(5), 5))
 	authFlowLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(redisClient, rate.Limit(0.1), 5))
 	strictAbuseLimiter := middleware.RateLimitMiddleware(middleware.NewRateLimiter(redisClient, rate.Limit(0.0055), 2))
 
@@ -38,6 +43,13 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	cache10Minutes := middleware.CacheControl(10 * time.Minute)
 	//cache1Hour := middleware.CacheControl(1 * time.Hour)
 	cache24Hours := middleware.CacheControl(24 * time.Hour)
+
+	//AUTH MIDDLEWARE
+	requireAuth := middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName, redisClient)
+
+	//ADMIN MIDDLEWARES
+	fake404 := middleware.Fake404Middleware(cfg.AdminHash)
+	requireEmployee := middleware.EmployeeMiddleware()
 
 	//User
 	userRepo := repositories.NewUserRepository(db)
@@ -68,19 +80,19 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	api := router.Group("/api")
 	{
-		sitemaps := api.Group("/sitemap", strictAbuseLimiter, cache24Hours, middleware.SitemapMiddleware(cfg.SitemapSecret))
+		sitemaps := api.Group("/sitemap", fiveHundredQuerySize, strictAbuseLimiter, middleware.SitemapMiddleware(cfg.SitemapSecret), cache24Hours)
 		{
 			sitemaps.GET("/algorithms", algoHandler.SitemapAlgorithms)
 		}
 
 		publicStandard := api.Group("", standardApiLimiter)
 		{
-			publicStandard.GET("/ping", handlers.AnswerPing)
-			publicStandard.GET("/algorithms", cache10Minutes, algoHandler.ListAlgorithms)
-			publicStandard.GET("/algorithms/:slugAndId", cache24Hours, algoHandler.GetAlgorithm)
+			publicStandard.GET("/ping", fiveHundredQuerySize, handlers.AnswerPing)
+			publicStandard.GET("/algorithms", thousandQuerySize, cache10Minutes, algoHandler.ListAlgorithms)
+			publicStandard.GET("/algorithms/:slugAndId", thousandQuerySize, cache24Hours, algoHandler.GetAlgorithm)
 		}
 
-		auth := api.Group("/auth", oneMbSize)
+		auth := api.Group("/auth", twoThousandUrlSize, hundredKbSize)
 		{
 			authFlow := auth.Group("", authFlowLimiter)
 			{
@@ -100,33 +112,33 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 				authStrict.POST("/verify-2fa", authHandler.Verify2FA)
 			}
 
-			authenticatedAuth := auth.Group("", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName, redisClient), authFlowLimiter)
+			authenticatedAuth := auth.Group("", requireAuth, authFlowLimiter)
 			{
 				authenticatedAuth.POST("/logout", authHandler.Logout)
 				authenticatedAuth.POST("/logout/all", authHandler.LogoutAll)
 			}
 		}
 
-		users := api.Group("/users", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName, redisClient))
+		users := api.Group("/users", twoThousandUrlSize, hundredKbSize)
 		{
-			me := users.Group("/me")
+			me := users.Group("/me", authFlowLimiter, requireAuth)
 			{
-				me.GET("", authFlowLimiter, userConfigHandler.GetMyCredentials)
+				me.GET("", userConfigHandler.GetMyCredentials)
 
-				password := me.Group("/password", oneMbSize, authFlowLimiter)
+				password := me.Group("/password")
 				{
 					password.POST("/set", userConfigHandler.DefinePassword)
 					password.POST("/change", userConfigHandler.ChangePassword)
 				}
 
-				twoFa := me.Group("/2fa", oneMbSize, authFlowLimiter)
+				twoFa := me.Group("/2fa")
 				{
 					twoFa.POST("/generate", twoFactorHandler.Generate2FA)
 					twoFa.POST("/enable", twoFactorHandler.Enable2FA)
 					twoFa.POST("/disable", twoFactorHandler.Disable2FA)
 				}
 
-				linkSocial := me.Group("/link-social", oneMbSize, authFlowLimiter)
+				linkSocial := me.Group("/link-social")
 				{
 					linkSocial.GET("/google", authSocialHandler.GoogleLinkAccount)
 					linkSocial.GET("/github", authSocialHandler.GithubLinkAccount)
@@ -135,13 +147,8 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			}
 		}
 
-		admin := api.Group("/admin", middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName, redisClient))
+		admin := api.Group("/admin", twoThousandUrlSize, tenMbSize, fake404, authFlowLimiter, requireAuth, requireEmployee)
 		{
-			admin.Use(middleware.Fake404Middleware(cfg.AdminHash))
-			admin.Use(middleware.EmployeeMiddleware())
-			admin.Use(tenMbSize)
-			admin.Use(standardApiLimiter)
-
 			admin.GET("/ping", handlers.AnswerPing)
 
 			algorithms := admin.Group("/algorithms")

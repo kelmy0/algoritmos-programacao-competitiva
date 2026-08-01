@@ -1,4 +1,10 @@
-import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import {
+	authFlowLimiter,
+	fiveHundredQuerySize,
+	requireAuth,
+	requirePermission,
+	useMiddlewares
+} from "$lib/server/middlewares";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
 const checkAdmin: RequestHandler = async ({ cookies }) => {
@@ -12,7 +18,8 @@ const checkAdmin: RequestHandler = async ({ cookies }) => {
 };
 
 export const GET = useMiddlewares(
-	rateLimit({ capacity: 3, fillRate: 1 }),
+	fiveHundredQuerySize,
+	authFlowLimiter,
 	requireAuth,
 	requirePermission()
 )(checkAdmin);

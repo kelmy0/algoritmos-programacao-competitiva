@@ -1,15 +1,20 @@
-import { redirect } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
+import { redirect, type RequestHandler } from "@sveltejs/kit";
 import { API_URL } from "$env/static/private";
 import { deleteAuthCookie } from "$lib/server/cookies";
+import {
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	standardApiLimiter,
+	useMiddlewares
+} from "$lib/server/middlewares";
 
-export const POST: RequestHandler = async ({ fetch: svelteFetch, locals, cookies }) => {
-	if (locals.accessToken) {
+const logout: RequestHandler = async (event) => {
+	if (event.locals.accessToken) {
 		try {
-			await svelteFetch(`${API_URL}/api/auth/logout`, {
+			await event.fetch(`${API_URL}/api/auth/logout`, {
 				method: "POST",
 				headers: {
-					Authorization: `Bearer ${locals.accessToken}`
+					Authorization: `Bearer ${event.locals.accessToken}`
 				}
 			});
 		} catch (err) {
@@ -17,12 +22,18 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, locals, cookies
 		}
 	}
 
-	deleteAuthCookie(cookies, "access_token");
-	deleteAuthCookie(cookies, "refresh_token");
-	deleteAuthCookie(cookies, "admin_secret");
+	deleteAuthCookie(event.cookies, "access_token");
+	deleteAuthCookie(event.cookies, "refresh_token");
+	deleteAuthCookie(event.cookies, "admin_secret");
 
-	locals.user = null;
-	locals.accessToken = null;
+	event.locals.user = null;
+	event.locals.accessToken = null;
 
 	redirect(303, "/auth/login");
 };
+
+export const POST = useMiddlewares(
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	standardApiLimiter
+)(logout);

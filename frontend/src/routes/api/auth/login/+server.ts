@@ -5,7 +5,12 @@ import { AUTH_ERRORS, type LoginServerResponse } from "../../../(public)/auth/lo
 import { setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
-import { useMiddlewares } from "$lib/server/middlewares";
+import {
+	authFlowLimiter,
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	useMiddlewares
+} from "$lib/server/middlewares";
 import { rateLimit } from "$lib/server/middlewares";
 
 export interface LoginResponse {
@@ -60,4 +65,4 @@ const login: RequestHandler = async (event) => {
 	return response;
 };
 
-export const POST = useMiddlewares(rateLimit({ capacity: 5, fillRate: 0.1 }))(login);
+export const POST = useMiddlewares(fiveHundredQuerySize, hundredKbBodySize, authFlowLimiter)(login);

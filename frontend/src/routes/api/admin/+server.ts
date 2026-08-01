@@ -4,7 +4,14 @@ import { ADMIN_PASSWORD_ERRORS } from "../../(protected)/admin/admin_controller.
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
 import { setIdleCookie } from "$lib/server/cookies";
-import { requireAuth, useMiddlewares, requirePermission, rateLimit } from "$lib/server/middlewares";
+import {
+	requireAuth,
+	useMiddlewares,
+	requirePermission,
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	authFlowLimiter
+} from "$lib/server/middlewares";
 
 interface AdminPasswordResponse {
 	message: string;
@@ -68,7 +75,9 @@ const adminLogin: RequestHandler = async (event) => {
 };
 
 export const POST = useMiddlewares(
-	rateLimit({ capacity: 5, fillRate: 0.1 }),
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	authFlowLimiter,
 	requireAuth,
 	requirePermission()
 )(adminLogin);

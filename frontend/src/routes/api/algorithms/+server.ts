@@ -1,6 +1,6 @@
 import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
-import { rateLimit, useMiddlewares } from "$lib/server/middlewares";
+import { standardApiLimiter, thousandQuerySize, useMiddlewares } from "$lib/server/middlewares";
 import type { ListAlgorithmsResponse } from "$lib/types/algorithm";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
@@ -41,4 +41,4 @@ const listAlgorithms: RequestHandler = async (event) => {
 	return json(data, { status, headers });
 };
 
-export const GET = useMiddlewares(rateLimit({ capacity: 5, fillRate: 5 }))(listAlgorithms);
+export const GET = useMiddlewares(thousandQuerySize, standardApiLimiter)(listAlgorithms);

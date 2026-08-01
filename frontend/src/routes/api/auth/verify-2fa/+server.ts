@@ -8,7 +8,12 @@ import {
 } from "../../../(public)/auth/verify-2fa/two_factor_verify.svelte";
 import { customFetch } from "$lib/api/client";
 import type { LoginResponse } from "../login/+server";
-import { rateLimit, useMiddlewares } from "$lib/server/middlewares";
+import {
+	authFlowLimiter,
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	useMiddlewares
+} from "$lib/server/middlewares";
 
 const verify2FA: RequestHandler = async (event) => {
 	const clientIp = event.getClientAddress();
@@ -58,4 +63,8 @@ const verify2FA: RequestHandler = async (event) => {
 	return response;
 };
 
-export const GET = useMiddlewares(rateLimit({ capacity: 5, fillRate: 0.1 }))(verify2FA);
+export const POST = useMiddlewares(
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	authFlowLimiter
+)(verify2FA);

@@ -45,6 +45,9 @@ export function requirePermission(permission?: string): Middleware {
 	};
 }
 
+export const createAlgorithms = requirePermission("create:algorithms");
+export const moderateAlgorithms = requirePermission("moderate:algorithms");
+
 const TOKEN_BUCKET_LUA = `
 local key = KEYS[1]
 local capacity = tonumber(ARGV[1])
@@ -115,3 +118,55 @@ export function rateLimit(options: TokenBucketOptions = { capacity: 60, fillRate
 		}
 	};
 }
+
+export const standardApiLimiter = rateLimit({ capacity: 5, fillRate: 5 });
+export const authFlowLimiter = rateLimit({ capacity: 5, fillRate: 0.1 });
+export const strictAbuseLimiter = rateLimit({ capacity: 2, fillRate: 0.0055 });
+
+export function limitBodySize(maxBytes: number): Middleware {
+	return async (event) => {
+		const contentLength = event.request.headers.get("content-length");
+
+		if (contentLength) {
+			const length = parseInt(contentLength, 10);
+			if (!isNaN(length) && length > maxBytes) {
+				const normalizedError = normalizeApiError("PAYLOAD_TOO_LARGE");
+
+				return json(normalizedError, { status: 413 });
+			}
+		}
+
+		if (event.request.body) {
+			try {
+				const clonedRequest = event.request.clone();
+				const buffer = await clonedRequest.arrayBuffer();
+
+				if (buffer.byteLength > maxBytes) {
+					const normalizedError = normalizeApiError("PAYLOAD_TOO_LARGE");
+
+					return json(normalizedError, { status: 413 });
+				}
+			} catch (err) {
+				console.error("[LimitBodySize Error]:", err);
+			}
+		}
+	};
+}
+
+export const hundredKbBodySize = limitBodySize(1024 * 128);
+export const tenMbBodySize = limitBodySize(10 * 1024 * 1024);
+
+export function limitQueryParamsSize(maxChars: number = 2048): Middleware {
+	return async (event: RequestEvent) => {
+		const fullUrl = event.url.pathname + event.url.search;
+
+		if (fullUrl.length > maxChars) {
+			const normalizedError = normalizeApiError("URL_TOO_LARGE");
+			return json(normalizedError, { status: 400 });
+		}
+	};
+}
+
+export const fiveHundredQuerySize = limitQueryParamsSize(512);
+export const thousandQuerySize = limitQueryParamsSize(1024);
+export const twoThousandUrlSize = limitQueryParamsSize(2048);

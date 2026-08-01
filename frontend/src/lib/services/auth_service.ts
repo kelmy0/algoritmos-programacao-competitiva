@@ -3,13 +3,6 @@ import type { ApiError } from "$lib/types/api";
 import { normalizeApiError } from "$lib/utils/errors";
 import { AUTH_ERRORS } from "../../routes/(public)/auth/login/login.svelte";
 
-declare global {
-	interface Window {
-		__activeRefreshPromise?: Promise<boolean>;
-		__refreshTimeoutId?: ReturnType<typeof setTimeout>;
-	}
-}
-
 interface RefreshResponse {
 	accessToken: boolean;
 	expiresAt?: number;

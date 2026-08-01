@@ -1,6 +1,7 @@
 import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
-import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import { authFlowLimiter, hundredKbBodySize, thousandQuerySize } from "$lib/server/middlewares";
+import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
@@ -39,7 +40,9 @@ const restoreAlgorithm: RequestHandler = async (event) => {
 };
 
 export const PATCH = useMiddlewares(
-	rateLimit({ capacity: 5, fillRate: 0.1 }),
+	thousandQuerySize,
+	hundredKbBodySize,
+	authFlowLimiter,
 	requireAuth,
 	requirePermission("create:algorithms")
 )(restoreAlgorithm);

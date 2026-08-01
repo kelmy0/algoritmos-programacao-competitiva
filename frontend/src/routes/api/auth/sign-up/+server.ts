@@ -7,7 +7,12 @@ import {
 	type SignUpServerResponse
 } from "../../../(public)/auth/sign-up/sign_up.svelte";
 import { customFetch } from "$lib/api/client";
-import { rateLimit, useMiddlewares } from "$lib/server/middlewares";
+import {
+	authFlowLimiter,
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	useMiddlewares
+} from "$lib/server/middlewares";
 
 interface SignUpResponse {
 	access_token?: string;
@@ -61,4 +66,8 @@ const signUp: RequestHandler = async (event) => {
 	return response;
 };
 
-export const POST = useMiddlewares(rateLimit({ capacity: 5, fillRate: 0.1 }))(signUp);
+export const POST = useMiddlewares(
+	fiveHundredQuerySize,
+	hundredKbBodySize,
+	authFlowLimiter
+)(signUp);

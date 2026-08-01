@@ -1,10 +1,11 @@
-import { redirect, type RequestHandler } from '@sveltejs/kit';
-import { setAuthCookie } from '$lib/server/cookies';
+import { redirect, type RequestHandler } from "@sveltejs/kit";
+import { setAuthCookie } from "$lib/server/cookies";
+import { standardApiLimiter, twoThousandUrlSize, useMiddlewares } from "$lib/server/middlewares";
 
-export const GET: RequestHandler = async ({ url, cookies }) => {
-	const accessToken = url.searchParams.get('access_token');
-	const preToken = url.searchParams.get('pre_token');
-	const error = url.searchParams.get('error');
+const callback: RequestHandler = async ({ url, cookies }) => {
+	const accessToken = url.searchParams.get("access_token");
+	const preToken = url.searchParams.get("pre_token");
+	const error = url.searchParams.get("error");
 
 	if (error) {
 		redirect(303, `/auth/login?error=${encodeURIComponent(error)}`);
@@ -15,9 +16,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	}
 
 	if (accessToken) {
-		setAuthCookie(cookies, 'access_token', accessToken, 15);
-		redirect(303, '/');
+		setAuthCookie(cookies, "access_token", accessToken, 15);
+		redirect(303, "/");
 	}
 
-	redirect(303, '/auth/login?error=AUTH_UNEXPECTED_ERROR');
+	redirect(303, "/auth/login?error=AUTH_UNEXPECTED_ERROR");
 };
+
+export const GET = useMiddlewares(twoThousandUrlSize, standardApiLimiter)(callback);

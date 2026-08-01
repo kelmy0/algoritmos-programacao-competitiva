@@ -5,7 +5,14 @@ import { normalizeApiError } from "$lib/utils/errors";
 import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
 import { customFetch } from "$lib/api/client";
-import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import {
+	authFlowLimiter,
+	fiveHundredQuerySize,
+	requireAuth,
+	requirePermission,
+	tenMbBodySize,
+	useMiddlewares
+} from "$lib/server/middlewares";
 
 const createAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
@@ -62,7 +69,9 @@ const createAlgorithm: RequestHandler = async (event) => {
 };
 
 export const POST = useMiddlewares(
-	rateLimit({ capacity: 3, fillRate: 0.1 }),
+	fiveHundredQuerySize,
+	tenMbBodySize,
+	authFlowLimiter,
 	requireAuth,
 	requirePermission("create:algorithms")
 )(createAlgorithm);
