@@ -2,7 +2,7 @@ import { normalizeApiError } from "$lib/utils/errors";
 import { type RequestHandler, json } from "@sveltejs/kit";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
-import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 
 const deleteMyAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
@@ -16,6 +16,7 @@ const deleteMyAlgorithm: RequestHandler = async (event) => {
 	}
 
 	const { slug } = event.params;
+	const clientIp = event.getClientAddress();
 
 	const { error: apiError, status } = await customFetch<null>(
 		event.fetch,
@@ -23,6 +24,7 @@ const deleteMyAlgorithm: RequestHandler = async (event) => {
 		{
 			method: "DELETE",
 			headers: {
+				"X-Forwarded-For": clientIp,
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
 			}
@@ -37,6 +39,7 @@ const deleteMyAlgorithm: RequestHandler = async (event) => {
 };
 
 export const DELETE = useMiddlewares(
+	rateLimit({ capacity: 3, fillRate: 1 }),
 	requireAuth,
 	requirePermission("create:algorithms")
 )(deleteMyAlgorithm);

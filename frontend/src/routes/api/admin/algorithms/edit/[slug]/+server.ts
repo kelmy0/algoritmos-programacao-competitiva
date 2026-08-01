@@ -5,7 +5,7 @@ import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
 import { ADMIN_ALGORITHMS_ERRORS } from "../../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
 import { algorithmSchema } from "$lib/schemas/algorithm";
-import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 
 const myAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
@@ -19,6 +19,7 @@ const myAlgorithm: RequestHandler = async (event) => {
 	}
 
 	const { slug } = event.params;
+	const clientIp = event.getClientAddress();
 
 	const {
 		data,
@@ -30,6 +31,7 @@ const myAlgorithm: RequestHandler = async (event) => {
 		{
 			method: "GET",
 			headers: {
+				"X-Forwarded-For": clientIp,
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
 			}
@@ -63,6 +65,7 @@ const editAlgorithm: RequestHandler = async (event) => {
 	const result = algorithmSchema.safeParse(body);
 
 	const { slug } = event.params;
+	const clientIp = event.getClientAddress();
 
 	const {
 		data,
@@ -74,6 +77,7 @@ const editAlgorithm: RequestHandler = async (event) => {
 		{
 			method: "PUT",
 			headers: {
+				"X-Forwarded-For": clientIp,
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
 			},
@@ -89,9 +93,14 @@ const editAlgorithm: RequestHandler = async (event) => {
 	return json({ algorithm: data?.data });
 };
 
-export const GET = useMiddlewares(requireAuth, requirePermission("create:algorithms"))(myAlgorithm);
+export const GET = useMiddlewares(
+	rateLimit({ capacity: 3, fillRate: 0.1 }),
+	requireAuth,
+	requirePermission("create:algorithms")
+)(myAlgorithm);
 
 export const PUT = useMiddlewares(
+	rateLimit({ capacity: 3, fillRate: 0.1 }),
 	requireAuth,
 	requirePermission("create:algorithms")
 )(editAlgorithm);

@@ -3,7 +3,7 @@ import { customFetch } from "$lib/api/client";
 import type { Algorithm } from "$lib/types/algorithm";
 import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 
 interface ApiResponse {
 	algorithms: Algorithm[];
@@ -23,6 +23,7 @@ const myAlgorithms: RequestHandler = async (event) => {
 	}
 
 	const queryString = event.url.searchParams.get("status");
+	const clientIp = event.getClientAddress();
 
 	const {
 		data,
@@ -34,6 +35,7 @@ const myAlgorithms: RequestHandler = async (event) => {
 		{
 			method: "GET",
 			headers: {
+				"X-Forwarded-For": clientIp,
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
 			}
@@ -52,6 +54,7 @@ const myAlgorithms: RequestHandler = async (event) => {
 };
 
 export const GET = useMiddlewares(
+	rateLimit({ capacity: 5, fillRate: 0.1 }),
 	requireAuth,
 	requirePermission("create:algorithms")
 )(myAlgorithms);

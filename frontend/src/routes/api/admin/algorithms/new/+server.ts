@@ -5,7 +5,7 @@ import { normalizeApiError } from "$lib/utils/errors";
 import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
 import { customFetch } from "$lib/api/client";
-import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 
 const createAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
@@ -32,6 +32,8 @@ const createAlgorithm: RequestHandler = async (event) => {
 		return json(normalizedError, { status: 400 });
 	}
 
+	const clientIp = event.getClientAddress();
+
 	const {
 		data,
 		error: apiError,
@@ -43,6 +45,7 @@ const createAlgorithm: RequestHandler = async (event) => {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
+				"X-Forwarded-For": clientIp,
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
 			},
@@ -59,6 +62,7 @@ const createAlgorithm: RequestHandler = async (event) => {
 };
 
 export const POST = useMiddlewares(
+	rateLimit({ capacity: 3, fillRate: 0.1 }),
 	requireAuth,
 	requirePermission("create:algorithms")
 )(createAlgorithm);

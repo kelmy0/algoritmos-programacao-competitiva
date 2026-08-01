@@ -5,6 +5,8 @@ import { AUTH_ERRORS, type LoginServerResponse } from "../../../(public)/auth/lo
 import { setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
+import { useMiddlewares } from "$lib/server/middlewares";
+import { rateLimit } from "$lib/server/middlewares";
 
 export interface LoginResponse {
 	access_token?: string;
@@ -12,14 +14,16 @@ export interface LoginResponse {
 	pre_auth_token?: string;
 }
 
-export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookies }) => {
+const login: RequestHandler = async (event) => {
+	const clientIp = event.getClientAddress();
+
 	const { data, error, status, headers } = await customFetch<LoginResponse>(
-		svelteFetch,
+		event.fetch,
 		`${API_URL}/api/auth/login`,
 		{
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(await request.json())
+			headers: { "Content-Type": "application/json", "X-Forwarded-For": clientIp },
+			body: JSON.stringify(await event.request.json())
 		},
 		AUTH_ERRORS
 	);
@@ -37,7 +41,7 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	// This will be removed
 	if (data.access_token) {
-		setAuthCookie(cookies, "access_token", data.access_token, 15);
+		setAuthCookie(event.cookies, "access_token", data.access_token, 15);
 	}
 
 	const sanitizedResponse: LoginServerResponse = {
@@ -55,3 +59,5 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	return response;
 };
+
+export const POST = useMiddlewares(rateLimit({ capacity: 5, fillRate: 0.1 }))(login);

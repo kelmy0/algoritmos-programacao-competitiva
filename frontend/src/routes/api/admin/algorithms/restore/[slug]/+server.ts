@@ -1,6 +1,6 @@
 import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
-import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
@@ -16,6 +16,7 @@ const restoreAlgorithm: RequestHandler = async (event) => {
 	}
 
 	const { slug } = event.params;
+	const clientIp = event.getClientAddress();
 
 	const { error: apiError, status } = await customFetch<null>(
 		event.fetch,
@@ -23,6 +24,7 @@ const restoreAlgorithm: RequestHandler = async (event) => {
 		{
 			method: "PATCH",
 			headers: {
+				"X-Forwarded-For": clientIp,
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
 			}
@@ -37,6 +39,7 @@ const restoreAlgorithm: RequestHandler = async (event) => {
 };
 
 export const PATCH = useMiddlewares(
+	rateLimit({ capacity: 5, fillRate: 0.1 }),
 	requireAuth,
 	requirePermission("create:algorithms")
 )(restoreAlgorithm);

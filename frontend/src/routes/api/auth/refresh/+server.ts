@@ -4,6 +4,7 @@ import { normalizeApiError } from "$lib/utils/errors";
 import { deleteAuthCookie, setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
+import { rateLimit, useMiddlewares } from "$lib/server/middlewares";
 
 interface JwtPayload extends BaseJwtPayload {
 	username: string;
@@ -16,20 +17,21 @@ interface RefreshResponse {
 	access_token: string;
 }
 
-export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookies }) => {
-	const cookieHeader = request.headers.get("cookie") || "";
+const refreshToken: RequestHandler = async (event) => {
+	const cookieHeader = event.request.headers.get("cookie") || "";
+	const clientIp = event.getClientAddress();
 
 	const { data, error, status, headers } = await customFetch<RefreshResponse>(
-		svelteFetch,
+		event.fetch,
 		`${API_URL}/api/auth/refresh`,
 		{
 			method: "POST",
-			headers: { cookie: cookieHeader }
+			headers: { cookie: cookieHeader, "X-Forwarded-For": clientIp }
 		}
 	);
 
 	if (error) {
-		deleteAuthCookie(cookies, "access_token");
+		deleteAuthCookie(event.cookies, "access_token");
 		return json(error, { status });
 	}
 
@@ -40,7 +42,7 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 	}
 
 	const decoded = jwtDecode<JwtPayload>(data.access_token);
-	setAuthCookie(cookies, "access_token", data.access_token, 15);
+	setAuthCookie(event.cookies, "access_token", data.access_token, 15);
 
 	const response = json({
 		accessToken: true,
@@ -61,3 +63,5 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	return response;
 };
+
+export const POST = useMiddlewares(rateLimit({ capacity: 5, fillRate: 0.1 }))(refreshToken);

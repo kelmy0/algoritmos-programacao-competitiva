@@ -8,15 +8,17 @@ import {
 } from "../../../(public)/auth/verify-2fa/two_factor_verify.svelte";
 import { customFetch } from "$lib/api/client";
 import type { LoginResponse } from "../login/+server";
+import { rateLimit, useMiddlewares } from "$lib/server/middlewares";
 
-export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookies }) => {
+const verify2FA: RequestHandler = async (event) => {
+	const clientIp = event.getClientAddress();
 	const { data, error, status, headers } = await customFetch<LoginResponse>(
-		svelteFetch,
+		event.fetch,
 		`${API_URL}/api/auth/verify-2fa`,
 		{
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(await request.json())
+			headers: { "Content-Type": "application/json", "X-Forwarded-For": clientIp },
+			body: JSON.stringify(await event.request.json())
 		},
 		TWO_FACTOR_ERRORS
 	);
@@ -38,7 +40,7 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	//this will be removed
 	if (data.access_token) {
-		setAuthCookie(cookies, "access_token", data.access_token, 15);
+		setAuthCookie(event.cookies, "access_token", data.access_token, 15);
 	}
 
 	const sanitizedResponse: TwoFactorServerResponse = {
@@ -55,3 +57,5 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	return response;
 };
+
+export const GET = useMiddlewares(rateLimit({ capacity: 5, fillRate: 0.1 }))(verify2FA);

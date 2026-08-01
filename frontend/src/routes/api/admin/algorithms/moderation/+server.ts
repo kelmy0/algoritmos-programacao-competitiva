@@ -1,6 +1,6 @@
 import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import { rateLimit, requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
 
@@ -22,6 +22,7 @@ const moderationAlgorithms: RequestHandler = async (event) => {
 	}
 
 	const queryString = event.url.searchParams.get("status");
+	const clientIp = event.getClientAddress();
 
 	const {
 		data,
@@ -33,6 +34,7 @@ const moderationAlgorithms: RequestHandler = async (event) => {
 		{
 			method: "GET",
 			headers: {
+				"X-Forwarded-For": clientIp,
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
 			}
@@ -51,6 +53,7 @@ const moderationAlgorithms: RequestHandler = async (event) => {
 };
 
 export const GET = useMiddlewares(
+	rateLimit({ capacity: 5, fillRate: 0.1 }),
 	requireAuth,
 	requirePermission("moderate:algorithms")
 )(moderationAlgorithms);

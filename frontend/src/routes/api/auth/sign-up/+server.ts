@@ -7,6 +7,7 @@ import {
 	type SignUpServerResponse
 } from "../../../(public)/auth/sign-up/sign_up.svelte";
 import { customFetch } from "$lib/api/client";
+import { rateLimit, useMiddlewares } from "$lib/server/middlewares";
 
 interface SignUpResponse {
 	access_token?: string;
@@ -14,15 +15,16 @@ interface SignUpResponse {
 	auto_login: boolean;
 }
 
-export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookies }) => {
-	const body = await request.json().catch(() => ({}));
+const signUp: RequestHandler = async (event) => {
+	const body = await event.request.json().catch(() => ({}));
 
+	const clientIp = event.getClientAddress();
 	const { data, error, status, headers } = await customFetch<SignUpResponse>(
-		svelteFetch,
+		event.fetch,
 		`${API_URL}/api/auth/sign-up`,
 		{
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: { "Content-Type": "application/json", "X-Forwarded-For": clientIp },
 			body: JSON.stringify(body)
 		},
 		SIGN_UP_ERRORS
@@ -41,7 +43,7 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	// This will be removed
 	if (data.access_token) {
-		setAuthCookie(cookies, "access_token", data.access_token, 15);
+		setAuthCookie(event.cookies, "access_token", data.access_token, 15);
 	}
 
 	const sanitizedResponse: SignUpServerResponse = {
@@ -58,3 +60,5 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	return response;
 };
+
+export const POST = useMiddlewares(rateLimit({ capacity: 5, fillRate: 0.1 }))(signUp);
