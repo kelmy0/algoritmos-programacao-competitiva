@@ -1,10 +1,8 @@
-import { API_URL } from "$env/static/private";
-import { customFetch } from "$lib/api/client";
-import type { Algorithm } from "$lib/types/algorithm";
 import { normalizeApiError } from "$lib/utils/errors";
-import { checkAdminAccess } from "$lib/utils/permissions";
-import { json } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
+import { json, type RequestHandler } from "@sveltejs/kit";
+import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
+import { customFetch } from "$lib/api/client";
+import { API_URL } from "$env/static/private";
 
 interface ApiResponse {
 	algorithms: Algorithm[];
@@ -12,9 +10,7 @@ interface ApiResponse {
 	limit: number;
 }
 
-export const GET: RequestHandler = async (event) => {
-	checkAdminAccess(event.locals.user, "create:algorithms");
-
+const moderationAlgorithms: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
@@ -33,7 +29,7 @@ export const GET: RequestHandler = async (event) => {
 		status
 	} = await customFetch<ApiResponse>(
 		event.fetch,
-		`${API_URL}/api/admin/algorithms${queryString ? `?status=${queryString}` : ""}`,
+		`${API_URL}/api/admin/algorithms/moderation${queryString ? `?status=${queryString}` : ""}`,
 		{
 			method: "GET",
 			headers: {
@@ -53,3 +49,8 @@ export const GET: RequestHandler = async (event) => {
 
 	return json({ algorithms: data.algorithms, page: data.page, limit: data.limit });
 };
+
+export const GET = useMiddlewares(
+	requireAuth,
+	requirePermission("moderate:algorithms")
+)(moderationAlgorithms);

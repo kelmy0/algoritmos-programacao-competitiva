@@ -1,7 +1,7 @@
 import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
 import type { ListAlgorithmsResponse } from "$lib/types/algorithm";
-import { error, json, type RequestHandler } from "@sveltejs/kit";
+import { json, type RequestHandler } from "@sveltejs/kit";
 
 export const GET: RequestHandler = async (event) => {
 	const rawPage = parseInt(event.url.searchParams.get("page") ?? "1", 10);

@@ -5,7 +5,7 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	TEST_ERROR: "Isso é apenas um erro de teste.",
 
 	// Network and Operating System (Captured by the Fetch chat)
-	NETWORK_ERROR: "Não foi possível conectar ao servidor. Verifique sua conexão com a internet.",
+	NETWORK_ERROR: "Não foi possível conectar ao servidor. Tente novamente.",
 
 	// General Server Errors
 	INTERNAL_SERVER_ERROR:

@@ -3,29 +3,22 @@ import { API_URL } from "$env/static/private";
 import { normalizeApiError } from "$lib/utils/errors";
 import { setAuthCookie } from "$lib/server/cookies";
 import {
-	SIGN_UP_ERRORS,
-	type SignUpServerResponse
-} from "../../../../(public)/auth/sign-up/sign_up.svelte";
+	TWO_FACTOR_ERRORS,
+	type TwoFactorServerResponse
+} from "../../../(public)/auth/verify-2fa/two_factor_verify.svelte";
 import { customFetch } from "$lib/api/client";
-
-interface SignUpResponse {
-	access_token?: string;
-	success: boolean;
-	auto_login: boolean;
-}
+import type { LoginResponse } from "../login/+server";
 
 export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookies }) => {
-	const body = await request.json().catch(() => ({}));
-
-	const { data, error, status, headers } = await customFetch<SignUpResponse>(
+	const { data, error, status, headers } = await customFetch<LoginResponse>(
 		svelteFetch,
-		`${API_URL}/api/auth/sign-up`,
+		`${API_URL}/api/auth/verify-2fa`,
 		{
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(body)
+			body: JSON.stringify(await request.json())
 		},
-		SIGN_UP_ERRORS
+		TWO_FACTOR_ERRORS
 	);
 
 	if (error) {
@@ -34,19 +27,23 @@ export const POST: RequestHandler = async ({ fetch: svelteFetch, request, cookie
 
 	if (!data) {
 		return json(
-			normalizeApiError("INTERNAL_SERVER_ERROR", "Resposta inválida do servidor.", SIGN_UP_ERRORS),
+			normalizeApiError(
+				"INTERNAL_SERVER_ERROR",
+				"Resposta inválida do servidor.",
+				TWO_FACTOR_ERRORS
+			),
 			{ status: 500 }
 		);
 	}
 
-	// This will be removed
+	//this will be removed
 	if (data.access_token) {
 		setAuthCookie(cookies, "access_token", data.access_token, 15);
 	}
 
-	const sanitizedResponse: SignUpServerResponse = {
-		success: data.success,
-		autoLogin: data.auto_login
+	const sanitizedResponse: TwoFactorServerResponse = {
+		access_token: Boolean(data.access_token),
+		requires_2fa: data.requires_2fa
 	};
 
 	const response = json(sanitizedResponse);

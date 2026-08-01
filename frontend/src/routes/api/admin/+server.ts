@@ -1,16 +1,17 @@
 import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { ADMIN_PASSWORD_ERRORS } from "../../../(protected)/admin/admin_controller.svelte";
+import { ADMIN_PASSWORD_ERRORS } from "../../(protected)/admin/admin_controller.svelte";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
 import { setIdleCookie } from "$lib/server/cookies";
+import { requireAuth, useMiddlewares, requirePermission } from "$lib/server/middlewares";
 
 interface AdminPasswordResponse {
 	message: string;
 	status: string;
 }
 
-export const POST: RequestHandler = async (event) => {
+const adminLogin: RequestHandler = async (event) => {
 	const { password } = await event.request.json();
 
 	if (!password || password.length < 8) {
@@ -62,3 +63,5 @@ export const POST: RequestHandler = async (event) => {
 
 	return json({ correct: true });
 };
+
+export const POST = useMiddlewares(requireAuth, requirePermission(""))(adminLogin);

@@ -1,12 +1,10 @@
-import { API_URL } from "$env/static/private";
-import { customFetch } from "$lib/api/client";
 import { normalizeApiError } from "$lib/utils/errors";
-import { checkAdminAccess } from "$lib/utils/permissions";
-import { json, type RequestHandler } from "@sveltejs/kit";
+import { type RequestHandler, json } from "@sveltejs/kit";
+import { customFetch } from "$lib/api/client";
+import { API_URL } from "$env/static/private";
+import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 
-export const PATCH: RequestHandler = async (event) => {
-	checkAdminAccess(event.locals.user, "create:algorithms");
-
+const deleteMyAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
@@ -21,9 +19,9 @@ export const PATCH: RequestHandler = async (event) => {
 
 	const { error: apiError, status } = await customFetch<null>(
 		event.fetch,
-		`${API_URL}/api/admin/algorithms/restore/${slug}`,
+		`${API_URL}/api/admin/algorithms/${slug}`,
 		{
-			method: "PATCH",
+			method: "DELETE",
 			headers: {
 				"X-Admin-Secret": adminSecret,
 				Authorization: `Bearer ${event.locals.accessToken}`
@@ -37,3 +35,8 @@ export const PATCH: RequestHandler = async (event) => {
 
 	return new Response(null, { status: 204 });
 };
+
+export const DELETE = useMiddlewares(
+	requireAuth,
+	requirePermission("create:algorithms")
+)(deleteMyAlgorithm);

@@ -1,10 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "@sveltejs/kit";
 import { normalizeApiError } from "$lib/utils/errors";
-import {
-	AUTH_ERRORS,
-	type LoginServerResponse
-} from "../../../../(public)/auth/login/login.svelte";
+import { AUTH_ERRORS, type LoginServerResponse } from "../../../(public)/auth/login/login.svelte";
 import { setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";

@@ -1,16 +1,13 @@
 import { normalizeApiError } from "$lib/utils/errors";
-import { checkAdminAccess } from "$lib/utils/permissions";
-import { json } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
+import { json, type RequestHandler } from "@sveltejs/kit";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
-import { ADMIN_ALGORITHMS_ERRORS } from "../../../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
+import { ADMIN_ALGORITHMS_ERRORS } from "../../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
 import { algorithmSchema } from "$lib/schemas/algorithm";
+import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 
-export const GET: RequestHandler = async (event) => {
-	checkAdminAccess(event.locals.user, "create:algorithms");
-
+const myAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
@@ -50,9 +47,7 @@ export const GET: RequestHandler = async (event) => {
 	return json(data);
 };
 
-export const PUT: RequestHandler = async (event) => {
-	checkAdminAccess(event.locals.user, "create:algorithms");
-
+const editAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
@@ -93,3 +88,10 @@ export const PUT: RequestHandler = async (event) => {
 
 	return json({ algorithm: data?.data });
 };
+
+export const GET = useMiddlewares(requireAuth, requirePermission("create:algorithms"))(myAlgorithm);
+
+export const PUT = useMiddlewares(
+	requireAuth,
+	requirePermission("create:algorithms")
+)(editAlgorithm);

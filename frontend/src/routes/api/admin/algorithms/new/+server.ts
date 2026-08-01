@@ -1,19 +1,13 @@
 import { algorithmSchema } from "$lib/schemas/algorithm";
-import { checkAdminAccess } from "$lib/utils/permissions";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { ADMIN_ALGORITHMS_ERRORS } from "../../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
+import { ADMIN_ALGORITHMS_ERRORS } from "../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
 import { normalizeApiError } from "$lib/utils/errors";
 import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
 import { customFetch } from "$lib/api/client";
+import { requireAuth, requirePermission, useMiddlewares } from "$lib/server/middlewares";
 
-interface ApiResponse {
-	data: Algorithm;
-}
-
-export const POST: RequestHandler = async (event) => {
-	checkAdminAccess(event.locals.user, "create:algorithms");
-
+const createAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
@@ -42,7 +36,7 @@ export const POST: RequestHandler = async (event) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<ApiResponse>(
+	} = await customFetch<{ data: Algorithm }>(
 		event.fetch,
 		`${API_URL}/api/admin/algorithms`,
 		{
@@ -63,3 +57,8 @@ export const POST: RequestHandler = async (event) => {
 
 	return json({ algorithm: data?.data });
 };
+
+export const POST = useMiddlewares(
+	requireAuth,
+	requirePermission("create:algorithms")
+)(createAlgorithm);
