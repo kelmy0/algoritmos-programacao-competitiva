@@ -17,12 +17,18 @@ import {
 
 const verify2FA: RequestHandler = async (event) => {
 	const clientIp = event.getClientAddress();
+	const turnstileToken = event.request.headers.get("x-cf-turnstile-response") || "";
+
 	const { data, error, status, headers } = await customFetch<LoginResponse>(
 		event.fetch,
 		`${API_URL}/api/auth/verify-2fa`,
 		{
 			method: "POST",
-			headers: { "Content-Type": "application/json", "X-Forwarded-For": clientIp },
+			headers: {
+				"Content-Type": "application/json",
+				"X-Forwarded-For": clientIp,
+				"X-CF-Turnstile-Response": turnstileToken
+			},
 			body: JSON.stringify(await event.request.json())
 		},
 		TWO_FACTOR_ERRORS

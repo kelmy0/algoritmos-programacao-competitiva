@@ -1,6 +1,12 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
+import type { Turnstile } from "cloudflare-turnstile";
+
 declare global {
+	interface Window {
+		turnstile?: Turnstile.TurnstileObject;
+	}
+
 	namespace App {
 		interface Error {
 			message: string;

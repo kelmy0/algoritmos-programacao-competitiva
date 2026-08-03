@@ -22,9 +22,12 @@ export const AUTH_ERRORS: Record<string, string> = {
 export class LoginController {
 	email = $state("");
 	password = $state("");
+	turnstileToken = $state("");
 	isLoading = $state(false);
 	apiError = $state<ApiError | null>(null);
 	showPassword = $state(false);
+
+	turnstileComponent: { reset: () => void } | null = null;
 
 	constructor(initialError: ApiError | null = null) {
 		this.apiError = initialError;
@@ -53,12 +56,25 @@ export class LoginController {
 		this.showPassword = !this.showPassword;
 	}
 
+	onTurnstileSuccess(token: string) {
+		this.turnstileToken = token;
+	}
+
+	onTurnstileExpire() {
+		this.turnstileToken = "";
+	}
+
 	async login(event: SubmitEvent) {
 		event.preventDefault();
 		this.touched.email = true;
 		this.touched.password = true;
 
-		if (!this.isEmailValid || !this.isPasswordValid) return;
+		if (!this.isEmailValid || !this.isPasswordValid || this.isLoading) return;
+
+		if (!this.turnstileToken) {
+			this.apiError = normalizeApiError("CAPTCHA_REQUIRED");
+			return;
+		}
 
 		this.isLoading = true;
 		this.apiError = null;
@@ -68,7 +84,10 @@ export class LoginController {
 			"/api/auth/login",
 			{
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					"X-CF-Turnstile-Response": this.turnstileToken
+				},
 				body: JSON.stringify({
 					email: this.email,
 					password: this.password
@@ -80,6 +99,8 @@ export class LoginController {
 		this.isLoading = false;
 		if (error) {
 			this.apiError = error;
+			this.turnstileToken = "";
+			this.turnstileComponent?.reset();
 			return;
 		}
 

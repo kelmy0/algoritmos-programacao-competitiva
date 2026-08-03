@@ -44,6 +44,7 @@ type Config struct {
 	RedisPassword           string
 	RedisTls                bool
 	SitemapSecret           string
+	TurnstileSecret         string
 }
 
 func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
@@ -236,6 +237,11 @@ func LoadConfig() *Config {
 		log.Fatal("❌ SITEMAP_SECRET is required.")
 	}
 
+	turnstileSecret := os.Getenv("TURNSTILE_SECRET_KEY")
+	if turnstileSecret == "" {
+		log.Fatal("❌ TURNSTILE_SECRET_KEY is required.")
+	}
+
 	return &Config{
 		AppName:                 appName,
 		AppEnv:                  env,
@@ -270,5 +276,6 @@ func LoadConfig() *Config {
 		RedisPassword:           redisPassword,
 		RedisTls:                redisTls,
 		SitemapSecret:           sitemapSecret,
+		TurnstileSecret:         turnstileSecret,
 	}
 }

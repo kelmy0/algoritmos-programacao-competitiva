@@ -55,7 +55,10 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	ALGORITHMS_QUERY_FAILED: "Não foi possivel buscar os algoritmos.",
 	ALGORITHM_QUERY_FAILED: "Não foi possivel buscar este algoritmo.",
 	ALGORITHM_NOT_FOUND: "Não foi possivel achar este algoritmo.",
-	ALGORITHMS_NOT_FOUND: "Não foi possivel achar nenhum algoritmo."
+	ALGORITHMS_NOT_FOUND: "Não foi possivel achar nenhum algoritmo.",
+
+	//CAPTCHA
+	CAPTCHA_REQUIRED: "Aguarde a validação de segurança do Captcha."
 };
 
 export function normalizeApiError(

@@ -21,8 +21,11 @@ export const TWO_FACTOR_ERRORS: Record<string, string> = {
 export class TwoFactorController {
 	token = "";
 	code = $state("");
+	turnstileToken = $state("");
 	isLoading = $state(false);
 	apiError = $state<ApiError | null>(null);
+
+	turnstileComponent: { reset: () => void } | null = null;
 
 	touched = $state({
 		code: false
@@ -60,12 +63,25 @@ export class TwoFactorController {
 		this.token = token;
 	}
 
+	onTurnstileSuccess(token: string) {
+		this.turnstileToken = token;
+	}
+
+	onTurnstileExpire() {
+		this.turnstileToken = "";
+	}
+
 	async sendCode(e: SubmitEvent) {
 		e.preventDefault();
 
 		this.touched.code = true;
 
-		if (!this.isCodeValid) {
+		if (!this.isCodeValid || this.isLoading) {
+			return;
+		}
+
+		if (!this.turnstileToken) {
+			this.apiError = normalizeApiError("CAPTCHA_REQUIRED");
 			return;
 		}
 
@@ -82,7 +98,10 @@ export class TwoFactorController {
 			"/api/auth/verify-2fa",
 			{
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					"X-CF-Turnstile-Response": this.turnstileToken
+				},
 				body: JSON.stringify(bodyRequest)
 			},
 			TWO_FACTOR_ERRORS
@@ -91,6 +110,8 @@ export class TwoFactorController {
 		this.isLoading = false;
 		if (error) {
 			this.apiError = error;
+			this.turnstileToken = "";
+			this.turnstileComponent?.reset();
 			return;
 		}
 

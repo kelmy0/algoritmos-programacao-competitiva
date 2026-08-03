@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { TwoFactorController } from './two_factor_verify.svelte';
-	import { onMount } from 'svelte';
+	import Turnstile from "$lib/components/turnstile.svelte";
+	import { TwoFactorController } from "./two_factor_verify.svelte";
+	import { onMount } from "svelte";
 
 	const controller = new TwoFactorController();
 
@@ -65,6 +66,14 @@
 						O código deve conter exatamente 6 números.
 					</p>
 				{/if}
+			</div>
+
+			<div class="flex justify-center">
+				<Turnstile
+					bind:this={controller.turnstileComponent}
+					onsuccess={(token) => controller.onTurnstileSuccess(token)}
+					onexpire={() => controller.onTurnstileExpire()}
+				/>
 			</div>
 
 			<!-- API Error Box -->

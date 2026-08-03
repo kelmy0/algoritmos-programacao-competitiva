@@ -2,6 +2,7 @@
 	import { SignUpController } from "./sign_up.svelte";
 	import { page } from "$app/state";
 	import { onMount } from "svelte";
+	import Turnstile from "$lib/components/turnstile.svelte";
 
 	const controller = new SignUpController();
 
@@ -422,6 +423,14 @@
 						As senhas não coincidem.
 					</p>
 				{/if}
+			</div>
+
+			<div class="flex justify-center">
+				<Turnstile
+					bind:this={controller.turnstileComponent}
+					onsuccess={(token) => controller.onTurnstileSuccess(token)}
+					onexpire={() => controller.onTurnstileExpire()}
+				/>
 			</div>
 
 			<!-- Dynamic API Error Box -->

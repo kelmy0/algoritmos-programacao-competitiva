@@ -44,6 +44,9 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	//cache1Hour := middleware.CacheControl(1 * time.Hour)
 	cache24Hours := middleware.CacheControl(24 * time.Hour)
 
+	//CAPTCHA
+	requireCaptcha := middleware.RequireCaptcha(cfg.TurnstileSecret)
+
 	//AUTH MIDDLEWARE
 	requireAuth := middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName, redisClient)
 
@@ -96,20 +99,20 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		{
 			authFlow := auth.Group("", authFlowLimiter)
 			{
-				authFlow.POST("/login", authHandler.Auth)
+				authFlow.POST("/login", requireCaptcha, authHandler.Auth)
 				authFlow.POST("/refresh", authHandler.Refresh)
 				authFlow.GET("/google", authSocialHandler.GoogleLogin)
 				authFlow.GET("/google/callback", authSocialHandler.GoogleCallback)
 				authFlow.GET("/github", authSocialHandler.GithubLogin)
 				authFlow.GET("/github/callback", authSocialHandler.GithubCallback)
-				authFlow.POST("/sign-up", signUpHandler.SignUp)
+				authFlow.POST("/sign-up", requireCaptcha, signUpHandler.SignUp)
 			}
 
 			authStrict := auth.Group("", strictAbuseLimiter)
 			{
-				authStrict.POST("/forgot-password", userConfigHandler.ForgotPassword)
-				authStrict.POST("/reset-password", userConfigHandler.ResetPassword)
-				authStrict.POST("/verify-2fa", authHandler.Verify2FA)
+				authStrict.POST("/forgot-password", requireCaptcha, userConfigHandler.ForgotPassword)
+				authStrict.POST("/reset-password", requireCaptcha, userConfigHandler.ResetPassword)
+				authStrict.POST("/verify-2fa", requireCaptcha, authHandler.Verify2FA)
 			}
 
 			authenticatedAuth := auth.Group("", requireAuth, authFlowLimiter)

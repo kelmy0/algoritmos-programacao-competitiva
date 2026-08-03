@@ -22,14 +22,19 @@ interface SignUpResponse {
 
 const signUp: RequestHandler = async (event) => {
 	const body = await event.request.json().catch(() => ({}));
-
+	const turnstileToken = event.request.headers.get("x-cf-turnstile-response") || "";
 	const clientIp = event.getClientAddress();
+
 	const { data, error, status, headers } = await customFetch<SignUpResponse>(
 		event.fetch,
 		`${API_URL}/api/auth/sign-up`,
 		{
 			method: "POST",
-			headers: { "Content-Type": "application/json", "X-Forwarded-For": clientIp },
+			headers: {
+				"Content-Type": "application/json",
+				"X-Forwarded-For": clientIp,
+				"X-CF-Turnstile-Response": turnstileToken
+			},
 			body: JSON.stringify(body)
 		},
 		SIGN_UP_ERRORS

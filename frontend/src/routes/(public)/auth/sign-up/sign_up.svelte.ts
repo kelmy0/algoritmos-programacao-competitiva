@@ -15,6 +15,7 @@ export class SignUpController {
 	email = $state("");
 	password = $state("");
 	confirmPassword = $state("");
+	turnstileToken = $state("");
 	isLoading = $state(false);
 	apiError = $state<ApiError | null>(null);
 	showPassword = $state(false);
@@ -25,6 +26,8 @@ export class SignUpController {
 	emailInput = $state<HTMLInputElement | null>(null);
 	passwordInput = $state<HTMLInputElement | null>(null);
 	confirmPasswordInput = $state<HTMLInputElement | null>(null);
+
+	turnstileComponent: { reset: () => void } | null = null;
 
 	touched = $state({
 		name: false,
@@ -134,6 +137,14 @@ export class SignUpController {
 		this.showConfirmPassword = !this.showConfirmPassword;
 	}
 
+	onTurnstileSuccess(token: string) {
+		this.turnstileToken = token;
+	}
+
+	onTurnstileExpire() {
+		this.turnstileToken = "";
+	}
+
 	async signUp(event: SubmitEvent) {
 		event.preventDefault();
 
@@ -144,6 +155,8 @@ export class SignUpController {
 			password: true,
 			confirmPassword: true
 		};
+
+		if (this.isLoading) return;
 
 		if (!this.isNameValid) {
 			this.apiError = {
@@ -190,6 +203,11 @@ export class SignUpController {
 			return;
 		}
 
+		if (!this.turnstileToken) {
+			this.apiError = normalizeApiError("CAPTCHA_REQUIRED");
+			return;
+		}
+
 		this.isLoading = true;
 
 		const { data, error } = await customFetch<SignUpServerResponse>(
@@ -197,7 +215,10 @@ export class SignUpController {
 			"/api/auth/sign-up",
 			{
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					"X-CF-Turnstile-Response": this.turnstileToken
+				},
 				body: JSON.stringify({
 					name: this.name,
 					username: this.username,
@@ -213,6 +234,8 @@ export class SignUpController {
 
 		if (error) {
 			this.apiError = error;
+			this.turnstileToken = "";
+			this.turnstileComponent?.reset();
 			return;
 		}
 

@@ -35,6 +35,7 @@ const (
 	CodeTokenNolongerValid     = "TOKEN_NO_LONGER_VALID"
 	CodeInvalidSecret          = "INVALID_SECRET"
 	CodeUrlTooLarge            = "URL_TOO_LARGE"
+	CodeInvalidCaptcha         = "INVALID_CAPTCHA"
 )
 
 const (

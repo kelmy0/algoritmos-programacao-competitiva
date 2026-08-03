@@ -11,7 +11,6 @@ import {
 	hundredKbBodySize,
 	useMiddlewares
 } from "$lib/server/middlewares";
-import { rateLimit } from "$lib/server/middlewares";
 
 export interface LoginResponse {
 	access_token?: string;
@@ -21,13 +20,18 @@ export interface LoginResponse {
 
 const login: RequestHandler = async (event) => {
 	const clientIp = event.getClientAddress();
+	const turnstileToken = event.request.headers.get("x-cf-turnstile-response") || "";
 
 	const { data, error, status, headers } = await customFetch<LoginResponse>(
 		event.fetch,
 		`${API_URL}/api/auth/login`,
 		{
 			method: "POST",
-			headers: { "Content-Type": "application/json", "X-Forwarded-For": clientIp },
+			headers: {
+				"Content-Type": "application/json",
+				"X-Forwarded-For": clientIp,
+				"X-CF-Turnstile-Response": turnstileToken
+			},
 			body: JSON.stringify(await event.request.json())
 		},
 		AUTH_ERRORS

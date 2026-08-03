@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { LoginController } from "./login.svelte";
 	import { untrack } from "svelte";
+	import Turnstile from "$lib/components/turnstile.svelte";
 
 	let { data } = $props();
 
@@ -134,6 +135,14 @@
 						A senha deve conter no mínimo 8 caracteres.
 					</p>
 				{/if}
+			</div>
+
+			<div class="flex justify-center">
+				<Turnstile
+					bind:this={controller.turnstileComponent}
+					onsuccess={(token) => controller.onTurnstileSuccess(token)}
+					onexpire={() => controller.onTurnstileExpire()}
+				/>
 			</div>
 
 			<!-- Dynamic API Error Box -->
