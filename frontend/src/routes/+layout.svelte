@@ -151,7 +151,7 @@
 
 						<!-- Links / Options -->
 						<a
-							href="/"
+							href="/users/me"
 							role="menuitem"
 							onclick={closeProfileMenu}
 							class="flex items-center gap-2.5 px-4 py-2 text-gray-300 hover:text-text-primary hover:bg-app-bg transition-colors"
@@ -170,7 +170,7 @@
 									d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
 								/>
 							</svg>
-							Meu Perfil
+							Conta
 						</a>
 
 						<a
@@ -371,7 +371,7 @@
 
 							<div class="flex flex-col gap-1 pt-2">
 								<a
-									href="/"
+									href="/users/me"
 									onclick={() => (isSidebarOpen = false)}
 									class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-400 hover:text-text-primary hover:bg-app-bg/30 rounded-lg transition-colors"
 								>
@@ -389,7 +389,7 @@
 											d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
 										/>
 									</svg>
-									Meu Perfil
+									Conta
 								</a>
 
 								<a
