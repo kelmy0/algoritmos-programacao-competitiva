@@ -17,3 +17,9 @@ export interface ListAlgorithmsResponse {
 	hasMore: boolean;
 	algorithms: Algorithm[];
 }
+
+export type AlgorithmDetailResponse = {
+	algorithm: Algorithm & {
+		contentHtml: string;
+	};
+};
