@@ -35,7 +35,7 @@ export function requirePermission(permission?: string): Middleware {
 	return (event) => {
 		const user = event.locals.user;
 
-		if (!user?.is_employee) {
+		if (!user?.isEmployee) {
 			error(404, normalizeApiError("PAGE_NOT_FOUND", "Página não encontrada."));
 		}
 

@@ -27,8 +27,6 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	RESTRICTED_AREA: "Esta é uma área restrita do sistema.",
 	NO_PERMISSION: "Você não tem permissão para realizar esta ação.",
 	AUTH_UNEXPECTED_ERROR: "Falha inesperada no login. Tente novamente!",
-	MISSING_ADMIN_COOKIE:
-		"Cookie de autenticação das rotas administradoras está ausente. Tente novamente!",
 
 	// Two Factor
 	"2FA_NOT_INITIATED": "A autenticação em dois fatores não está ativa.",
@@ -51,14 +49,11 @@ export const GLOBAL_ERRORS: Record<string, string> = {
 	// Internal User Operation Failures
 	AUTH_QUERY_USER_FAILED: "Erro interno ao consultar dados cadastrais.",
 
-	// Algorithms
-	ALGORITHMS_QUERY_FAILED: "Não foi possivel buscar os algoritmos.",
-	ALGORITHM_QUERY_FAILED: "Não foi possivel buscar este algoritmo.",
-	ALGORITHM_NOT_FOUND: "Não foi possivel achar este algoritmo.",
-	ALGORITHMS_NOT_FOUND: "Não foi possivel achar nenhum algoritmo.",
-
 	//CAPTCHA
-	CAPTCHA_REQUIRED: "Aguarde a validação de segurança do Captcha."
+	CAPTCHA_REQUIRED: "Aguarde a validação de segurança do Captcha.",
+
+	//OTHERS
+	TOKEN_CRYPT_FAILED: "Erro interno de criptografia de segurança."
 };
 
 export function normalizeApiError(

@@ -1,12 +1,8 @@
 import { browser } from "$app/env";
+import { AUTH_ERRORS } from "$lib/errors/auth/auth_errors";
 import type { ApiError } from "$lib/types/api";
+import type { RefreshServerResponse } from "$lib/types/jwt";
 import { normalizeApiError } from "$lib/utils/errors";
-import { AUTH_ERRORS } from "../../routes/(public)/auth/login/login.svelte";
-
-interface RefreshResponse {
-	accessToken: boolean;
-	expiresAt?: number;
-}
 
 export class AuthService {
 	private static currentError: ApiError | null = null;
@@ -44,15 +40,13 @@ export class AuthService {
 					return false;
 				}
 
-				const data: RefreshResponse = await response.json();
+				const data: RefreshServerResponse = await response.json();
 
-				if (!data?.accessToken) {
-					this.currentError = normalizeApiError("UNAUTHORIZED", "Sessão expirada.");
+				if (!data.accessToken) {
+					this.currentError = normalizeApiError("SESSION_EXPIRED");
 					this.currentExpiresAt = null;
 					return false;
 				}
-
-				console.log("Sessão renovada com sucesso.");
 
 				if (data.expiresAt) {
 					this.currentExpiresAt = data.expiresAt;
@@ -83,7 +77,6 @@ export class AuthService {
 		const BUFFER_MS = 60 * 1000;
 
 		if (expiresAt - nowInMs <= BUFFER_MS) {
-			console.log("Token próximo do vencimento.");
 			return await AuthService.silentRefresh(fetchImpl);
 		}
 

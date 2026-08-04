@@ -2,7 +2,7 @@ package dto
 
 type TwoFactorGenerateResponse struct {
 	Secret string `json:"secret"`
-	QRCode string `json:"qr_code"`
+	QRCode string `json:"qrCode"`
 }
 
 type TwoFactorEnableRequest struct {

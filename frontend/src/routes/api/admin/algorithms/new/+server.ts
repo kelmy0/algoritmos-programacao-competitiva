@@ -1,28 +1,19 @@
 import { algorithmSchema } from "$lib/schemas/algorithm";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { ADMIN_ALGORITHMS_ERRORS } from "../../../../(protected)/admin/algorithms/new/newAlgorithm.svelte";
+import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
 import { normalizeApiError } from "$lib/utils/errors";
 import { API_URL } from "$env/static/private";
 import type { Algorithm } from "$lib/types/algorithm";
 import { customFetch } from "$lib/api/client";
-import {
-	authFlowLimiter,
-	fiveHundredQuerySize,
-	requireAuth,
-	requirePermission,
-	tenMbBodySize,
-	useMiddlewares
-} from "$lib/server/middlewares";
+import { authFlowLimiter, fiveHundredQuerySize, requireAuth } from "$lib/server/middlewares";
+import { requirePermission, tenMbBodySize, useMiddlewares } from "$lib/server/middlewares";
+import { ADMIN_PASSWORD_ERRORS } from "$lib/errors/admin/password";
 
 const createAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
-		const normalizedError = normalizeApiError(
-			"MISSING_ADMIN_COOKIE",
-			"Falta a senha das rotas admin.",
-			ADMIN_ALGORITHMS_ERRORS
-		);
+		const normalizedError = normalizeApiError("MISSING_ADMIN_COOKIE", "", ADMIN_PASSWORD_ERRORS);
 		return json(normalizedError, { status: 401 });
 	}
 

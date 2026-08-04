@@ -1,5 +1,6 @@
 import { API_URL } from "$env/static/private";
 import { customFetch } from "$lib/api/client";
+import { ALGORITHMS_ERRORS } from "$lib/errors/algorithms/algorithms";
 import { standardApiLimiter, thousandQuerySize, useMiddlewares } from "$lib/server/middlewares";
 import type { ListAlgorithmsResponse } from "$lib/types/algorithm";
 import { json, type RequestHandler } from "@sveltejs/kit";
@@ -25,7 +26,8 @@ const listAlgorithms: RequestHandler = async (event) => {
 			headers: {
 				"X-Forwarded-For": clientIp
 			}
-		}
+		},
+		ALGORITHMS_ERRORS
 	);
 
 	if (ApiError) {

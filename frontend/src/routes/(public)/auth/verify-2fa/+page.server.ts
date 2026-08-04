@@ -1,7 +1,7 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-export async function load({ locals, url }: Parameters<PageServerLoad>[0]) {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	if (locals.user) {
 		redirect(303, "/");
 	}
@@ -13,4 +13,4 @@ export async function load({ locals, url }: Parameters<PageServerLoad>[0]) {
 	}
 
 	return {};
-}
+};

@@ -3,7 +3,7 @@ import type { AlgorithmPayload } from "$lib/schemas/algorithm";
 import type { Algorithm } from "$lib/types/algorithm";
 import type { ApiError } from "$lib/types/api";
 import { normalizeApiError, scrollToAndFocus } from "$lib/utils/errors";
-import { ADMIN_ALGORITHMS_ERRORS } from "../../new/newAlgorithm.svelte";
+import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
 
 export class EditAlgorithmController {
 	isLoading = $state(false);
@@ -59,11 +59,7 @@ export class EditAlgorithmController {
 		this.lastAction = "save";
 
 		if (!this.publicId) {
-			this.apiError = normalizeApiError(
-				"ALGORITHM_INVALID_PUBLIC_ID",
-				"Id público do algoritmo não é valido!",
-				ADMIN_ALGORITHMS_ERRORS
-			);
+			this.apiError = normalizeApiError("ALGORITHM_INVALID_PUBLIC_ID", "", ADMIN_ALGORITHMS_ERRORS);
 			scrollToAndFocus(this.alertDiv);
 			return false;
 		}
@@ -107,11 +103,7 @@ export class EditAlgorithmController {
 		this.lastAction = "delete";
 
 		if (!this.publicId || !this.slug) {
-			this.apiError = normalizeApiError(
-				"ALGORITHM_INVALID_PUBLIC_ID",
-				"Id público do algoritmo não é valido!",
-				ADMIN_ALGORITHMS_ERRORS
-			);
+			this.apiError = normalizeApiError("ALGORITHM_INVALID_PUBLIC_ID", "", ADMIN_ALGORITHMS_ERRORS);
 			this.isDeleteModalOpen = false;
 			scrollToAndFocus(this.alertDiv);
 			return false;
@@ -152,11 +144,7 @@ export class EditAlgorithmController {
 		this.lastAction = "restore";
 
 		if (!this.publicId || !this.slug) {
-			this.apiError = normalizeApiError(
-				"ALGORITHM_INVALID_PUBLIC_ID",
-				"Id público do algoritmo não é valido!",
-				ADMIN_ALGORITHMS_ERRORS
-			);
+			this.apiError = normalizeApiError("ALGORITHM_INVALID_PUBLIC_ID", "", ADMIN_ALGORITHMS_ERRORS);
 			scrollToAndFocus(this.alertDiv);
 			return false;
 		}

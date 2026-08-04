@@ -1,13 +1,11 @@
-import { goto, invalidateAll } from "$app/navigation";
+import { goto } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
+import { SIGN_UP_ERRORS } from "$lib/errors/auth/sign-up";
 import type { ApiError } from "$lib/types/api";
-import { normalizeApiError } from "$lib/utils/errors";
+import type { SignUpServerResponse } from "$lib/types/auth/sign-up";
+import { normalizeApiError, scrollToAndFocus } from "$lib/utils/errors";
+import { isValidEmail, sanitizeHumanName, sanitizeUsername } from "$lib/utils/sanitize";
 import { tick } from "svelte";
-
-export interface SignUpServerResponse {
-	success: boolean;
-	autoLogin: boolean;
-}
 
 export class SignUpController {
 	name = $state("");
@@ -266,59 +264,15 @@ export class SignUpController {
 		await tick();
 
 		if (!this.isNameValid) {
-			this.scrollToAndFocus(this.nameInput);
+			scrollToAndFocus(this.nameInput);
 		} else if (!this.isUsernameValid) {
-			this.scrollToAndFocus(this.usernameInput);
+			scrollToAndFocus(this.usernameInput);
 		} else if (!this.isEmailValid) {
-			this.scrollToAndFocus(this.emailInput);
+			scrollToAndFocus(this.emailInput);
 		} else if (!this.isPasswordValid) {
-			this.scrollToAndFocus(this.passwordInput);
+			scrollToAndFocus(this.passwordInput);
 		} else if (!this.isPasswordsMatching) {
-			this.scrollToAndFocus(this.confirmPasswordInput);
+			scrollToAndFocus(this.confirmPasswordInput);
 		}
 	}
-
-	private scrollToAndFocus(element: HTMLInputElement | null) {
-		if (!element) return;
-		element.scrollIntoView({ behavior: "smooth", block: "center" });
-		element.focus({ preventScroll: true });
-	}
-}
-
-export const SIGN_UP_ERRORS: Record<string, string> = {
-	// Sign-up / Registration
-	EMAIL_ALREADY_USED: "Este endereço de e-mail já está cadastrado.",
-	USERNAME_ALREADY_USED: "Este nome de usuário já está cadastrado.",
-	USER_PASSWORDS_DONT_MATCH: "As senhas digitadas não coincidem.",
-	USER_PASSWORD_NOT_VALID: "A senha é muito fraca.",
-	REGISTRATION_INVALID_NAME: "O campo nome está inválido ou mal preenchido.",
-	REGISTRATION_INVALID_USERNAME: "O campo nome de usuário está inválido ou mal preenchido.",
-	REGISTRATION_INVALID_EMAIL: "O formato do e-mail digitado não é válido.",
-	REGISTRATION_UNEXPECTED_ERROR: "Ocorreu um erro inesperado ao criar sua conta.",
-
-	// General Tokens
-	TOKEN_CRYPT_FAILED: "Erro interno de criptografia de segurança."
-};
-
-export function sanitizeHumanName(name: string): string {
-	const clean = name.replace(/[^\p{L}\s.'-]/gu, "");
-
-	const words = clean.replace(/\s+/g, " ").trim().split(" ");
-
-	if (words.length === 0 || words[0] === "") return "";
-
-	return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
-}
-
-export function sanitizeUsername(username: string): string {
-	const clean = username.replace(/[^\p{L}\p{N}_-]/gu, "");
-	return clean.replace(/\s+/g, "").toLowerCase();
-}
-
-export function isValidEmail(email: string): boolean {
-	const clean = email.trim().toLowerCase();
-	const atIndex = clean.indexOf("@");
-	const lastDotIndex = clean.lastIndexOf(".");
-
-	return atIndex > 0 && lastDotIndex > atIndex + 1 && lastDotIndex < clean.length - 1;
 }

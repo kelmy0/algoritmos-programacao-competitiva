@@ -1,30 +1,22 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { jwtDecode, type JwtPayload as BaseJwtPayload } from "jwt-decode";
 import { normalizeApiError } from "$lib/utils/errors";
 import { deleteAuthCookie, setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
-import {
-	fiveHundredQuerySize,
-	hundredKbBodySize,
-	rateLimit,
-	useMiddlewares
-} from "$lib/server/middlewares";
-
-interface JwtPayload extends BaseJwtPayload {
-	username: string;
-	email: string;
-	permissions?: string[];
-	isEmployee: boolean;
-}
-
-interface RefreshResponse {
-	access_token: string;
-}
+import { authFlowLimiter, fiveHundredQuerySize, hundredKbBodySize } from "$lib/server/middlewares";
+import { useMiddlewares } from "$lib/server/middlewares";
+import type { JwtPayload, RefreshResponse } from "$lib/types/jwt";
+import { jwtDecode } from "jwt-decode";
 
 const refreshToken: RequestHandler = async (event) => {
 	const cookieHeader = event.request.headers.get("cookie") || "";
 	const clientIp = event.getClientAddress();
+
+	if (cookieHeader === "") {
+		return json(normalizeApiError("MISSING_COOKIE"), {
+			status: 400
+		});
+	}
 
 	const { data, error, status, headers } = await customFetch<RefreshResponse>(
 		event.fetch,
@@ -40,25 +32,18 @@ const refreshToken: RequestHandler = async (event) => {
 		return json(error, { status });
 	}
 
-	if (!data || !data.access_token) {
-		return json(normalizeApiError("INTERNAL_SERVER_ERROR", "Resposta inválida do servidor."), {
+	if (!data || !data.accessToken) {
+		return json(normalizeApiError("INTERNAL_SERVER_ERROR"), {
 			status: 500
 		});
 	}
 
-	const decoded = jwtDecode<JwtPayload>(data.access_token);
-	setAuthCookie(event.cookies, "access_token", data.access_token, 15);
+	const decoded = jwtDecode<JwtPayload>(data.accessToken);
+	setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
 
 	const response = json({
 		accessToken: true,
-		expiresAt: decoded.exp ? decoded.exp * 1000 : undefined,
-		user: {
-			id: decoded.sub,
-			username: decoded.username,
-			email: decoded.email,
-			permissions: decoded.permissions || [],
-			is_employee: decoded.isEmployee
-		}
+		expiresAt: decoded.exp ? decoded.exp * 1000 : undefined
 	});
 
 	const setCookies = headers.getSetCookie();
@@ -72,5 +57,6 @@ const refreshToken: RequestHandler = async (event) => {
 export const POST = useMiddlewares(
 	fiveHundredQuerySize,
 	hundredKbBodySize,
-	rateLimit({ capacity: 5, fillRate: 0.1 })
+
+	authFlowLimiter
 )(refreshToken);

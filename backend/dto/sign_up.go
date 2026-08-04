@@ -5,11 +5,11 @@ type SignUpRequest struct {
 	Username        string `json:"username" binding:"required,min=6,max=32"`
 	Email           string `json:"email" binding:"required,min=5,max=128"`
 	Password        string `json:"password" binding:"required,min=8"`
-	ConfirmPassword string `json:"confirm_password" binding:"required,min=8"`
+	ConfirmPassword string `json:"confirmPassword" binding:"required,min=8"`
 }
 
 type SignUpResponse struct {
-	AccessToken string `json:"access_token,omitempty"`
+	AccessToken string `json:"accessToken,omitempty"`
 	Success     bool   `json:"success"`
-	AutoLogin   bool   `json:"auto_login"`
+	AutoLogin   bool   `json:"autoLogin"`
 }

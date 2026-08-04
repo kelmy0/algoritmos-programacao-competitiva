@@ -10,18 +10,18 @@ type AuthRequest struct {
 }
 
 type LoginResponse struct {
-	AccessToken  string `json:"access_token,omitempty"`
-	Requires2FA  bool   `json:"requires_2fa"`
-	PreAuthToken string `json:"pre_auth_token,omitempty"`
+	AccessToken  string `json:"accessToken,omitempty"`
+	Requires2FA  bool   `json:"requires2FA"`
+	PreAuthToken string `json:"preAuthToken,omitempty"`
 }
 
 type Verify2FARequest struct {
-	PreAuthToken string `json:"pre_auth_token" binding:"required"`
+	PreAuthToken string `json:"preAuthToken" binding:"required"`
 	Code         string `json:"code" binding:"required,len=6"`
 }
 
 type RefreshResponse struct {
-	AccessToken string `json:"access_token"`
+	AccessToken string `json:"accessToken"`
 }
 
 type GithubUserResponse struct {

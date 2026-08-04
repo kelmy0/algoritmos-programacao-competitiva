@@ -1,17 +1,11 @@
 import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { ADMIN_PASSWORD_ERRORS } from "../../(protected)/admin/admin_controller.svelte";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
 import { setIdleCookie } from "$lib/server/cookies";
-import {
-	requireAuth,
-	useMiddlewares,
-	requirePermission,
-	fiveHundredQuerySize,
-	hundredKbBodySize,
-	authFlowLimiter
-} from "$lib/server/middlewares";
+import { requireAuth, useMiddlewares, requirePermission } from "$lib/server/middlewares";
+import { fiveHundredQuerySize, hundredKbBodySize, authFlowLimiter } from "$lib/server/middlewares";
+import { ADMIN_PASSWORD_ERRORS } from "$lib/errors/admin/password";
 
 interface AdminPasswordResponse {
 	message: string;
@@ -22,11 +16,7 @@ const adminLogin: RequestHandler = async (event) => {
 	const { password } = await event.request.json();
 
 	if (!password || password.length < 8) {
-		const normalizedError = normalizeApiError(
-			"MISSING_ADMIN_PASSWORD",
-			"Falta a senha das rotas administradoras.",
-			ADMIN_PASSWORD_ERRORS
-		);
+		const normalizedError = normalizeApiError("MISSING_ADMIN_PASSWORD", "", ADMIN_PASSWORD_ERRORS);
 		return json(normalizedError, { status: 401 });
 	}
 
@@ -55,14 +45,7 @@ const adminLogin: RequestHandler = async (event) => {
 	}
 
 	if (!data) {
-		return json(
-			normalizeApiError(
-				"INTERNAL_SERVER_ERROR",
-				"Resposta inválida do servidor.",
-				ADMIN_PASSWORD_ERRORS
-			),
-			{ status: 500 }
-		);
+		return json(normalizeApiError("INTERNAL_SERVER_ERROR"), { status: 500 });
 	}
 
 	if (data.message !== "pong") {

@@ -11,7 +11,7 @@ type Claims struct {
 	Username    string   `json:"username"`
 	Email       string   `json:"email"`
 	Permissions []string `json:"permissions"`
-	IsEmployee  bool     `json:"is_employee"`
+	IsEmployee  bool     `json:"isEmployee"`
 	jwt.RegisteredClaims
 }
 

@@ -1,18 +1,9 @@
 import { customFetch } from "$lib/api/client";
+import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
 import type { AlgorithmPayload } from "$lib/schemas/algorithm";
 import type { Algorithm } from "$lib/types/algorithm";
 import type { ApiError } from "$lib/types/api";
 import { normalizeApiError, scrollToAndFocus } from "$lib/utils/errors";
-
-export const ADMIN_ALGORITHMS_ERRORS: Record<string, string> = {
-	ALGORITHM_INVALID_NAME: "Nome do algoritmo não é válido.",
-	ALGORITHM_INVALID_CATEGORY: "Categoria do algoritmo não é válida.",
-	ALGORITHM_INVALID_CONTENT: "Conteudo no markdown não é válido.",
-	ALGORITHM_GENERATE_PUBLIC_ID_FAILED: "Falha interna ao gerar id público, tente novamente!",
-	ALGORITHM_POST_FAILED: "Falha interna ao postar algoritmo, tente novamente!",
-	ALGORITHM_INVALID_PUBLIC_ID: "Id público do algoritmo não é válido.",
-	ALGORITHM_AUTHOR_MISMATCH: "Esta conta é diferente da conta do autor original."
-};
 
 export class NewAlgorithmController {
 	isLoading = $state(false);
@@ -77,18 +68,14 @@ export class NewAlgorithmController {
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError(
-				"INTERNAL_SERVER_ERROR",
-				"Erro inesperado.",
-				ADMIN_ALGORITHMS_ERRORS
-			);
+			this.apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
 			return;
 		}
 
 		this.isSuccess = true;
 		this.apiError = null;
 		this.link = `/admin/algorithms/my-algorithms/${data.algorithm.slug}-${data.algorithm.publicId}`;
-		await scrollToAndFocus(this.alertDiv);
+		scrollToAndFocus(this.alertDiv);
 
 		this.isLoading = false;
 	}

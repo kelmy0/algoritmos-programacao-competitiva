@@ -3,7 +3,7 @@
 	import type { ApiError } from "$lib/types/api";
 	import { focusTrap } from "$lib/utils/a11y";
 	import { normalizeApiError } from "$lib/utils/errors";
-	import { ADMIN_ALGORITHMS_ERRORS } from "../../new/newAlgorithm.svelte";
+	import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
 	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();

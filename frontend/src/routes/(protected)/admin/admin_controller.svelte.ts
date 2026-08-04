@@ -1,12 +1,8 @@
 import { invalidateAll } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
+import { ADMIN_PASSWORD_ERRORS } from "$lib/errors/admin/password";
 import type { ApiError } from "$lib/types/api";
 import { normalizeApiError } from "$lib/utils/errors";
-
-export const ADMIN_PASSWORD_ERRORS = {
-	INCORRECT_ADMIN_PASSWORD: "Senha incorreta, tente novamente!",
-	MISSING_ADMIN_PASSWORD: "A senha é obrigatória!"
-};
 
 interface AdminPasswordResponse {
 	correct: boolean;
@@ -64,21 +60,13 @@ export class AdminController {
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError(
-				"INTERNAL_SERVER_ERROR",
-				"Falha ao processar resposta do servidor.",
-				ADMIN_PASSWORD_ERRORS
-			);
+			this.apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
 			this.isLoading = false;
 			return;
 		}
 
 		if (!data.correct) {
-			this.apiError = normalizeApiError(
-				"INCORRECT_ADMIN_PASSWORD",
-				"Senha incorreta.",
-				ADMIN_PASSWORD_ERRORS
-			);
+			this.apiError = normalizeApiError("INCORRECT_ADMIN_PASSWORD", "", ADMIN_PASSWORD_ERRORS);
 			this.isLoading = false;
 			return;
 		}

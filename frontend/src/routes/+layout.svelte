@@ -320,7 +320,7 @@
 						<span>Início</span>
 					</a>
 
-					{#if page.data.user?.is_employee}
+					{#if page.data.user?.isEmployee}
 						<a
 							href="/admin/dashboard"
 							aria-current={page.url.pathname === "/admin/dashboard" ? "page" : undefined}
@@ -500,7 +500,7 @@
 							</a>
 
 							<!-- Dashboard -->
-							{#if page.data.user?.is_employee}
+							{#if page.data.user?.isEmployee}
 								<a
 									href="/admin/dashboard"
 									aria-current={page.url.pathname === "/admin/dashboard" ? "page" : undefined}

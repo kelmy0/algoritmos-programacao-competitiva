@@ -124,7 +124,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 		users := api.Group("/users", twoThousandUrlSize, hundredKbSize)
 		{
-			me := users.Group("/me", authFlowLimiter, requireAuth)
+			me := users.Group("/me", requireAuth, authFlowLimiter)
 			{
 				me.GET("", userConfigHandler.GetMyCredentials)
 
@@ -150,28 +150,31 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			}
 		}
 
-		admin := api.Group("/admin", twoThousandUrlSize, tenMbSize, fake404, authFlowLimiter, requireAuth, requireEmployee)
+		admin := api.Group("/admin", twoThousandUrlSize, tenMbSize, fake404, requireAuth, requireEmployee)
 		{
 			admin.GET("/ping", handlers.AnswerPing)
 
 			algorithms := admin.Group("/algorithms")
 			{
-				create := algorithms.Group("", middleware.PermissionMiddleware("create:algorithms"))
+				createPerm := middleware.PermissionMiddleware("create:algorithms")
+
+				standard := algorithms.Group("", standardApiLimiter)
 				{
-					create.GET("", algoHandler.ListAdminAlgorithms)
-					create.POST("", algoHandler.PostAlgorithm)
-					create.PUT("/:slugAndId", algoHandler.PutAlgorithm)
-					create.GET("/:slugAndId", algoHandler.GetAdminAlgorithm)
-					create.DELETE("/:slugAndId", algoHandler.DeleteAlgorithm)
-					create.PATCH("/restore/:slugAndId", algoHandler.RestoreAlgorithm)
+					standard.GET("", createPerm, algoHandler.ListAdminAlgorithms)
+					standard.GET("/:slugAndId", createPerm, algoHandler.GetAdminAlgorithm)
+
+					modPerm := middleware.PermissionMiddleware("moderate:algorithms")
+					standard.GET("/moderation", modPerm, algoHandler.ListModerationAlgorithms)
 				}
 
-				moderation := algorithms.Group("/moderation", middleware.PermissionMiddleware("moderate:algorithms"))
+				authFlow := algorithms.Group("", authFlowLimiter, createPerm)
 				{
-					moderation.GET("", algoHandler.ListModerationAlgorithms)
+					authFlow.POST("", algoHandler.PostAlgorithm)
+					authFlow.PUT("/:slugAndId", algoHandler.PutAlgorithm)
+					authFlow.DELETE("/:slugAndId", algoHandler.DeleteAlgorithm)
+					authFlow.PATCH("/restore/:slugAndId", algoHandler.RestoreAlgorithm)
 				}
 			}
-
 		}
 	}
 }

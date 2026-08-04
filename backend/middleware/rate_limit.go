@@ -74,15 +74,7 @@ func RateLimitMiddleware(limiterManager *RateLimiter) gin.HandlerFunc {
 		}
 
 		if key == "" {
-			clientIP := c.GetHeader("X-Forwarded-For")
-			if clientIP == "" {
-				clientIP = c.GetHeader("X-Real-IP")
-			}
-			if clientIP == "" {
-				clientIP = c.ClientIP()
-			}
-
-			key = "ip_" + clientIP
+			key = "ip_" + c.ClientIP()
 		}
 
 		redisKey := fmt.Sprintf("ratelimit:tb:%s:%s", c.FullPath(), key)

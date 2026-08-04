@@ -1,20 +1,14 @@
 import { error } from "@sveltejs/kit";
 import type { PageLoad } from "./$types";
-import type { Algorithm } from "$lib/types/algorithm";
+import type { ListAlgorithmsResponse } from "$lib/types/algorithm";
 import { customFetch } from "$lib/api/client";
 
-interface ApiResponse {
-	page: number;
-	limit: number;
-	algorithms: Algorithm[];
-}
-
-export async function load({ fetch: svelteFetch }: Parameters<PageLoad>[0]) {
+export const load: PageLoad = async (event) => {
 	const {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<ApiResponse>(svelteFetch, `/api/admin/algorithms/my-algorithms`);
+	} = await customFetch<ListAlgorithmsResponse>(event.fetch, `/api/admin/algorithms/my-algorithms`);
 
 	if (status === 401) {
 		return {
@@ -38,4 +32,4 @@ export async function load({ fetch: svelteFetch }: Parameters<PageLoad>[0]) {
 			limit: data.limit
 		}
 	};
-}
+};

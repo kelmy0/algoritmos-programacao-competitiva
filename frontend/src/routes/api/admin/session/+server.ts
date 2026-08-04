@@ -1,10 +1,5 @@
-import {
-	fiveHundredQuerySize,
-	requireAuth,
-	requirePermission,
-	standardApiLimiter,
-	useMiddlewares
-} from "$lib/server/middlewares";
+import { fiveHundredQuerySize, requireAuth, requirePermission } from "$lib/server/middlewares";
+import { standardApiLimiter, useMiddlewares } from "$lib/server/middlewares";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
 const checkAdmin: RequestHandler = async ({ cookies }) => {

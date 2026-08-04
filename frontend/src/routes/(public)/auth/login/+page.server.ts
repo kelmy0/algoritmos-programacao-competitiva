@@ -1,10 +1,10 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { normalizeApiError } from "$lib/utils/errors";
-import { AUTH_ERRORS } from "./login.svelte";
+import { AUTH_ERRORS } from "$lib/errors/auth/auth_errors";
 import { deleteAuthCookie } from "$lib/server/cookies";
 
-export async function load({ locals, url, cookies }: Parameters<PageServerLoad>[0]) {
+export const load: PageServerLoad = async ({ url, locals, cookies }) => {
 	const errorCode = url.searchParams.get("error");
 
 	if (errorCode === "TOKEN_NO_LONGER_VALID") {
@@ -32,4 +32,4 @@ export async function load({ locals, url, cookies }: Parameters<PageServerLoad>[
 	return {
 		initialError
 	};
-}
+};

@@ -3,19 +3,7 @@ import { jwtDecode } from "jwt-decode";
 import { API_URL } from "$env/static/private";
 import { setAuthCookie, deleteAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
-
-interface JwtPayload {
-	sub: string;
-	username: string;
-	email: string;
-	permissions: string[];
-	is_employee: boolean;
-	exp?: number;
-}
-
-interface RefreshResponse {
-	access_token: string;
-}
+import type { JwtPayload, RefreshResponse } from "$lib/types/jwt";
 
 export const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
@@ -40,7 +28,7 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 					username: decoded.username,
 					email: decoded.email,
 					permissions: decoded.permissions || [],
-					is_employee: decoded.is_employee
+					isEmployee: decoded.isEmployee
 				};
 				event.locals.accessToken = accessToken;
 			}
@@ -66,19 +54,19 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 			}
 		);
 
-		if (!apiError && data?.access_token) {
-			event.locals.accessToken = data.access_token;
+		if (!apiError && data?.accessToken) {
+			event.locals.accessToken = data.accessToken;
 
-			const decoded = jwtDecode<JwtPayload>(data.access_token);
+			const decoded = jwtDecode<JwtPayload>(data.accessToken);
 			event.locals.user = {
 				id: decoded.sub,
 				username: decoded.username,
 				email: decoded.email,
 				permissions: decoded.permissions || [],
-				is_employee: decoded.is_employee
+				isEmployee: decoded.isEmployee
 			};
 
-			setAuthCookie(event.cookies, "access_token", data.access_token, 15);
+			setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
 		} else {
 			deleteAuthCookie(event.cookies, "access_token");
 			deleteAuthCookie(event.cookies, "refresh_token");

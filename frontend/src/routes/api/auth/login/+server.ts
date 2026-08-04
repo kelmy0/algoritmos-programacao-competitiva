@@ -1,22 +1,13 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "@sveltejs/kit";
 import { normalizeApiError } from "$lib/utils/errors";
-import { AUTH_ERRORS, type LoginServerResponse } from "../../../(public)/auth/login/login.svelte";
 import { setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
-import {
-	authFlowLimiter,
-	fiveHundredQuerySize,
-	hundredKbBodySize,
-	useMiddlewares
-} from "$lib/server/middlewares";
-
-export interface LoginResponse {
-	access_token?: string;
-	requires_2fa: boolean;
-	pre_auth_token?: string;
-}
+import { authFlowLimiter, fiveHundredQuerySize } from "$lib/server/middlewares";
+import { hundredKbBodySize, useMiddlewares } from "$lib/server/middlewares";
+import { AUTH_ERRORS } from "$lib/errors/auth/auth_errors";
+import type { LoginResponse, LoginServerResponse } from "$lib/types/auth/login";
 
 const login: RequestHandler = async (event) => {
 	const clientIp = event.getClientAddress();
@@ -42,21 +33,18 @@ const login: RequestHandler = async (event) => {
 	}
 
 	if (!data) {
-		return json(
-			normalizeApiError("INTERNAL_SERVER_ERROR", "Resposta inválida do servidor.", AUTH_ERRORS),
-			{ status: 500 }
-		);
+		return json(normalizeApiError("INTERNAL_SERVER_ERROR"), { status: 500 });
 	}
 
 	// This will be removed
-	if (data.access_token) {
-		setAuthCookie(event.cookies, "access_token", data.access_token, 15);
+	if (data.accessToken) {
+		setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
 	}
 
 	const sanitizedResponse: LoginServerResponse = {
-		access_token: Boolean(data.access_token),
-		requires_2fa: data.requires_2fa,
-		pre_auth_token: data.pre_auth_token || ""
+		accessToken: Boolean(data.accessToken),
+		requires2FA: data.requires2FA,
+		preAuthToken: data.preAuthToken || ""
 	};
 
 	const response = json(sanitizedResponse);

@@ -63,10 +63,7 @@ export const handleGlobalRateLimit: Handle = async ({ event, resolve }) => {
 			});
 
 			if (allowed === 0) {
-				const normalizedError = normalizeApiError(
-					"TOO_MANY_REQUESTS",
-					"Muitas requisições ao servidor. Por favor, aguarde um momento."
-				);
+				const normalizedError = normalizeApiError("TOO_MANY_REQUESTS");
 
 				return json(normalizedError, {
 					status: 429,

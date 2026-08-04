@@ -5,6 +5,7 @@ import { renderMarkdown } from "$lib/services/markdown";
 import { customFetch } from "$lib/api/client";
 import type { Algorithm } from "$lib/types/algorithm";
 import type { PageServerLoad } from "./$types";
+import { ALGORITHMS_ERRORS } from "$lib/errors/algorithms/algorithms";
 
 export const load: PageServerLoad = async (event) => {
 	const { slug } = event.params;
@@ -14,17 +15,19 @@ export const load: PageServerLoad = async (event) => {
 		error: apiError,
 		status,
 		headers
-	} = await customFetch<{ data: Algorithm }>(event.fetch, `${API_URL}/api/algorithms/${slug}`);
+	} = await customFetch<{ data: Algorithm }>(
+		event.fetch,
+		`${API_URL}/api/algorithms/${slug}`,
+		{},
+		ALGORITHMS_ERRORS
+	);
 
 	if (apiError) {
 		error(status, apiError);
 	}
 
 	if (!responseBody || !responseBody.data) {
-		error(
-			500,
-			normalizeApiError("INTERNAL_SERVER_ERROR", "Falha ao processar resposta do servidor.")
-		);
+		error(500, normalizeApiError("INTERNAL_SERVER_ERROR"));
 	}
 
 	const cacheControl = headers.get("cache-control");

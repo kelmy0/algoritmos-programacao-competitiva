@@ -23,10 +23,7 @@ export const load: PageLoad = async ({ fetch: svelteFetch, params }) => {
 	}
 
 	if (!data || !data.data) {
-		error(
-			500,
-			normalizeApiError("INTERNAL_SERVER_ERROR", "Falha ao processar resposta do servidor.")
-		);
+		error(500, normalizeApiError("INTERNAL_SERVER_ERROR"));
 	}
 
 	const algorithmData = data.data;

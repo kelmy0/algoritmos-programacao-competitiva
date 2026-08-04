@@ -2,23 +2,11 @@ import { json, type RequestHandler } from "@sveltejs/kit";
 import { API_URL } from "$env/static/private";
 import { normalizeApiError } from "$lib/utils/errors";
 import { setAuthCookie } from "$lib/server/cookies";
-import {
-	SIGN_UP_ERRORS,
-	type SignUpServerResponse
-} from "../../../(public)/auth/sign-up/sign_up.svelte";
 import { customFetch } from "$lib/api/client";
-import {
-	authFlowLimiter,
-	fiveHundredQuerySize,
-	hundredKbBodySize,
-	useMiddlewares
-} from "$lib/server/middlewares";
-
-interface SignUpResponse {
-	access_token?: string;
-	success: boolean;
-	auto_login: boolean;
-}
+import { authFlowLimiter, fiveHundredQuerySize } from "$lib/server/middlewares";
+import { hundredKbBodySize, useMiddlewares } from "$lib/server/middlewares";
+import { SIGN_UP_ERRORS } from "$lib/errors/auth/sign-up";
+import type { SignUpResponse, SignUpServerResponse } from "$lib/types/auth/sign-up";
 
 const signUp: RequestHandler = async (event) => {
 	const body = await event.request.json().catch(() => ({}));
@@ -45,20 +33,17 @@ const signUp: RequestHandler = async (event) => {
 	}
 
 	if (!data) {
-		return json(
-			normalizeApiError("INTERNAL_SERVER_ERROR", "Resposta inválida do servidor.", SIGN_UP_ERRORS),
-			{ status: 500 }
-		);
+		return json(normalizeApiError("INTERNAL_SERVER_ERROR"), { status: 500 });
 	}
 
 	// This will be removed
-	if (data.access_token) {
-		setAuthCookie(event.cookies, "access_token", data.access_token, 15);
+	if (data.accessToken) {
+		setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
 	}
 
 	const sanitizedResponse: SignUpServerResponse = {
 		success: data.success,
-		autoLogin: data.auto_login
+		autoLogin: data.autoLogin
 	};
 
 	const response = json(sanitizedResponse);

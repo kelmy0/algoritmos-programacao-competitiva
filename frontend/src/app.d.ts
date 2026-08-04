@@ -18,7 +18,7 @@ declare global {
 				username: string;
 				email: string;
 				permissions: string[];
-				is_employee: boolean;
+				isEmployee: boolean;
 			} | null;
 			accessToken: string | null;
 		}
@@ -28,7 +28,7 @@ declare global {
 				username: string;
 				email: string;
 				permissions: string[];
-				is_employee: boolean;
+				isEmployee: boolean;
 			} | null;
 			accessToken?: string | null;
 		}

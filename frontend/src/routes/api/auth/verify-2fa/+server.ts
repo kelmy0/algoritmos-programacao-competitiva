@@ -2,18 +2,12 @@ import { json, type RequestHandler } from "@sveltejs/kit";
 import { API_URL } from "$env/static/private";
 import { normalizeApiError } from "$lib/utils/errors";
 import { setAuthCookie } from "$lib/server/cookies";
-import {
-	TWO_FACTOR_ERRORS,
-	type TwoFactorServerResponse
-} from "../../../(public)/auth/verify-2fa/two_factor_verify.svelte";
 import { customFetch } from "$lib/api/client";
-import type { LoginResponse } from "../login/+server";
-import {
-	authFlowLimiter,
-	fiveHundredQuerySize,
-	hundredKbBodySize,
-	useMiddlewares
-} from "$lib/server/middlewares";
+import { authFlowLimiter, fiveHundredQuerySize } from "$lib/server/middlewares";
+import { hundredKbBodySize, useMiddlewares } from "$lib/server/middlewares";
+import { TWO_FACTOR_ERRORS } from "$lib/errors/auth/verify-2fa";
+import type { TwoFactorServerResponse } from "$lib/types/auth/two-factor";
+import type { LoginResponse } from "$lib/types/auth/login";
 
 const verify2FA: RequestHandler = async (event) => {
 	const clientIp = event.getClientAddress();
@@ -39,24 +33,17 @@ const verify2FA: RequestHandler = async (event) => {
 	}
 
 	if (!data) {
-		return json(
-			normalizeApiError(
-				"INTERNAL_SERVER_ERROR",
-				"Resposta inválida do servidor.",
-				TWO_FACTOR_ERRORS
-			),
-			{ status: 500 }
-		);
+		return json(normalizeApiError("INTERNAL_SERVER_ERROR"), { status: 500 });
 	}
 
 	//this will be removed
-	if (data.access_token) {
-		setAuthCookie(event.cookies, "access_token", data.access_token, 15);
+	if (data.accessToken) {
+		setAuthCookie(event.cookies, "accessToken", data.accessToken, 15);
 	}
 
 	const sanitizedResponse: TwoFactorServerResponse = {
-		access_token: Boolean(data.access_token),
-		requires_2fa: data.requires_2fa
+		accessToken: Boolean(data.accessToken),
+		requires2FA: data.requires2FA
 	};
 
 	const response = json(sanitizedResponse);

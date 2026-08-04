@@ -1,22 +1,15 @@
-import { goto, invalidateAll } from "$app/navigation";
+import { goto } from "$app/navigation";
 import type { ApiError } from "$lib/types/api";
 import { page } from "$app/state";
 import { normalizeApiError } from "$lib/utils/errors";
 import { customFetch } from "$lib/api/client";
+import { TWO_FACTOR_ERRORS } from "$lib/errors/auth/verify-2fa";
+import type { TwoFactorServerResponse } from "$lib/types/auth/two-factor";
 
 interface TwoFactorRequest {
 	pre_auth_token: string;
 	code: string;
 }
-
-export interface TwoFactorServerResponse {
-	access_token: boolean;
-	requires_2fa: boolean;
-}
-
-export const TWO_FACTOR_ERRORS: Record<string, string> = {
-	INVALID_SESSION_DATA: "Está faltando o id do usuário no token. Faça login novamente!"
-};
 
 export class TwoFactorController {
 	token = "";
@@ -116,15 +109,11 @@ export class TwoFactorController {
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError(
-				"INTERNAL_SERVER_ERROR",
-				"Falha ao processar resposta do servidor.",
-				TWO_FACTOR_ERRORS
-			);
+			this.apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
 			return;
 		}
 
-		if (data.requires_2fa) {
+		if (data.requires2FA) {
 			await goto(`/auth/login?error=AUTH_UNEXPECTED_ERROR`);
 			return;
 		}

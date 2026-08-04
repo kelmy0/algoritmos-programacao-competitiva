@@ -1,29 +1,17 @@
 import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import {
-	authFlowLimiter,
-	requireAuth,
-	requirePermission,
-	thousandQuerySize,
-	useMiddlewares
-} from "$lib/server/middlewares";
+import { standardApiLimiter, requireAuth, requirePermission } from "$lib/server/middlewares";
+import { thousandQuerySize, useMiddlewares } from "$lib/server/middlewares";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
-
-interface ApiResponse {
-	algorithms: Algorithm[];
-	page: number;
-	limit: number;
-}
+import type { ListAlgorithmsResponse } from "$lib/types/algorithm";
+import { ADMIN_PASSWORD_ERRORS } from "$lib/errors/admin/password";
 
 const moderationAlgorithms: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
 
 	if (!adminSecret) {
-		const normalizedError = normalizeApiError(
-			"MISSING_ADMIN_COOKIE",
-			"Falta a senha das rotas admin."
-		);
+		const normalizedError = normalizeApiError("MISSING_ADMIN_COOKIE", "", ADMIN_PASSWORD_ERRORS);
 		return json(normalizedError, { status: 401 });
 	}
 
@@ -34,7 +22,7 @@ const moderationAlgorithms: RequestHandler = async (event) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<ApiResponse>(
+	} = await customFetch<ListAlgorithmsResponse>(
 		event.fetch,
 		`${API_URL}/api/admin/algorithms/moderation${queryString ? `?status=${queryString}` : ""}`,
 		{
@@ -60,7 +48,7 @@ const moderationAlgorithms: RequestHandler = async (event) => {
 
 export const GET = useMiddlewares(
 	thousandQuerySize,
-	authFlowLimiter,
+	standardApiLimiter,
 	requireAuth,
 	requirePermission("moderate:algorithms")
 )(moderationAlgorithms);

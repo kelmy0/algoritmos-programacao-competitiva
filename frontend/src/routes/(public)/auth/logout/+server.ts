@@ -1,12 +1,8 @@
 import { redirect, type RequestHandler } from "@sveltejs/kit";
 import { API_URL } from "$env/static/private";
 import { deleteAuthCookie } from "$lib/server/cookies";
-import {
-	fiveHundredQuerySize,
-	hundredKbBodySize,
-	standardApiLimiter,
-	useMiddlewares
-} from "$lib/server/middlewares";
+import { fiveHundredQuerySize, hundredKbBodySize } from "$lib/server/middlewares";
+import { standardApiLimiter, useMiddlewares } from "$lib/server/middlewares";
 
 const logout: RequestHandler = async (event) => {
 	if (event.locals.accessToken) {
@@ -18,7 +14,7 @@ const logout: RequestHandler = async (event) => {
 				}
 			});
 		} catch (err) {
-			console.error("Erro ao notificar logout na API Go:", err);
+			console.error("Error notifying logout to API:", err);
 		}
 	}
 
