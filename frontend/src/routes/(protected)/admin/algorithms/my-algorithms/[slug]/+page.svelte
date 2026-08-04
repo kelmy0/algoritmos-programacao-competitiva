@@ -80,7 +80,7 @@
 <div class="mx-auto max-w-4xl space-y-6 font-inter">
 	<a
 		href="/admin/dashboard"
-		class="inline-flex items-center gap-2 text-xs font-medium text-gray-300 transition-colors hover:text-white focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-gray-900"
+		class="inline-flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand rounded-md py-1 px-1.5 -ml-1.5 w-fit"
 	>
 		<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />

@@ -196,8 +196,8 @@
 					<p class="text-xs text-gray-400 mt-0.5">Última alteração há mais de 30 dias</p>
 				</div>
 
-				<button
-					type="button"
+				<a
+					href="/"
 					class="px-4 py-2 bg-app-bg border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer flex items-center justify-center gap-2"
 				>
 					<svg
@@ -213,8 +213,8 @@
 							d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0121 9z"
 						/>
 					</svg>
-					<span>Mudar senha</span>
-				</button>
+					<span>Alterar senha</span>
+				</a>
 			</div>
 
 			<!-- 2FA -->
@@ -237,7 +237,7 @@
 				</div>
 
 				<a
-					href="/account/2fa/reauthenticate"
+					href="/"
 					class="px-4 py-2 bg-app-bg border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer flex items-center justify-center gap-2"
 				>
 					<svg

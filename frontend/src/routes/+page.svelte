@@ -1,17 +1,18 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
 	import type { Algorithm } from "$lib/types/algorithm";
+	import { untrack } from "svelte";
 	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();
 
-	let algorithms = $state<Algorithm[]>([]);
-	let page = $state(1);
-	let hasMore = $state(false);
+	let algorithms = $state<Algorithm[]>(untrack(() => data.algorithms ?? []));
+	let page = $state(untrack(() => data.pagination?.page ?? 1));
+	let hasMore = $state(untrack(() => data.pagination?.hasMore ?? false));
 	let isLoading = $state(false);
 	let sentinel = $state<HTMLElement | null>(null);
 
-	$effect.pre(() => {
+	$effect(() => {
 		algorithms = data.algorithms ?? [];
 		page = data.pagination?.page ?? 1;
 		hasMore = data.pagination?.hasMore ?? false;
