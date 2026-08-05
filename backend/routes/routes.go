@@ -64,12 +64,12 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	//Auth
 	authRepo := repositories.NewAuthRepository(db)
-	authService := services.NewAuthService(authRepo, userRepo, redisClient, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	authService := services.NewAuthService(authRepo, userRepo, redisClient, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppDomain, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain, cfg.JwtRefreshExpiresDays)
 	authSocialHandler := handlers.NewAuthSocialHandler(authService, googleConfig, githubConfig, cfg.AppDomain, cfg.FrontendUrl, isProd, cfg.JwtRefreshExpiresDays)
 
 	//Sign up
-	signUpService := services.NewSignUpService(userRepo, authRepo, *argonParams, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppName, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	signUpService := services.NewSignUpService(userRepo, authRepo, *argonParams, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppDomain, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	signUpHandler := handlers.NewSignUpHandler(signUpService, cfg.JwtRefreshExpiresDays, cfg.AppDomain, isProd)
 
 	//TwoFactor

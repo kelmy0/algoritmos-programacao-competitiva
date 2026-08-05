@@ -55,6 +55,6 @@ func (h *SignUpHandler) SignUp(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.RefreshDurationDays, "/", h.AppDomain, h.IsProduce, true)
+	SetRefreshCookie(c, result.RefreshToken, h.AppDomain, h.RefreshDurationDays, h.IsProduce)
 	c.JSON(http.StatusOK, result.SignUpResponse)
 }

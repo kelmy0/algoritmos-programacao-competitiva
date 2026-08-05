@@ -41,7 +41,7 @@ func (h *AuthHandler) Auth(c *gin.Context) {
 	}
 
 	if result.RefreshToken != "" {
-		c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.refreshDurationDays, "/", h.appDomain, h.isProduce, true)
+		SetRefreshCookie(c, result.RefreshToken, h.appDomain, h.refreshDurationDays, h.isProduce)
 	}
 	c.JSON(http.StatusOK, result.LoginResponse)
 }
@@ -62,7 +62,7 @@ func (h *AuthHandler) Verify2FA(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.refreshDurationDays, "/", h.appDomain, h.isProduce, true)
+	SetRefreshCookie(c, result.RefreshToken, h.appDomain, h.refreshDurationDays, h.isProduce)
 	c.JSON(http.StatusOK, result.LoginResponse)
 }
 

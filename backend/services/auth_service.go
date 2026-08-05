@@ -38,7 +38,7 @@ type AuthService struct {
 	JwtRefreshSecret     string
 	JwtAccessExpiration  int
 	JwtRefreshExpiration int
-	AppName              string
+	AppDomain            string
 	EncryptSecret        string
 }
 
@@ -47,14 +47,14 @@ type AuthResult struct {
 	RefreshToken  string
 }
 
-func NewAuthService(authRepo AuthRepository, userRepo AuthUserRepository, redisClient *redis.Client, jwtAccessSecret, jwtRefreshSecret, appName, encryptSecret string, jwtAccessExpiration int, jwtRefreshExpiration int) *AuthService {
+func NewAuthService(authRepo AuthRepository, userRepo AuthUserRepository, redisClient *redis.Client, jwtAccessSecret, jwtRefreshSecret, appDomain, encryptSecret string, jwtAccessExpiration int, jwtRefreshExpiration int) *AuthService {
 	return &AuthService{
 		AuthRepo:             authRepo,
 		UserRepo:             userRepo,
 		RedisClient:          redisClient,
 		JwtAccessSecret:      jwtAccessSecret,
 		JwtRefreshSecret:     jwtRefreshSecret,
-		AppName:              appName,
+		AppDomain:            appDomain,
 		JwtAccessExpiration:  jwtAccessExpiration,
 		JwtRefreshExpiration: jwtRefreshExpiration,
 		EncryptSecret:        encryptSecret,
@@ -91,7 +91,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 	}
 
 	if user.TwoFactorAuthentication {
-		_, preAuthToken, err := utils.GenerateToken(user.Id, "", "", nil, s.JwtAccessSecret, s.AppName, false, time.Now().Add(5*time.Minute))
+		_, preAuthToken, err := utils.GenerateToken(user.Id, "", "", nil, s.JwtAccessSecret, s.AppDomain, false, time.Now().Add(5*time.Minute))
 		if err != nil {
 			log.Printf("[Auth] failed to generate 2FA pre-auth token for user %s: %v", user.Id, err)
 			return nil, models.ErrUnexpectedLogin
@@ -109,7 +109,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 }
 
 func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
-	claims, err := utils.ValidateToken(data.PreAuthToken, s.JwtAccessSecret, s.AppName)
+	claims, err := utils.ValidateToken(data.PreAuthToken, s.JwtAccessSecret, s.AppDomain)
 	if err != nil {
 		log.Printf("[VerifyLogin2FA] pre-auth token validation failed: %v", err)
 		return nil, models.ErrSessionExpired
@@ -150,7 +150,7 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString string) (string, error) {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
 	if err != nil {
 		log.Printf("[RefreshToken] refresh token validation failed: %v", err)
 		return "", models.ErrInvalidOrExpiredRefresh
@@ -184,7 +184,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 		return "", models.ErrUserNotEnabled
 	}
 
-	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
+	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppDomain, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 
 	if err != nil {
 		log.Printf("[RefreshToken] failed to sign new access token for user %s: %v", user.Id, err)
@@ -195,7 +195,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 }
 
 func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString, accessJti string, accessExpiresAt time.Time) error {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
 	}
@@ -226,7 +226,7 @@ func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString, ac
 }
 
 func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString, accessJti string) error {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
 	}
@@ -317,7 +317,7 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 	}
 
 	if user.TwoFactorAuthentication {
-		_, preAuthToken, err := utils.GenerateToken(user.Id, "", "", nil, s.JwtAccessSecret, s.AppName, false, time.Now().Add(5*time.Minute))
+		_, preAuthToken, err := utils.GenerateToken(user.Id, "", "", nil, s.JwtAccessSecret, s.AppDomain, false, time.Now().Add(5*time.Minute))
 		if err != nil {
 			slog.Error("failed to generate pre-auth token", "userId", user.Id, "error", err)
 			return nil, models.ErrUnexpectedLogin
@@ -331,13 +331,13 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 		return &AuthResult{response, ""}, nil
 	}
 
-	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppName, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
+	_, accessToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtAccessSecret, s.AppDomain, user.Role.IsEmployee, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 	if err != nil {
 		slog.Error("failed to generate access token during social auth", "userId", user.Id, "error", err)
 		return nil, models.ErrGeneratingToken
 	}
 
-	idToken, refreshToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtRefreshSecret, s.AppName, user.Role.IsEmployee, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
+	idToken, refreshToken, err := utils.GenerateToken(user.Id, user.Username, user.Email, user.Permissions, s.JwtRefreshSecret, s.AppDomain, user.Role.IsEmployee, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
 		slog.Error("failed to generate refresh token during social auth", "userId", user.Id, "error", err)
 		return nil, models.ErrGeneratingToken
@@ -397,7 +397,7 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*Aut
 	// Access Token
 	_, accessToken, err := utils.GenerateToken(
 		user.Id, user.Username, user.Email, user.Permissions,
-		s.JwtAccessSecret, s.AppName, user.Role.IsEmployee,
+		s.JwtAccessSecret, s.AppDomain, user.Role.IsEmployee,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
@@ -408,7 +408,7 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*Aut
 	// Refresh Token
 	idToken, refreshToken, err := utils.GenerateToken(
 		user.Id, user.Username, user.Email, user.Permissions,
-		s.JwtRefreshSecret, s.AppName, user.Role.IsEmployee,
+		s.JwtRefreshSecret, s.AppDomain, user.Role.IsEmployee,
 		time.Now().AddDate(0, 0, s.JwtRefreshExpiration),
 	)
 	if err != nil {

@@ -31,7 +31,7 @@ type SignUpService struct {
 	JwtRefreshSecret     string
 	JwtAccessExpiration  int
 	JwtRefreshExpiration int
-	AppName              string
+	AppDomain            string
 }
 
 type SignUpResult struct {
@@ -39,7 +39,7 @@ type SignUpResult struct {
 	RefreshToken   string
 }
 
-func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthRepository, argonParams utils.ArgonParams, jwtAccessSecret, jwtRefreshSecret, appName string, jwtAccessExpiration, jwtRefreshExpiration int) *SignUpService {
+func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthRepository, argonParams utils.ArgonParams, jwtAccessSecret, jwtRefreshSecret, appDomain string, jwtAccessExpiration, jwtRefreshExpiration int) *SignUpService {
 	return &SignUpService{
 		UserRepo:             userRepo,
 		AuthRepo:             authRepo,
@@ -48,7 +48,7 @@ func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthReposito
 		JwtRefreshSecret:     jwtRefreshSecret,
 		JwtAccessExpiration:  jwtAccessExpiration,
 		JwtRefreshExpiration: jwtRefreshExpiration,
-		AppName:              appName,
+		AppDomain:            appDomain,
 	}
 }
 
@@ -121,13 +121,13 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		}
 	}
 
-	_, accessToken, err := utils.GenerateToken(userId, sanitizedData.Username, sanitizedData.Email, []string{}, s.JwtAccessSecret, s.AppName, false, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
+	_, accessToken, err := utils.GenerateToken(userId, sanitizedData.Username, sanitizedData.Email, []string{}, s.JwtAccessSecret, s.AppDomain, false, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute))
 	if err != nil {
 		slog.Warn("[SignUp] user registered, but failed to sign access token", "userID", userId, "error", err)
 		return nil, models.ErrAccountCreatedButTokenFailed
 	}
 
-	idToken, refreshToken, err := utils.GenerateToken(userId, sanitizedData.Username, sanitizedData.Email, []string{}, s.JwtRefreshSecret, s.AppName, false, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
+	idToken, refreshToken, err := utils.GenerateToken(userId, sanitizedData.Username, sanitizedData.Email, []string{}, s.JwtRefreshSecret, s.AppDomain, false, time.Now().AddDate(0, 0, s.JwtRefreshExpiration))
 	if err != nil {
 		slog.Warn("[SignUp] user registered, but failed to sign refresh token", "userID", userId, "error", err)
 		return nil, models.ErrAccountCreatedButTokenFailed
