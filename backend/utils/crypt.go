@@ -168,5 +168,71 @@ func Decrypt(cryptoText, key string) (string, error) {
 
 func HashSHA512(token string) string {
 	hash := sha512.Sum512([]byte(token))
-	return hex.EncodeToString(hash[:])
+	return base64.RawURLEncoding.EncodeToString(hash[:])
+}
+
+func GenerateDeviceHash(userAgent, acceptLang, platform, mobile string) string {
+	lang := normalizeLanguage(acceptLang)
+
+	ua := simplifyUserAgent(userAgent)
+
+	plat := strings.TrimSpace(platform)
+	mob := strings.TrimSpace(mobile)
+
+	rawFingerprint := fmt.Sprintf("%s|%s|%s|%s", ua, lang, plat, mob)
+	hash := sha512.Sum512([]byte(rawFingerprint))
+	return base64.RawURLEncoding.EncodeToString(hash[:16])
+}
+
+func normalizeLanguage(acceptLang string) string {
+	if acceptLang == "" {
+		return "unknown"
+	}
+	firstLang := strings.Split(acceptLang, ",")[0]
+	firstLang = strings.Split(firstLang, ";")[0]
+	firstLang = strings.TrimSpace(strings.ToLower(firstLang))
+
+	if firstLang == "" {
+		return "unknown"
+	}
+
+	return firstLang
+}
+
+func simplifyUserAgent(ua string) string {
+	if ua == "" {
+		return "unknown"
+	}
+
+	uaLower := strings.ToLower(ua)
+
+	os := "other-os"
+	switch {
+	case strings.Contains(uaLower, "android"):
+		os = "android"
+	case strings.Contains(uaLower, "iphone") || strings.Contains(uaLower, "ipad"):
+		os = "ios"
+	case strings.Contains(uaLower, "windows"):
+		os = "windows"
+	case strings.Contains(uaLower, "macintosh") || strings.Contains(uaLower, "mac os x"):
+		os = "macos"
+	case strings.Contains(uaLower, "linux"):
+		os = "linux"
+	}
+
+	browser := "other-browser"
+	switch {
+	case strings.Contains(uaLower, "edg/"):
+		browser = "edge"
+	case strings.Contains(uaLower, "opera") || strings.Contains(uaLower, "opr/"):
+		browser = "opera"
+	case strings.Contains(uaLower, "chrome"):
+		browser = "chrome"
+	case strings.Contains(uaLower, "firefox"):
+		browser = "firefox"
+	case strings.Contains(uaLower, "safari") && !strings.Contains(uaLower, "chrome"):
+		browser = "safari"
+	}
+
+	return os + "|" + browser
 }
