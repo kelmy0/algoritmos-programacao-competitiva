@@ -43,3 +43,6 @@ profile.cov
 # Go workspace file
 go.work
 go.work.sum
+
+# keys ed25519
+*.pem

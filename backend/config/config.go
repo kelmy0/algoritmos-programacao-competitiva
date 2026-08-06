@@ -1,6 +1,11 @@
 package config
 
 import (
+	"crypto/ed25519"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -17,8 +22,10 @@ type Config struct {
 	Port                    string
 	DatabaseURL             string
 	AdminHash               string
-	JwtAccessSecret         string
-	JwtRefreshSecret        string
+	JwtAccessPrivateKey     ed25519.PrivateKey
+	JwtAccessPublicKey      ed25519.PublicKey
+	JwtRefreshPrivateKey    ed25519.PrivateKey
+	JwtRefreshPublicKey     ed25519.PublicKey
 	JwtAccessExpiresMinutes int
 	JwtRefreshExpiresDays   int
 	EncryptSecretKey        string
@@ -45,33 +52,6 @@ type Config struct {
 	RedisTls                bool
 	SitemapSecret           string
 	TurnstileSecret         string
-}
-
-func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
-	var memory, iterations, saltLength, keyLength uint32
-	var parallelism uint8
-	_, err := fmt.Sscanf(paramStr, "m=%d,t=%d,p=%d,sl=%d,kl=%d",
-		&memory, &iterations, &parallelism, &saltLength, &keyLength)
-	if err != nil {
-		return 0, 0, 0, 0, 0, err
-	}
-
-	return memory, iterations, parallelism, saltLength, keyLength, nil
-}
-
-func parseTrustedProxies(proxiesEnv string) []string {
-	if proxiesEnv == "" {
-		return []string{"127.0.0.1", "::1"}
-	}
-
-	var proxies []string
-	for _, proxy := range strings.Split(proxiesEnv, ",") {
-		trimmed := strings.TrimSpace(proxy)
-		if trimmed != "" {
-			proxies = append(proxies, trimmed)
-		}
-	}
-	return proxies
 }
 
 func LoadConfig() *Config {
@@ -109,14 +89,22 @@ func LoadConfig() *Config {
 		log.Fatal("❌ ADMIN_SECRET_HASH is required.")
 	}
 
-	jwtAccessSecret := os.Getenv("JWT_ACCESS_SECRET")
-	if jwtAccessSecret == "" {
-		log.Fatal("❌ JWT_ACCESS_SECRET is required.")
+	accessPriv, err := parseEd25519PrivateKeyB64(os.Getenv("JWT_ACCESS_PRIVATE_KEY"))
+	if err != nil {
+		log.Fatalf("❌ Invalid JWT_ACCESS_PRIVATE_KEY: %v", err)
+	}
+	accessPub, err := parseEd25519PublicKeyB64(os.Getenv("JWT_ACCESS_PUBLIC_KEY"))
+	if err != nil {
+		log.Fatalf("❌ Invalid JWT_ACCESS_PUBLIC_KEY: %v", err)
 	}
 
-	jwtRefreshSecret := os.Getenv("JWT_REFRESH_SECRET")
-	if jwtRefreshSecret == "" {
-		log.Fatal("❌ JWT_REFRESH_SECRET is required.")
+	refreshPriv, err := parseEd25519PrivateKeyB64(os.Getenv("JWT_REFRESH_PRIVATE_KEY"))
+	if err != nil {
+		log.Fatalf("❌ Invalid JWT_REFRESH_PRIVATE_KEY: %v", err)
+	}
+	refreshPub, err := parseEd25519PublicKeyB64(os.Getenv("JWT_REFRESH_PUBLIC_KEY"))
+	if err != nil {
+		log.Fatalf("❌ Invalid JWT_REFRESH_PUBLIC_KEY: %v", err)
 	}
 
 	jwtAccessExpiresMinutes := os.Getenv("JWT_ACCESS_EXPIRES_MINUTES")
@@ -249,8 +237,10 @@ func LoadConfig() *Config {
 		Port:                    port,
 		DatabaseURL:             dbURL,
 		AdminHash:               adminHash,
-		JwtAccessSecret:         jwtAccessSecret,
-		JwtRefreshSecret:        jwtRefreshSecret,
+		JwtAccessPrivateKey:     accessPriv,
+		JwtAccessPublicKey:      accessPub,
+		JwtRefreshPrivateKey:    refreshPriv,
+		JwtRefreshPublicKey:     refreshPub,
 		JwtAccessExpiresMinutes: aToMinutes,
 		JwtRefreshExpiresDays:   rToDays,
 		EncryptSecretKey:        encryptSecretKey,
@@ -278,4 +268,93 @@ func LoadConfig() *Config {
 		SitemapSecret:           sitemapSecret,
 		TurnstileSecret:         turnstileSecret,
 	}
+}
+
+func parseArgonParams(paramStr string) (uint32, uint32, uint8, uint32, uint32, error) {
+	var memory, iterations, saltLength, keyLength uint32
+	var parallelism uint8
+	_, err := fmt.Sscanf(paramStr, "m=%d,t=%d,p=%d,sl=%d,kl=%d",
+		&memory, &iterations, &parallelism, &saltLength, &keyLength)
+	if err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+
+	return memory, iterations, parallelism, saltLength, keyLength, nil
+}
+
+func parseTrustedProxies(proxiesEnv string) []string {
+	if proxiesEnv == "" {
+		return []string{"127.0.0.1", "::1"}
+	}
+
+	var proxies []string
+	for _, proxy := range strings.Split(proxiesEnv, ",") {
+		trimmed := strings.TrimSpace(proxy)
+		if trimmed != "" {
+			proxies = append(proxies, trimmed)
+		}
+	}
+	return proxies
+}
+
+func parseEd25519PrivateKeyB64(b64Str string) (ed25519.PrivateKey, error) {
+	b64Str = strings.TrimSpace(b64Str)
+	if b64Str == "" {
+		return nil, errors.New("Private key environment variable is empty.")
+	}
+
+	b64Str = strings.Trim(b64Str, `"'`)
+
+	pemBytes, err := base64.StdEncoding.DecodeString(b64Str)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64: %w", err)
+	}
+
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, errors.New("Invalid PEM block after base64 decoding")
+	}
+
+	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse PKCS8 private key: %w", err)
+	}
+
+	edPriv, ok := priv.(ed25519.PrivateKey)
+	if !ok {
+		return nil, errors.New("Encoded key is not a valid ed25519.PrivateKey type.")
+	}
+
+	return edPriv, nil
+}
+
+func parseEd25519PublicKeyB64(b64Str string) (ed25519.PublicKey, error) {
+	b64Str = strings.TrimSpace(b64Str)
+	if b64Str == "" {
+		return nil, errors.New("Public key environment variable is empty.")
+	}
+
+	b64Str = strings.Trim(b64Str, `"'`)
+
+	pemBytes, err := base64.StdEncoding.DecodeString(b64Str)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to decode base64: %w", err)
+	}
+
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, errors.New("Invalid PEM block after base64 decoding")
+	}
+
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse PKIX public key: %w", err)
+	}
+
+	edPub, ok := pub.(ed25519.PublicKey)
+	if !ok {
+		return nil, errors.New("Encoded key is not a valid ed25519.Public Key type.")
+	}
+
+	return edPub, nil
 }

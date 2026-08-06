@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"crypto/ed25519"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func AuthMiddleware(secretKey, issuer string, redisClient *redis.Client) gin.HandlerFunc {
+func AuthMiddleware(publicKey ed25519.PublicKey, issuer string, redisClient *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -35,7 +36,7 @@ func AuthMiddleware(secretKey, issuer string, redisClient *redis.Client) gin.Han
 		}
 
 		tokenString := parts[1]
-		claims, err := utils.ValidateToken(tokenString, secretKey, issuer)
+		claims, err := utils.ValidateAccessToken(tokenString, publicKey, issuer)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
 				dto.CodeInvalidAccessToken,

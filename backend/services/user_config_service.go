@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"log/slog"
 	"time"
@@ -29,22 +30,22 @@ type AuthConfigRepo interface {
 }
 
 type UserConfigService struct {
-	UserRepo         UserConfigRepo
-	AuthRepo         AuthConfigRepo
-	EmailService     EmailService
-	ArgonParams      utils.ArgonParams
-	JwtRefreshSecret string
-	AppDomain        string
+	UserRepo            UserConfigRepo
+	AuthRepo            AuthConfigRepo
+	EmailService        EmailService
+	ArgonParams         utils.ArgonParams
+	JwtRefreshPublicKey ed25519.PublicKey
+	AppDomain           string
 }
 
-func NewUserConfigService(userRepo UserConfigRepo, authRepo AuthConfigRepo, emailService EmailService, argonParams utils.ArgonParams, jwtRSecret, appDomain string) *UserConfigService {
+func NewUserConfigService(userRepo UserConfigRepo, authRepo AuthConfigRepo, emailService EmailService, argonParams utils.ArgonParams, jwtRefreshPublicKey ed25519.PublicKey, appDomain string) *UserConfigService {
 	return &UserConfigService{
-		UserRepo:         userRepo,
-		ArgonParams:      argonParams,
-		EmailService:     emailService,
-		AuthRepo:         authRepo,
-		JwtRefreshSecret: jwtRSecret,
-		AppDomain:        appDomain,
+		UserRepo:            userRepo,
+		ArgonParams:         argonParams,
+		EmailService:        emailService,
+		AuthRepo:            authRepo,
+		JwtRefreshPublicKey: jwtRefreshPublicKey,
+		AppDomain:           appDomain,
 	}
 }
 
@@ -311,7 +312,7 @@ func (s *UserConfigService) GetMyCredentials(ctx context.Context, id string) (*d
 }
 
 func (s *UserConfigService) validateUserSession(ctx context.Context, userIdContext, refreshTokenString string) (*models.User, *models.RefreshToken, error) {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
+	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		slog.WarnContext(ctx, "validateUserSession: JWT validation failed", slog.Any("error", err))
 		return nil, nil, models.ErrInvalidOrExpiredRefresh

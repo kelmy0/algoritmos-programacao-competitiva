@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -36,8 +37,10 @@ type AuthService struct {
 	AuthRepo             AuthRepository
 	UserRepo             AuthUserRepository
 	RedisClient          *redis.Client
-	JwtAccessSecret      string
-	JwtRefreshSecret     string
+	JwtAccessPrivateKey  ed25519.PrivateKey
+	JwtRefreshPrivateKey ed25519.PrivateKey
+	JwtAccessPublicKey   ed25519.PublicKey
+	JwtRefreshPublicKey  ed25519.PublicKey
 	JwtAccessExpiration  int
 	JwtRefreshExpiration int
 	AppDomain            string
@@ -54,13 +57,15 @@ type RefreshTokenResult struct {
 	RefreshToken string
 }
 
-func NewAuthService(authRepo AuthRepository, userRepo AuthUserRepository, redisClient *redis.Client, jwtAccessSecret, jwtRefreshSecret, appDomain, encryptSecret string, jwtAccessExpiration int, jwtRefreshExpiration int) *AuthService {
+func NewAuthService(authRepo AuthRepository, userRepo AuthUserRepository, redisClient *redis.Client, jwtAccessPrivateKey, jwtRefreshPrivateKey ed25519.PrivateKey, jwtAccessPublicKey, jwtRefreshPublicKey ed25519.PublicKey, appDomain, encryptSecret string, jwtAccessExpiration int, jwtRefreshExpiration int) *AuthService {
 	return &AuthService{
 		AuthRepo:             authRepo,
 		UserRepo:             userRepo,
 		RedisClient:          redisClient,
-		JwtAccessSecret:      jwtAccessSecret,
-		JwtRefreshSecret:     jwtRefreshSecret,
+		JwtAccessPrivateKey:  jwtAccessPrivateKey,
+		JwtRefreshPrivateKey: jwtRefreshPrivateKey,
+		JwtAccessPublicKey:   jwtAccessPublicKey,
+		JwtRefreshPublicKey:  jwtRefreshPublicKey,
 		AppDomain:            appDomain,
 		JwtAccessExpiration:  jwtAccessExpiration,
 		JwtRefreshExpiration: jwtRefreshExpiration,
@@ -111,7 +116,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 	}
 
 	if user.TwoFactorAuthentication {
-		_, _, preAuthToken, err := utils.GenerateToken(user.Id, "", "", nil, s.JwtAccessSecret, s.AppDomain, false, time.Now().Add(5*time.Minute), "")
+		_, preAuthToken, err := utils.GeneratePreAuthToken(user.Id, s.AppDomain, s.JwtAccessPrivateKey, time.Now().Add(5*time.Minute))
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to generate 2FA pre-auth token",
 				slog.String("user_id", user.Id),
@@ -132,7 +137,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 }
 
 func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
-	claims, err := utils.ValidateToken(data.PreAuthToken, s.JwtAccessSecret, s.AppDomain)
+	claims, err := utils.ValidateAccessToken(data.PreAuthToken, s.JwtAccessPublicKey, s.AppDomain)
 	if err != nil {
 		slog.WarnContext(ctx, "pre-auth token validation failed during 2FA", slog.Any("error", err))
 		return nil, models.ErrSessionExpired
@@ -144,6 +149,14 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 		return nil, models.ErrSessionData
 	}
 
+	if claims.ID != "" {
+		blacklisted, _ := s.RedisClient.Exists(ctx, "blacklist:jti:"+claims.ID).Result()
+		if blacklisted > 0 {
+			slog.WarnContext(ctx, "attempted re-use of pre-auth token", slog.String("jti", claims.ID))
+			return nil, models.ErrSessionExpired
+		}
+	}
+
 	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
@@ -153,7 +166,12 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 			slog.String("user_id", userId),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrUserNotFound
+		return nil, models.ErrFailQueryUser
+	}
+
+	if !user.Enable {
+		slog.WarnContext(ctx, "disabled user attempted 2FA login", slog.String("user_id", user.Id))
+		return nil, models.ErrUserNotEnabled
 	}
 
 	if user.TwoFactorSecret == nil || *user.TwoFactorSecret == "" {
@@ -175,11 +193,18 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 		return nil, models.Err2FAInvalid
 	}
 
+	if claims.ID != "" && claims.ExpiresAt != nil {
+		ttl := time.Until(claims.ExpiresAt.Time)
+		if ttl > 0 {
+			_ = s.RedisClient.Set(ctx, "blacklist:jti:"+claims.ID, "used", ttl).Err()
+		}
+	}
+
 	return s.issueSession(ctx, user)
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString string) (*RefreshTokenResult, error) {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
+	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		slog.WarnContext(ctx, "refresh token JWT validation failed", slog.Any("error", err))
 		return nil, models.ErrInvalidOrExpiredRefresh
@@ -216,7 +241,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 		return nil, models.ErrTokenMetadataMisMatch
 	}
 
-	user, err := s.UserRepo.GetUserByEmailForAuth(ctx, claims.Email)
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, claims.Subject)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			return nil, models.ErrUserNotFound
@@ -233,10 +258,10 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 		return nil, models.ErrUserNotEnabled
 	}
 
-	_, _, newAccessToken, err := utils.GenerateToken(
+	_, newAccessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Username, user.Email, user.Permissions,
-		s.JwtAccessSecret, s.AppDomain, user.Role.IsEmployee,
-		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute), "",
+		s.JwtAccessPrivateKey, s.AppDomain, user.Role.IsEmployee,
+		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to sign new access token during refresh",
@@ -247,11 +272,8 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 	}
 
 	newRefreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
-	newTokenId, _, newRefreshToken, err := utils.GenerateToken(
-		user.Id, user.Username, user.Email, user.Permissions,
-		s.JwtRefreshSecret, s.AppDomain, user.Role.IsEmployee,
-		newRefreshExpiresAt,
-		dbToken.FamilyId,
+	newTokenId, _, newRefreshToken, err := utils.GenerateRefreshToken(
+		user.Id, s.JwtRefreshPrivateKey, s.AppDomain, newRefreshExpiresAt, dbToken.FamilyId,
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to sign new refresh token during rotation",
@@ -278,9 +300,17 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 }
 
 func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString, accessJti string, accessExpiresAt time.Time) error {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
+	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
+	}
+
+	if claims.Subject != userId {
+		slog.WarnContext(ctx, "security mismatch during logout",
+			slog.String("token_subject", claims.Subject),
+			slog.String("user_id_param", userId),
+		)
+		return models.ErrTokenMetadataMisMatch
 	}
 
 	err = s.AuthRepo.DeleteFamily(ctx, claims.FamilyId)
@@ -309,7 +339,7 @@ func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString, ac
 }
 
 func (s *AuthService) LogoutOtherDevices(ctx context.Context, userId, refreshTokenString string) error {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
+	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
 	}
@@ -336,7 +366,7 @@ func (s *AuthService) LogoutOtherDevices(ctx context.Context, userId, refreshTok
 }
 
 func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString, accessJti string) error {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
+	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
 	}
@@ -441,10 +471,8 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 	}
 
 	if user.TwoFactorAuthentication {
-		_, _, preAuthToken, err := utils.GenerateToken(
-			user.Id, "", "", nil,
-			s.JwtAccessSecret, s.AppDomain, false,
-			time.Now().Add(5*time.Minute), "",
+		_, preAuthToken, err := utils.GeneratePreAuthToken(
+			user.Id, s.AppDomain, s.JwtAccessPrivateKey, time.Now().Add(5*time.Minute),
 		)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to generate 2FA pre-auth token during social auth",
@@ -516,10 +544,10 @@ func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, prov
 
 func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*AuthResult, error) {
 	// Access Token
-	_, _, accessToken, err := utils.GenerateToken(
+	_, accessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Username, user.Email, user.Permissions,
-		s.JwtAccessSecret, s.AppDomain, user.Role.IsEmployee,
-		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute), "",
+		s.JwtAccessPrivateKey, s.AppDomain, user.Role.IsEmployee,
+		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to generate access token",
@@ -531,10 +559,8 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*Aut
 
 	// Refresh Token
 	refreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
-	idToken, familyId, refreshToken, err := utils.GenerateToken(
-		user.Id, user.Username, user.Email, user.Permissions,
-		s.JwtRefreshSecret, s.AppDomain, user.Role.IsEmployee,
-		refreshExpiresAt, "",
+	idToken, familyId, refreshToken, err := utils.GenerateRefreshToken(
+		user.Id, s.JwtRefreshPrivateKey, s.AppDomain, refreshExpiresAt, "",
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to generate refresh token",

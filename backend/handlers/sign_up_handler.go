@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
@@ -37,21 +35,9 @@ func (h *SignUpHandler) SignUp(c *gin.Context) {
 	}
 
 	result, err := h.Service.SignUp(c.Request.Context(), requestBody)
-	if err != nil {
-		if errors.Is(err, models.ErrAccountCreatedButTokenFailed) {
-			c.JSON(http.StatusCreated, dto.SignUpResponse{
-				Success:   true,
-				AutoLogin: false,
-			})
-			return
-		}
 
-		if appErr, ok := errors.AsType[*models.AppError](err); ok {
-			c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.CodeInternalError, dto.MsgUnexpectedError))
+	if err != nil {
+		HandleAPIError(c, err)
 		return
 	}
 

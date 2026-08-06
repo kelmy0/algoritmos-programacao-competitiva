@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"log/slog"
 	"net/mail"
@@ -27,8 +28,8 @@ type SignUpService struct {
 	UserRepo             SignUpUserRepository
 	AuthRepo             SignUpAuthRepository
 	ArgonParams          utils.ArgonParams
-	JwtAccessSecret      string
-	JwtRefreshSecret     string
+	JwtAccessPrivateKey  ed25519.PrivateKey
+	JwtRefreshPrivateKey ed25519.PrivateKey
 	JwtAccessExpiration  int
 	JwtRefreshExpiration int
 	AppDomain            string
@@ -39,13 +40,13 @@ type SignUpResult struct {
 	RefreshToken   string
 }
 
-func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthRepository, argonParams utils.ArgonParams, jwtAccessSecret, jwtRefreshSecret, appDomain string, jwtAccessExpiration, jwtRefreshExpiration int) *SignUpService {
+func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthRepository, argonParams utils.ArgonParams, jwtaccessPrivateKey, jwtRefreshPrivateKey ed25519.PrivateKey, appDomain string, jwtAccessExpiration, jwtRefreshExpiration int) *SignUpService {
 	return &SignUpService{
 		UserRepo:             userRepo,
 		AuthRepo:             authRepo,
 		ArgonParams:          argonParams,
-		JwtAccessSecret:      jwtAccessSecret,
-		JwtRefreshSecret:     jwtRefreshSecret,
+		JwtAccessPrivateKey:  jwtaccessPrivateKey,
+		JwtRefreshPrivateKey: jwtRefreshPrivateKey,
 		JwtAccessExpiration:  jwtAccessExpiration,
 		JwtRefreshExpiration: jwtRefreshExpiration,
 		AppDomain:            appDomain,
@@ -61,27 +62,24 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		return nil, models.ErrPasswordIsNotValid
 	}
 
-	sanitizedData := dto.SignUpRequest{
-		Name:     utils.SanitizeHumanName(data.Name),
-		Username: utils.SanitizeUsername(data.Username),
-		Email:    strings.ToLower(strings.TrimSpace(data.Email)),
-		Password: data.Password,
-	}
+	sanitizedName := utils.SanitizeHumanName(data.Name)
+	sanitizedUsername := utils.SanitizeUsername(data.Username)
+	sanitizedEmail := strings.ToLower(strings.TrimSpace(data.Email))
 
-	if sanitizedData.Name == "" || utf8.RuneCountInString(sanitizedData.Name) < 6 {
+	if sanitizedName == "" || utf8.RuneCountInString(sanitizedName) < 6 {
 		return nil, models.ErrInvalidRegistrationName
 	}
 
-	if sanitizedData.Username == "" || utf8.RuneCountInString(sanitizedData.Username) < 6 {
+	if sanitizedUsername == "" || utf8.RuneCountInString(sanitizedUsername) < 6 {
 		return nil, models.ErrInvalidRegistrationUsername
 	}
 
-	_, err := mail.ParseAddress(sanitizedData.Email)
-	if err != nil || !strings.Contains(sanitizedData.Email, "@") || strings.LastIndex(sanitizedData.Email, ".") < strings.LastIndex(sanitizedData.Email, "@") {
+	_, err := mail.ParseAddress(sanitizedEmail)
+	if err != nil || !strings.Contains(sanitizedEmail, "@") || strings.LastIndex(sanitizedEmail, ".") < strings.LastIndex(sanitizedEmail, "@") {
 		return nil, models.ErrInvalidEmailFormat
 	}
 
-	emailTaken, usernameTaken, err := s.UserRepo.CheckAvailability(ctx, sanitizedData.Email, sanitizedData.Username)
+	emailTaken, usernameTaken, err := s.UserRepo.CheckAvailability(ctx, sanitizedEmail, sanitizedUsername)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to verify user availability during sign up", slog.Any("error", err))
 		return nil, models.ErrFailQueryUser
@@ -94,16 +92,16 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		return nil, models.ErrUsernameAlreadyUsed
 	}
 
-	passwordHash, err := utils.HashPassword(sanitizedData.Password, s.ArgonParams)
+	passwordHash, err := utils.HashPassword(data.Password, s.ArgonParams)
 	if err != nil {
 		slog.ErrorContext(ctx, "Argon2 hashing failed for new user registration", slog.Any("error", err))
 		return nil, models.ErrCryptTokenFailed
 	}
 
 	dataUser := models.NewUser{
-		Name:         sanitizedData.Name,
-		Username:     sanitizedData.Username,
-		Email:        sanitizedData.Email,
+		Name:         sanitizedName,
+		Username:     sanitizedUsername,
+		Email:        sanitizedEmail,
 		PasswordHash: passwordHash,
 	}
 
@@ -124,40 +122,37 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		}
 	}
 
-	_, _, accessToken, err := utils.GenerateToken(
-		userId, sanitizedData.Username, sanitizedData.Email, []string{},
-		s.JwtAccessSecret, s.AppDomain, false,
-		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute), "",
+	_, accessToken, errAccess := utils.GenerateAccessToken(
+		userId, sanitizedUsername, sanitizedEmail, []string{},
+		s.JwtAccessPrivateKey, s.AppDomain, false,
+		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
-	if err != nil {
-		slog.WarnContext(ctx, "user registered, but failed to sign access token",
-			slog.String("user_id", userId),
-			slog.Any("error", err),
-		)
-		return nil, models.ErrAccountCreatedButTokenFailed
-	}
 
 	refreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
-	idToken, familyId, refreshToken, err := utils.GenerateToken(
-		userId, sanitizedData.Username, sanitizedData.Email, []string{},
-		s.JwtRefreshSecret, s.AppDomain, false,
-		refreshExpiresAt, "",
+	idToken, familyId, refreshToken, errRefresh := utils.GenerateRefreshToken(
+		userId, s.JwtRefreshPrivateKey, s.AppDomain, refreshExpiresAt, "",
 	)
-	if err != nil {
-		slog.WarnContext(ctx, "user registered, but failed to sign refresh token",
-			slog.String("user_id", userId),
-			slog.Any("error", err),
-		)
-		return nil, models.ErrAccountCreatedButTokenFailed
+
+	var errSave error
+	if errRefresh == nil {
+		errSave = s.AuthRepo.SaveRefreshToken(ctx, idToken, userId, familyId, refreshExpiresAt)
 	}
 
-	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, userId, familyId, refreshExpiresAt)
-	if err != nil {
-		slog.WarnContext(ctx, "user registered, but failed to persist refresh session in database",
+	if errAccess != nil || errRefresh != nil || errSave != nil {
+		slog.WarnContext(ctx, "user registered successfully, but auto-login session generation failed",
 			slog.String("user_id", userId),
-			slog.Any("error", err),
+			slog.Any("access_err", errAccess),
+			slog.Any("refresh_err", errRefresh),
+			slog.Any("save_err", errSave),
 		)
-		return nil, models.ErrAccountCreatedButTokenFailed
+
+		response := &dto.SignUpResponse{
+			AccessToken: "",
+			Success:     true,
+			AutoLogin:   false,
+		}
+
+		return &SignUpResult{SignUpResponse: response, RefreshToken: ""}, nil
 	}
 
 	response := &dto.SignUpResponse{

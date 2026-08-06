@@ -48,7 +48,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	requireCaptcha := middleware.RequireCaptcha(cfg.TurnstileSecret)
 
 	//AUTH MIDDLEWARE
-	requireAuth := middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppDomain, redisClient)
+	requireAuth := middleware.AuthMiddleware(cfg.JwtAccessPublicKey, cfg.AppDomain, redisClient)
 
 	//ADMIN MIDDLEWARES
 	fake404 := middleware.Fake404Middleware(cfg.AdminHash)
@@ -64,12 +64,12 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	//Auth
 	authRepo := repositories.NewAuthRepository(db)
-	authService := services.NewAuthService(authRepo, userRepo, redisClient, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppDomain, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	authService := services.NewAuthService(authRepo, userRepo, redisClient, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.JwtAccessPublicKey, cfg.JwtRefreshPublicKey, cfg.AppDomain, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain, cfg.JwtRefreshExpiresDays)
 	authSocialHandler := handlers.NewAuthSocialHandler(authService, googleConfig, githubConfig, cfg.AppDomain, cfg.FrontendUrl, isProd, cfg.JwtRefreshExpiresDays)
 
 	//Sign up
-	signUpService := services.NewSignUpService(userRepo, authRepo, *argonParams, cfg.JwtAccessSecret, cfg.JwtRefreshSecret, cfg.AppDomain, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	signUpService := services.NewSignUpService(userRepo, authRepo, *argonParams, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.AppDomain, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
 	signUpHandler := handlers.NewSignUpHandler(signUpService, cfg.JwtRefreshExpiresDays, cfg.AppDomain, isProd)
 
 	//TwoFactor
@@ -78,7 +78,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	//UserConfig
 	emailService := services.NewEmailService(cfg.HostEmail, cfg.PortEmail, cfg.UserEmail, cfg.PasswordEmail, cfg.FromEmail, cfg.FrontendUrl, cfg.AppName)
-	userConfigService := services.NewUserConfigService(userRepo, authRepo, *emailService, *argonParams, cfg.JwtRefreshSecret, cfg.AppDomain)
+	userConfigService := services.NewUserConfigService(userRepo, authRepo, *emailService, *argonParams, cfg.JwtRefreshPublicKey, cfg.AppDomain)
 	userConfigHandler := handlers.NewUserConfigHandler(userConfigService)
 
 	api := router.Group("/api")
