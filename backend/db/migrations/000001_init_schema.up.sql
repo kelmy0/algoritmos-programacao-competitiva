@@ -37,7 +37,7 @@ CREATE TABLE users (
     username VARCHAR(32) NOT NULL UNIQUE CHECK (char_length(username) >= 6),
     email VARCHAR(128) NOT NULL UNIQUE,
     password_hash VARCHAR(255),
-    recovery_token_hash CHAR(128),
+    recovery_token_hash CHAR(88),
     recovery_token_expires_at TIMESTAMPTZ,
     enable BOOLEAN NOT NULL DEFAULT TRUE,
     two_factor_authentication BOOLEAN NOT NULL DEFAULT FALSE,
