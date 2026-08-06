@@ -4,7 +4,8 @@ import type { Cookies } from "@sveltejs/kit";
 const DEFAULT_COOKIE_OPTIONS = {
 	path: "/",
 	httpOnly: true,
-	secure: ENV !== "development"
+	secure: ENV !== "development",
+	partitioned: ENV !== "development"
 };
 
 export function setAuthCookie(cookies: Cookies, name: string, value: string, minutes: number) {
@@ -30,7 +31,7 @@ export function setIdleCookie(cookies: Cookies, name: string, value: string, min
 	});
 }
 
-export function deleteAuthCookie(cookies: Cookies, name: string) {
+export function deleteCookie(cookies: Cookies, name: string) {
 	cookies.delete(name, {
 		path: DEFAULT_COOKIE_OPTIONS.path
 	});

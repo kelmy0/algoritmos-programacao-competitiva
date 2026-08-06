@@ -1,6 +1,6 @@
 import { redirect, type RequestHandler } from "@sveltejs/kit";
 import { API_URL } from "$env/static/private";
-import { deleteAuthCookie } from "$lib/server/cookies";
+import { deleteCookie } from "$lib/server/cookies";
 import { fiveHundredQuerySize, hundredKbBodySize } from "$lib/server/middlewares";
 import { standardApiLimiter, useMiddlewares } from "$lib/server/middlewares";
 
@@ -21,9 +21,9 @@ const logout: RequestHandler = async (event) => {
 		}
 	}
 
-	deleteAuthCookie(event.cookies, "access_token");
-	deleteAuthCookie(event.cookies, "refresh_token");
-	deleteAuthCookie(event.cookies, "admin_secret");
+	deleteCookie(event.cookies, "access_token");
+	deleteCookie(event.cookies, "refresh_token");
+	deleteCookie(event.cookies, "admin_secret");
 
 	event.locals.user = null;
 	event.locals.accessToken = null;

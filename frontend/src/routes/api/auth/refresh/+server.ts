@@ -1,6 +1,6 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { normalizeApiError } from "$lib/utils/errors";
-import { deleteAuthCookie, setAuthCookie } from "$lib/server/cookies";
+import { deleteCookie, setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
 import { authFlowLimiter, fiveHundredQuerySize, hundredKbBodySize } from "$lib/server/middlewares";
@@ -28,9 +28,9 @@ const refreshToken: RequestHandler = async (event) => {
 	);
 
 	if (error) {
-		deleteAuthCookie(event.cookies, "access_token");
-		deleteAuthCookie(event.cookies, "refresh_token");
-		deleteAuthCookie(event.cookies, "admin_secret");
+		deleteCookie(event.cookies, "access_token");
+		deleteCookie(event.cookies, "refresh_token");
+		deleteCookie(event.cookies, "admin_secret");
 		return json(error, { status });
 	}
 

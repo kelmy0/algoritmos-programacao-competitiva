@@ -43,15 +43,21 @@ func GetAuthContext(c *gin.Context) (userId, email, accessId string, accessExpir
 func SetRefreshCookie(c *gin.Context, value, domain string, refreshDurationDays int, isProduction bool) {
 	maxAge := 60 * 60 * 24 * refreshDurationDays
 
-	c.SetCookieData(&http.Cookie{
+	cookie := &http.Cookie{
 		Name:     "refresh_token",
 		Value:    value,
 		MaxAge:   maxAge,
 		Expires:  time.Now().Add(time.Duration(maxAge) * time.Second),
-		Path:     "",
+		Path:     "/",
 		Domain:   domain,
 		Secure:   isProduction,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-	})
+	}
+
+	if isProduction {
+		cookie.Unparsed = append(cookie.Unparsed, "Partitioned")
+	}
+
+	c.SetCookieData(cookie)
 }

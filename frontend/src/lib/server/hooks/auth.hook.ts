@@ -1,7 +1,7 @@
 import type { Handle } from "@sveltejs/kit";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "$env/static/private";
-import { setAuthCookie, deleteAuthCookie } from "$lib/server/cookies";
+import { setAuthCookie, deleteCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import type { JwtPayload, RefreshResponse } from "$lib/types/jwt";
 
@@ -74,9 +74,9 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 				rotatedCookies = headers.getSetCookie();
 			}
 		} else {
-			deleteAuthCookie(event.cookies, "access_token");
-			deleteAuthCookie(event.cookies, "refresh_token");
-			deleteAuthCookie(event.cookies, "admin_secret");
+			deleteCookie(event.cookies, "access_token");
+			deleteCookie(event.cookies, "refresh_token");
+			deleteCookie(event.cookies, "admin_secret");
 		}
 	}
 
