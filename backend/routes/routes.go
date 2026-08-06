@@ -73,7 +73,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	signUpHandler := handlers.NewSignUpHandler(signUpService, cfg.JwtRefreshExpiresDays, cfg.AppDomain, isProd)
 
 	//TwoFactor
-	twoFactorService := services.NewTwoFactorService(userRepo, cfg.EncryptSecretKey, cfg.AppName)
+	twoFactorService := services.NewTwoFactorService(userRepo, authRepo, cfg.EncryptSecretKey, cfg.AppName)
 	twoFactorHandler := handlers.NewTwoFactorHandler(twoFactorService)
 
 	//UserConfig
