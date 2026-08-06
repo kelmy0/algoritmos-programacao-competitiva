@@ -9,10 +9,10 @@ import (
 )
 
 type Claims struct {
-	Username    string   `json:"username"`
-	Email       string   `json:"email"`
-	Permissions []string `json:"permissions"`
-	IsEmployee  bool     `json:"isEmployee"`
+	Username    string   `json:"username,omitempty"`
+	Email       string   `json:"email,omitempty"`
+	Permissions []string `json:"permissions,omitempty"`
+	IsEmployee  bool     `json:"isEmployee,omitempty"`
 	FamilyId    string   `json:"familyId,omitempty"`
 	jwt.RegisteredClaims
 }
