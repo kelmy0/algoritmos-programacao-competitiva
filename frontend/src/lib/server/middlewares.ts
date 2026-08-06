@@ -51,9 +51,11 @@ export const moderateAlgorithms = requirePermission("moderate:algorithms");
 const TOKEN_BUCKET_LUA = `
 local key = KEYS[1]
 local capacity = tonumber(ARGV[1])
-local fill_rate = tonumber(ARGV[2])
-local now = tonumber(ARGV[3])
-local ttl = math.ceil(capacity / fill_rate)
+local fill_rate_per_ms = tonumber(ARGV[2]) / 1000.0
+local now_ms = tonumber(ARGV[3])
+
+local fill_time_seconds = math.ceil(capacity / (fill_rate_per_ms * 1000.0))
+local ttl_seconds = math.max(10, fill_time_seconds * 1.2)
 
 local data = redis.call("HMGET", key, "tokens", "last_updated")
 local tokens = tonumber(data[1])
@@ -61,21 +63,22 @@ local last_updated = tonumber(data[2])
 
 if not tokens then
     tokens = capacity
-    last_updated = now
+    last_updated = now_ms
 else
-    local delta = math.max(0, now - last_updated)
-    tokens = math.min(capacity, tokens + (delta * fill_rate))
-    last_updated = now
+    local delta_ms = math.max(0, now_ms - last_updated)
+    tokens = math.min(capacity, tokens + (delta_ms * fill_rate_per_ms))
+    last_updated = now_ms
 end
 
 if tokens >= 1 then
     tokens = tokens - 1
     redis.call("HMSET", key, "tokens", tokens, "last_updated", last_updated)
-    redis.call("EXPIRE", key, ttl)
+    redis.call("EXPIRE", key, ttl_seconds)
     return {1, math.floor(tokens)}
 else
-    redis.call("EXPIRE", key, ttl)
-    return {0, 0}
+    redis.call("HMSET", key, "tokens", tokens, "last_updated", last_updated)
+    redis.call("EXPIRE", key, ttl_seconds)
+    return {0, math.floor(tokens)}
 end
 `;
 
@@ -83,9 +86,18 @@ export function rateLimit(options: TokenBucketOptions = { capacity: 60, fillRate
 	return async (event) => {
 		try {
 			const userId = event.locals.user?.id;
-			const identifier = userId ? `usr_${userId}` : `ip_${event.getClientAddress()}`;
+			let clientIp = "127.0.0.1";
+
+			try {
+				clientIp = event.getClientAddress();
+			} catch {
+				clientIp =
+					event.request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
+			}
+
+			const identifier = userId ? `usr_${userId}` : `ip_${clientIp}`;
 			const redisKey = `ratelimit:tb:${event.url.pathname}:${identifier}`;
-			const now = Math.floor(Date.now() / 1000);
+			const nowMs = Date.now();
 
 			const result = (await redis.eval(
 				TOKEN_BUCKET_LUA,
@@ -93,23 +105,25 @@ export function rateLimit(options: TokenBucketOptions = { capacity: 60, fillRate
 				redisKey,
 				options.capacity.toString(),
 				options.fillRate.toString(),
-				now.toString()
+				nowMs.toString()
 			)) as [number, number];
 
 			const [allowed, remainingTokens] = result;
 
 			event.setHeaders({
 				"X-RateLimit-Limit": options.capacity.toString(),
-				"X-RateLimit-Remaining": remainingTokens.toString()
+				"X-RateLimit-Remaining": Math.max(0, remainingTokens).toString()
 			});
 
 			if (allowed === 0) {
 				const normalizedError = normalizeApiError("TOO_MANY_REQUESTS");
+				const retryAfterSeconds = Math.max(1, Math.ceil(1 / options.fillRate));
 
 				return json(normalizedError, {
 					status: 429,
 					headers: {
-						"Retry-After": "3"
+						"Retry-After": retryAfterSeconds.toString(),
+						"X-RateLimit-Remaining": "0"
 					}
 				});
 			}

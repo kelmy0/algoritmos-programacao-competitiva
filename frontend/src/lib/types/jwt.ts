@@ -1,4 +1,4 @@
-import type { JwtPayload as BaseJwtPayload } from "jwt-decode";
+import type { JWTPayload } from "jose";
 
 export interface RefreshServerResponse {
 	accessToken: boolean;
@@ -9,11 +9,27 @@ export interface RefreshResponse {
 	accessToken: string;
 }
 
-export interface JwtPayload extends BaseJwtPayload {
+export interface BaseCustomJwtPayload extends JWTPayload {
+	jti: string;
 	sub: string;
+	exp: number;
+	iss: string;
+}
+
+export interface AccessJwtPayload extends BaseCustomJwtPayload {
 	username: string;
 	email: string;
 	permissions: string[];
 	isEmployee: boolean;
-	exp?: number;
+}
+
+export interface RefreshJwtPayload extends BaseCustomJwtPayload {
+	familyId: string;
+}
+
+export interface PreAuthToken extends BaseCustomJwtPayload {}
+
+export interface JwtValided<T extends BaseCustomJwtPayload = AccessJwtPayload> {
+	claims: T | null;
+	valid: boolean;
 }

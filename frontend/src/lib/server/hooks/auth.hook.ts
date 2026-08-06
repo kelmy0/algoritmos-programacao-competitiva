@@ -1,9 +1,10 @@
 import type { Handle } from "@sveltejs/kit";
-import { jwtDecode } from "jwt-decode";
-import { API_URL } from "$env/static/private";
+import { API_URL, JWT_ACCESS_PUBLIC_KEY } from "$env/static/private";
 import { setAuthCookie, deleteCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
-import type { JwtPayload, RefreshResponse } from "$lib/types/jwt";
+import type { AccessJwtPayload, RefreshResponse } from "$lib/types/jwt";
+import { validateJWT } from "$lib/utils/jwt";
+import { clearAllAuthCookies } from "$lib/utils/cookies";
 
 export const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
@@ -16,24 +17,33 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 
 	if (accessToken) {
 		try {
-			const decoded = jwtDecode<JwtPayload>(accessToken);
+			const { claims, valid } = await validateJWT<AccessJwtPayload>(
+				JWT_ACCESS_PUBLIC_KEY,
+				accessToken
+			);
+
+			if (!valid || !claims) {
+				throw new Error("INVALID_ACCESS_TOKEN");
+			}
+
 			const nowInSeconds = Math.floor(Date.now() / 1000);
 			const BUFFER_SECONDS = 90;
 
-			if (decoded.exp && decoded.exp - nowInSeconds > BUFFER_SECONDS) {
+			if (claims.exp && claims.exp - nowInSeconds > BUFFER_SECONDS) {
 				isTokenValid = true;
 
 				event.locals.user = {
-					id: decoded.sub,
-					username: decoded.username,
-					email: decoded.email,
-					permissions: decoded.permissions || [],
-					isEmployee: decoded.isEmployee
+					id: claims.sub,
+					username: claims.username,
+					email: claims.email,
+					permissions: claims.permissions || [],
+					isEmployee: claims.isEmployee
 				};
 				event.locals.accessToken = accessToken;
 			}
 		} catch {
 			isTokenValid = false;
+			deleteCookie(event.cookies, "access_token");
 		}
 	}
 
@@ -57,26 +67,31 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 		});
 
 		if (!apiError && data?.accessToken) {
-			event.locals.accessToken = data.accessToken;
+			const { claims, valid } = await validateJWT<AccessJwtPayload>(
+				JWT_ACCESS_PUBLIC_KEY,
+				data.accessToken
+			);
 
-			const decoded = jwtDecode<JwtPayload>(data.accessToken);
-			event.locals.user = {
-				id: decoded.sub,
-				username: decoded.username,
-				email: decoded.email,
-				permissions: decoded.permissions || [],
-				isEmployee: decoded.isEmployee
-			};
+			if (valid && claims) {
+				event.locals.user = {
+					id: claims.sub,
+					username: claims.username,
+					email: claims.email,
+					permissions: claims.permissions || [],
+					isEmployee: claims.isEmployee
+				};
+				event.locals.accessToken = data.accessToken;
 
-			setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
+				setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
 
-			if (headers) {
-				rotatedCookies = headers.getSetCookie();
+				if (headers) {
+					rotatedCookies = headers.getSetCookie();
+				}
+			} else {
+				clearAllAuthCookies(event.cookies);
 			}
 		} else {
-			deleteCookie(event.cookies, "access_token");
-			deleteCookie(event.cookies, "refresh_token");
-			deleteCookie(event.cookies, "admin_secret");
+			clearAllAuthCookies(event.cookies);
 		}
 	}
 

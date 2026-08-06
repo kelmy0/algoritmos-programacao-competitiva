@@ -1,12 +1,13 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { normalizeApiError } from "$lib/utils/errors";
-import { deleteCookie, setAuthCookie } from "$lib/server/cookies";
+import { setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
-import { API_URL } from "$env/static/private";
+import { API_URL, JWT_ACCESS_PUBLIC_KEY } from "$env/static/private";
 import { authFlowLimiter, fiveHundredQuerySize, hundredKbBodySize } from "$lib/server/middlewares";
 import { useMiddlewares } from "$lib/server/middlewares";
-import type { JwtPayload, RefreshResponse } from "$lib/types/jwt";
-import { jwtDecode } from "jwt-decode";
+import type { AccessJwtPayload, RefreshResponse } from "$lib/types/jwt";
+import { validateJWT } from "$lib/utils/jwt";
+import { clearAllAuthCookies } from "$lib/utils/cookies";
 
 const refreshToken: RequestHandler = async (event) => {
 	const cookieHeader = event.request.headers.get("cookie") || "";
@@ -28,9 +29,7 @@ const refreshToken: RequestHandler = async (event) => {
 	);
 
 	if (error) {
-		deleteCookie(event.cookies, "access_token");
-		deleteCookie(event.cookies, "refresh_token");
-		deleteCookie(event.cookies, "admin_secret");
+		clearAllAuthCookies(event.cookies);
 		return json(error, { status });
 	}
 
@@ -40,12 +39,21 @@ const refreshToken: RequestHandler = async (event) => {
 		});
 	}
 
-	const decoded = jwtDecode<JwtPayload>(data.accessToken);
+	const { claims, valid } = await validateJWT<AccessJwtPayload>(
+		JWT_ACCESS_PUBLIC_KEY,
+		data.accessToken
+	);
+
+	if (!valid || !claims) {
+		clearAllAuthCookies(event.cookies);
+		return json(normalizeApiError("INVALID_ACCESS_TOKEN"), { status: 401 });
+	}
+
 	setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
 
 	const response = json({
 		accessToken: true,
-		expiresAt: decoded.exp ? decoded.exp * 1000 : undefined
+		expiresAt: claims.exp ? claims.exp * 1000 : null
 	});
 
 	const setCookies = headers.getSetCookie();

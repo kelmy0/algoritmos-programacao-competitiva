@@ -108,9 +108,20 @@ export class LoginController {
 
 		if (data.accessToken) {
 			const redirectTo = page.url.searchParams.get("redirectTo");
-			const isSafeRedirect =
-				redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//");
-			const targetUrl = isSafeRedirect ? redirectTo : "/";
+
+			let targetUrl = "/";
+
+			if (redirectTo) {
+				try {
+					const parsedUrl = new URL(redirectTo, page.url.origin);
+
+					if (parsedUrl.origin === page.url.origin) {
+						targetUrl = parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
+					}
+				} catch {
+					targetUrl = "/";
+				}
+			}
 
 			await goto(targetUrl, { invalidateAll: true });
 		}
