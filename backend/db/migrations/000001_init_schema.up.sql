@@ -91,6 +91,8 @@ EXECUTE FUNCTION update_updated_at();
 CREATE TABLE refresh_tokens (
     id CHAR(32) PRIMARY KEY,
     user_id UUID NOT NULL,
+    family_id CHAR(32) NOT NULL,
+    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -98,6 +100,7 @@ CREATE TABLE refresh_tokens (
 
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+CREATE INDEX idx_refresh_tokens_family_id ON refresh_tokens(family_id);
 
 --------------------------------------
 

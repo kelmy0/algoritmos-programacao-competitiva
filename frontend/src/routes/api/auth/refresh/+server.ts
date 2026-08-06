@@ -29,6 +29,8 @@ const refreshToken: RequestHandler = async (event) => {
 
 	if (error) {
 		deleteAuthCookie(event.cookies, "access_token");
+		deleteAuthCookie(event.cookies, "refresh_token");
+		deleteAuthCookie(event.cookies, "admin_secret");
 		return json(error, { status });
 	}
 
@@ -57,6 +59,5 @@ const refreshToken: RequestHandler = async (event) => {
 export const POST = useMiddlewares(
 	fiveHundredQuerySize,
 	hundredKbBodySize,
-
 	authFlowLimiter
 )(refreshToken);

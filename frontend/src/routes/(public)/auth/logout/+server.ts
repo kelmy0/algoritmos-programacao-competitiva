@@ -5,12 +5,15 @@ import { fiveHundredQuerySize, hundredKbBodySize } from "$lib/server/middlewares
 import { standardApiLimiter, useMiddlewares } from "$lib/server/middlewares";
 
 const logout: RequestHandler = async (event) => {
+	const cookieHeader = event.request.headers.get("cookie") || "";
+
 	if (event.locals.accessToken) {
 		try {
 			await event.fetch(`${API_URL}/api/auth/logout`, {
 				method: "POST",
 				headers: {
-					Authorization: `Bearer ${event.locals.accessToken}`
+					Authorization: `Bearer ${event.locals.accessToken}`,
+					cookie: cookieHeader
 				}
 			});
 		} catch (err) {

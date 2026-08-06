@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 	"log/slog"
 	"time"
 
@@ -24,7 +23,8 @@ type UserConfigRepo interface {
 }
 
 type AuthConfigRepo interface {
-	DeleteAllRefreshToken(ctx context.Context, userId, tokenId string) error
+	DeleteOtherFamilies(ctx context.Context, userId, currentFamilyId string) error
+	DeleteAllUserRefreshTokens(ctx context.Context, userId string) error
 	GetRefreshTokenById(ctx context.Context, id string) (*models.RefreshToken, error)
 }
 
@@ -34,17 +34,17 @@ type UserConfigService struct {
 	EmailService     EmailService
 	ArgonParams      utils.ArgonParams
 	JwtRefreshSecret string
-	AppName          string
+	AppDomain        string
 }
 
-func NewUserConfigService(userRepo UserConfigRepo, authRepo AuthConfigRepo, emailService EmailService, argonParams utils.ArgonParams, jwtRSecret, appName string) *UserConfigService {
+func NewUserConfigService(userRepo UserConfigRepo, authRepo AuthConfigRepo, emailService EmailService, argonParams utils.ArgonParams, jwtRSecret, appDomain string) *UserConfigService {
 	return &UserConfigService{
 		UserRepo:         userRepo,
 		ArgonParams:      argonParams,
 		EmailService:     emailService,
 		AuthRepo:         authRepo,
 		JwtRefreshSecret: jwtRSecret,
-		AppName:          appName,
+		AppDomain:        appDomain,
 	}
 }
 
@@ -64,7 +64,10 @@ func (s *UserConfigService) ChangePassword(ctx context.Context, userIdContext, r
 
 	ok, err := utils.VerifyPassword(data.OldPassword, *user.PasswordHash)
 	if err != nil {
-		log.Printf("[ChangePassword] Argon2 verification failed for user %s: %v", user.Id, err)
+		slog.ErrorContext(ctx, "Argon2 password verification failed during password change",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordVerificationFailed
 	}
 	if !ok {
@@ -73,19 +76,29 @@ func (s *UserConfigService) ChangePassword(ctx context.Context, userIdContext, r
 
 	newPasswordHash, err := utils.HashPassword(data.NewPassword, s.ArgonParams)
 	if err != nil {
-		log.Printf("[ChangePassword] failed to generate Argon2 hash for user %s: %v", user.Id, err)
+		slog.ErrorContext(ctx, "failed to generate Argon2 hash for new password",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordChangeFailed
 	}
 
 	err = s.UserRepo.ChangePassword(ctx, user.Id, newPasswordHash)
 	if err != nil {
-		log.Printf("[ChangePassword] %v", err)
+		slog.ErrorContext(ctx, "database error changing password",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordChangeFailed
 	}
 
-	err = s.AuthRepo.DeleteAllRefreshToken(ctx, user.Id, token.Id)
+	err = s.AuthRepo.DeleteOtherFamilies(ctx, user.Id, token.FamilyId)
 	if err != nil {
-		log.Printf("[ChangePassword] %v", err)
+		slog.ErrorContext(ctx, "failed to delete other session families after password change",
+			slog.String("user_id", user.Id),
+			slog.String("current_family_id", token.FamilyId),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordChangeButNotLogout
 	}
 
@@ -112,19 +125,29 @@ func (s *UserConfigService) DefinePassword(ctx context.Context, userIdContext, r
 
 	newPasswordHash, err := utils.HashPassword(data.NewPassword, s.ArgonParams)
 	if err != nil {
-		log.Printf("[DefinePassword] failed to hash password for user %s: %v", user.Id, err)
+		slog.ErrorContext(ctx, "failed to hash new defined password",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordSetFailed
 	}
 
 	err = s.UserRepo.DefinePassword(ctx, user.Id, newPasswordHash)
 	if err != nil {
-		log.Printf("[DefinePassword] %v", err)
+		slog.ErrorContext(ctx, "database error defining initial password",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordSetFailed
 	}
 
-	err = s.AuthRepo.DeleteAllRefreshToken(ctx, user.Id, token.Id)
+	err = s.AuthRepo.DeleteOtherFamilies(ctx, user.Id, token.FamilyId)
 	if err != nil {
-		log.Printf("[DefinePassword] %v", err)
+		slog.ErrorContext(ctx, "failed to delete other session families after password definition",
+			slog.String("user_id", user.Id),
+			slog.String("current_family_id", token.FamilyId),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordSetButNotLogout
 	}
 
@@ -132,12 +155,16 @@ func (s *UserConfigService) DefinePassword(ctx context.Context, userIdContext, r
 }
 
 func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) error {
+	maskedEmail := utils.MaskEmail(email)
 	user, err := s.UserRepo.GetUserByEmailForAuth(ctx, email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			return nil
 		}
-		log.Printf("[ForgotPassword] %v", err)
+		slog.ErrorContext(ctx, "database error fetching user by email during forgot password",
+			slog.String("email", maskedEmail),
+			slog.Any("error", err),
+		)
 		return nil
 	}
 
@@ -154,9 +181,10 @@ func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) er
 
 			if timeLeft > minTimeRemainingForNewSend {
 				waitTime := timeLeft - minTimeRemainingForNewSend
-
-				log.Printf("[ForgotPassword] Email sending blocked by cooldown for %s. Remaining wait time: %v",
-					utils.MaskEmail(user.Email), waitTime.Round(time.Second))
+				slog.WarnContext(ctx, "forgot password email blocked by cooldown",
+					slog.String("email", maskedEmail),
+					slog.Duration("wait_time", waitTime.Round(time.Second)),
+				)
 				return nil
 			}
 		}
@@ -164,7 +192,10 @@ func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) er
 
 	token, err := utils.GenerateCustomId(32)
 	if err != nil {
-		log.Printf("[ForgotPassword] failed to generate secure custom token for user %s: %v", user.Id, err)
+		slog.ErrorContext(ctx, "failed to generate secure recovery token",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrGeneratingToken
 	}
 
@@ -173,12 +204,22 @@ func (s *UserConfigService) ForgotPassword(ctx context.Context, email string) er
 
 	err = s.UserRepo.UpdateRecoveryToken(ctx, user.Id, tokenHash, expiresAt)
 	if err != nil {
-		log.Printf("[ForgotPassword] %v", err)
+		slog.ErrorContext(ctx, "failed to save recovery token in database",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrGeneratingToken
 	}
 
+	asyncCtx := context.WithoutCancel(ctx)
 	utils.GoSafe(func() {
-		_ = s.EmailService.SendRecoveryEmail(user.Email, token)
+		err := s.EmailService.SendRecoveryEmail(user.Email, token)
+		if err != nil {
+			slog.ErrorContext(asyncCtx, "failed to send recovery email in background",
+				slog.String("user_id", user.Id),
+				slog.Any("error", err),
+			)
+		}
 	})
 
 	return nil
@@ -200,7 +241,7 @@ func (s *UserConfigService) ResetPassword(ctx context.Context, data dto.ResetPas
 		if errors.Is(err, models.ErrUserNotFound) || errors.Is(err, pgx.ErrNoRows) {
 			return models.ErrInvalidOrExpiredToken
 		}
-		log.Printf("[ResetPassword] %v", err)
+		slog.ErrorContext(ctx, "database error looking up recovery token during reset password", slog.Any("error", err))
 		return models.ErrInvalidOrExpiredToken
 	}
 
@@ -214,19 +255,28 @@ func (s *UserConfigService) ResetPassword(ctx context.Context, data dto.ResetPas
 
 	newPasswordHash, err := utils.HashPassword(data.NewPassword, s.ArgonParams)
 	if err != nil {
-		log.Printf("[ResetPassword] failed to hash password for user %s: %v", user.Id, err)
+		slog.ErrorContext(ctx, "failed to hash password for reset password",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordChangeFailed
 	}
 
 	err = s.UserRepo.ChangePassword(ctx, user.Id, newPasswordHash)
 	if err != nil {
-		log.Printf("[ResetPassword] %v", err)
+		slog.ErrorContext(ctx, "database error updating password during reset",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordChangeFailed
 	}
 
-	err = s.AuthRepo.DeleteAllRefreshToken(ctx, user.Id, "")
+	err = s.AuthRepo.DeleteAllUserRefreshTokens(ctx, user.Id)
 	if err != nil {
-		log.Printf("[ResetPassword] %v", err)
+		slog.ErrorContext(ctx, "failed to revoke all refresh tokens after password reset",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
 		return models.ErrPasswordChangeButNotLogout
 	}
 
@@ -235,12 +285,14 @@ func (s *UserConfigService) ResetPassword(ctx context.Context, data dto.ResetPas
 
 func (s *UserConfigService) GetMyCredentials(ctx context.Context, id string) (*dto.GetMyCredentialsResponse, error) {
 	user, err := s.UserRepo.GetCredentialsUser(ctx, id)
-
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			return nil, models.ErrUserNotFound
 		}
-		slog.Error("database query error fetching user by ID", "id", id, "error", err)
+		slog.ErrorContext(ctx, "database query error fetching credentials by user ID",
+			slog.String("user_id", id),
+			slog.Any("error", err),
+		)
 		return nil, models.ErrFailQueryUser
 	}
 
@@ -259,26 +311,36 @@ func (s *UserConfigService) GetMyCredentials(ctx context.Context, id string) (*d
 }
 
 func (s *UserConfigService) validateUserSession(ctx context.Context, userIdContext, refreshTokenString string) (*models.User, *models.RefreshToken, error) {
-	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppName)
+	claims, err := utils.ValidateToken(refreshTokenString, s.JwtRefreshSecret, s.AppDomain)
 	if err != nil {
-		log.Printf("[validateUserSession] JWT validation failed: %v", err)
+		slog.WarnContext(ctx, "validateUserSession: JWT validation failed", slog.Any("error", err))
 		return nil, nil, models.ErrInvalidOrExpiredRefresh
 	}
 
 	tokenExists, err := s.AuthRepo.GetRefreshTokenById(ctx, claims.ID)
 	if err != nil || tokenExists == nil {
-		log.Printf("[validateUserSession] database error looking up refresh token %s: %v", claims.ID, err)
+		slog.WarnContext(ctx, "validateUserSession: refresh token not found in database",
+			slog.String("token_id", claims.ID),
+			slog.Any("error", err),
+		)
 		return nil, nil, models.ErrInvalidOrExpiredRefresh
 	}
 
 	if tokenExists.UserId != claims.Subject || userIdContext != claims.Subject {
-		log.Printf("[validateUserSession] metadata mismatch: user contextual ID (%s) doesn't match token subject (%s)", userIdContext, claims.Subject)
+		slog.WarnContext(ctx, "validateUserSession: metadata mismatch",
+			slog.String("context_user_id", userIdContext),
+			slog.String("token_subject", claims.Subject),
+			slog.String("db_user_id", tokenExists.UserId),
+		)
 		return nil, nil, models.ErrTokenMetadataMisMatch
 	}
 
 	user, err := s.UserRepo.GetUserByIdForAuth(ctx, claims.Subject)
 	if err != nil {
-		log.Printf("[validateUserSession] failed to find user %s in database: %v", claims.Subject, err)
+		slog.ErrorContext(ctx, "validateUserSession: failed to query user in database",
+			slog.String("user_id", claims.Subject),
+			slog.Any("error", err),
+		)
 		return nil, nil, models.ErrUserNotFound
 	}
 

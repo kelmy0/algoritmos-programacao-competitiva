@@ -37,22 +37,24 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	let rotatedCookies: string[] = [];
+
 	if (!isTokenValid && refreshToken) {
 		const cookieHeader = event.request.headers.get("cookie") || "";
 		const clientIp = event.getClientAddress();
 
-		const { data, error: apiError } = await customFetch<RefreshResponse>(
-			event.fetch,
-			`${API_URL}/api/auth/refresh`,
-			{
-				method: "POST",
-				headers: {
-					cookie: cookieHeader,
-					"x-forwarded-for": clientIp,
-					"x-real-ip": clientIp
-				}
+		const {
+			data,
+			error: apiError,
+			headers
+		} = await customFetch<RefreshResponse>(event.fetch, `${API_URL}/api/auth/refresh`, {
+			method: "POST",
+			headers: {
+				cookie: cookieHeader,
+				"X-Forwarded-For": clientIp,
+				"X-Real-Ip": clientIp
 			}
-		);
+		});
 
 		if (!apiError && data?.accessToken) {
 			event.locals.accessToken = data.accessToken;
@@ -67,11 +69,21 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 			};
 
 			setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
+
+			if (headers) {
+				rotatedCookies = headers.getSetCookie();
+			}
 		} else {
 			deleteAuthCookie(event.cookies, "access_token");
 			deleteAuthCookie(event.cookies, "refresh_token");
+			deleteAuthCookie(event.cookies, "admin_secret");
 		}
 	}
 
-	return await resolve(event);
+	const response = await resolve(event);
+	for (const cookieString of rotatedCookies) {
+		response.headers.append("set-cookie", cookieString);
+	}
+
+	return response;
 };

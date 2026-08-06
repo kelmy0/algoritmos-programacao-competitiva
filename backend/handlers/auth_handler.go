@@ -76,14 +76,15 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := h.service.RefreshToken(c.Request.Context(), refreshToken)
+	result, err := h.service.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
+	SetRefreshCookie(c, result.RefreshToken, h.appDomain, h.refreshDurationDays, h.isProduce)
 	c.JSON(http.StatusOK, &dto.RefreshResponse{
-		AccessToken: accessToken,
+		AccessToken: result.AccessToken,
 	})
 }
 

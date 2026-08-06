@@ -48,7 +48,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	requireCaptcha := middleware.RequireCaptcha(cfg.TurnstileSecret)
 
 	//AUTH MIDDLEWARE
-	requireAuth := middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppName, redisClient)
+	requireAuth := middleware.AuthMiddleware(cfg.JwtAccessSecret, cfg.AppDomain, redisClient)
 
 	//ADMIN MIDDLEWARES
 	fake404 := middleware.Fake404Middleware(cfg.AdminHash)
@@ -78,7 +78,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	//UserConfig
 	emailService := services.NewEmailService(cfg.HostEmail, cfg.PortEmail, cfg.UserEmail, cfg.PasswordEmail, cfg.FromEmail, cfg.FrontendUrl, cfg.AppName)
-	userConfigService := services.NewUserConfigService(userRepo, authRepo, *emailService, *argonParams, cfg.JwtRefreshSecret, cfg.AppName)
+	userConfigService := services.NewUserConfigService(userRepo, authRepo, *emailService, *argonParams, cfg.JwtRefreshSecret, cfg.AppDomain)
 	userConfigHandler := handlers.NewUserConfigHandler(userConfigService)
 
 	api := router.Group("/api")
