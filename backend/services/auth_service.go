@@ -362,7 +362,7 @@ func (s *AuthService) Logout(ctx context.Context, userId, refreshTokenString, ac
 	return nil
 }
 
-func (s *AuthService) LogoutOtherDevices(ctx context.Context, userId, refreshTokenString string) error {
+func (s *AuthService) LogoutOtherDevices(ctx context.Context, userId, refreshTokenString, accessJti, deviceHash string) error {
 	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
@@ -376,6 +376,18 @@ func (s *AuthService) LogoutOtherDevices(ctx context.Context, userId, refreshTok
 		return models.ErrTokenMetadataMisMatch
 	}
 
+	if claims.DeviceHash != deviceHash {
+		slog.WarnContext(ctx, "[SECURITY ALERT] Device hash mismatch! Revoking entire family.",
+			slog.String("user_id", claims.Subject),
+			slog.String("family_id", claims.FamilyId),
+			slog.String("token_id", claims.ID),
+			slog.String("token_dvh", claims.DeviceHash),
+			slog.String("dvh", deviceHash),
+		)
+		_ = s.AuthRepo.RevokeFamily(ctx, claims.FamilyId)
+		return models.ErrInvalidOrExpiredRefresh
+	}
+
 	err = s.AuthRepo.DeleteOtherFamilies(ctx, userId, claims.FamilyId)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to delete other families during logout",
@@ -386,10 +398,24 @@ func (s *AuthService) LogoutOtherDevices(ctx context.Context, userId, refreshTok
 		return models.ErrUnexpectedLogout
 	}
 
+	nowTimestamp := time.Now().Unix()
+	redisTTL := time.Duration(s.JwtAccessExpiration) * time.Minute
+
+	redisValue := fmt.Sprintf("%d:%s", nowTimestamp, accessJti)
+	err = s.RedisClient.Set(ctx, "logout_other:"+userId, redisValue, redisTTL).Err()
+
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set logout_other timestamp in redis",
+			slog.String("user_id", userId),
+			slog.Any("error", err),
+		)
+		return models.ErrUnexpectedLogout
+	}
+
 	return nil
 }
 
-func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString, accessJti string) error {
+func (s *AuthService) LogoutAllDevices(ctx context.Context, userId, refreshTokenString, deviceHash string) error {
 	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		return models.ErrInvalidOrExpiredRefresh
@@ -401,6 +427,18 @@ func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString,
 			slog.String("user_id_param", userId),
 		)
 		return models.ErrTokenMetadataMisMatch
+	}
+
+	if claims.DeviceHash != deviceHash {
+		slog.WarnContext(ctx, "[SECURITY ALERT] Device hash mismatch! Revoking entire family.",
+			slog.String("user_id", claims.Subject),
+			slog.String("family_id", claims.FamilyId),
+			slog.String("token_id", claims.ID),
+			slog.String("token_dvh", claims.DeviceHash),
+			slog.String("dvh", deviceHash),
+		)
+		_ = s.AuthRepo.RevokeFamily(ctx, claims.FamilyId)
+		return models.ErrInvalidOrExpiredRefresh
 	}
 
 	err = s.AuthRepo.DeleteAllUserRefreshTokens(ctx, userId)
@@ -415,7 +453,7 @@ func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString,
 	nowTimestamp := time.Now().Unix()
 	redisTTL := time.Duration(s.JwtAccessExpiration) * time.Minute
 
-	redisValue := fmt.Sprintf("%d:%s", nowTimestamp, accessJti)
+	redisValue := fmt.Sprintf("%d", nowTimestamp)
 	err = s.RedisClient.Set(ctx, "logout_all:"+userId, redisValue, redisTTL).Err()
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to set logout_all timestamp in redis",

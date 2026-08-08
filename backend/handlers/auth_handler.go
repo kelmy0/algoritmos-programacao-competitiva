@@ -116,7 +116,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h *AuthHandler) LogoutAll(c *gin.Context) {
+func (h *AuthHandler) LogoutOtherDevices(c *gin.Context) {
 	id, _, accessJti, _, ok := GetAuthContext(c)
 	if !ok {
 		return
@@ -131,13 +131,38 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 		return
 	}
 
-	err = h.service.LogoutAll(c.Request.Context(), id, refreshToken, accessJti)
+	dvh := ExtractDeviceHash(c.Request)
+	err = h.service.LogoutOtherDevices(c.Request.Context(), id, refreshToken, accessJti, dvh)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.MessageResponse{
-		Message: "Successfully logged out from all devices.",
-	})
+	c.Status(http.StatusNoContent)
+}
+
+func (h *AuthHandler) LogoutAllDevices(c *gin.Context) {
+	id, _, _, _, ok := GetAuthContext(c)
+	if !ok {
+		return
+	}
+
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeMissingCookie,
+			dto.MsgMissingRefreshCookie,
+		))
+		return
+	}
+
+	dvh := ExtractDeviceHash(c.Request)
+	err = h.service.LogoutAllDevices(c.Request.Context(), id, refreshToken, dvh)
+	if err != nil {
+		HandleAPIError(c, err)
+		return
+	}
+
+	ClearCookie(c, "refresh_token", h.appDomain, h.isProduce)
+	c.Status(http.StatusNoContent)
 }

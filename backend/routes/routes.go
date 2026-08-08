@@ -118,7 +118,8 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 			authenticatedAuth := auth.Group("", requireAuth, authFlowLimiter)
 			{
 				authenticatedAuth.POST("/logout", authHandler.Logout)
-				authenticatedAuth.POST("/logout/all", authHandler.LogoutAll)
+				authenticatedAuth.POST("/logout/others", authHandler.LogoutOtherDevices)
+				authenticatedAuth.POST("/logout/all", authHandler.LogoutAllDevices)
 			}
 		}
 
