@@ -21,6 +21,7 @@ export interface AccessJwtPayload extends BaseCustomJwtPayload {
 	email: string;
 	permissions: string[];
 	isEmployee: boolean;
+	is2FAEnabled: boolean;
 }
 
 export interface RefreshJwtPayload extends BaseCustomJwtPayload {
@@ -30,6 +31,7 @@ export interface RefreshJwtPayload extends BaseCustomJwtPayload {
 
 export interface PreAuthToken extends BaseCustomJwtPayload {
 	dvh: string;
+	is2FAEnabled: boolean;
 }
 
 export interface JwtValided<T extends BaseCustomJwtPayload = AccessJwtPayload> {

@@ -133,7 +133,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
-	return s.issueSession(ctx, user, data.DeviceHash)
+	return s.issueSession(ctx, user, data.DeviceHash, user.TwoFactorAuthentication)
 }
 
 func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
@@ -212,7 +212,7 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 		}
 	}
 
-	return s.issueSession(ctx, user, data.DeviceHash)
+	return s.issueSession(ctx, user, data.DeviceHash, user.TwoFactorAuthentication)
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, deviceHash string) (*RefreshTokenResult, error) {
@@ -284,7 +284,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 
 	_, newAccessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Username, user.Email, s.AppDomain, user.Permissions,
-		s.JwtAccessPrivateKey, user.Role.IsEmployee,
+		s.JwtAccessPrivateKey, user.Role.IsEmployee, claims.Is2FAEnabled,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
@@ -552,7 +552,7 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
-	return s.issueSession(ctx, user, deviceHash)
+	return s.issueSession(ctx, user, deviceHash, user.TwoFactorAuthentication)
 }
 
 func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, provider, socialUserId, email string) error {
@@ -604,11 +604,11 @@ func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, prov
 	return nil
 }
 
-func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string) (*AuthResult, error) {
+func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string, is2FAEnabled bool) (*AuthResult, error) {
 	// Access Token
 	_, accessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Username, user.Email, s.AppDomain, user.Permissions,
-		s.JwtAccessPrivateKey, user.Role.IsEmployee,
+		s.JwtAccessPrivateKey, user.Role.IsEmployee, is2FAEnabled,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {

@@ -19,6 +19,7 @@ declare global {
 				email: string;
 				permissions: string[];
 				isEmployee: boolean;
+				is2FAEnabled: boolean;
 			} | null;
 			accessToken: string | null;
 		}
@@ -29,6 +30,7 @@ declare global {
 				email: string;
 				permissions: string[];
 				isEmployee: boolean;
+				is2FAEnabled: boolean;
 			} | null;
 			accessToken?: string | null;
 		}

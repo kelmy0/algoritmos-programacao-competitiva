@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { page } from "$app/state";
+</script>
+
 <svelte:head>
 	<title>Minha conta</title>
 	<meta name="robots" content="noindex, nofollow" />
@@ -225,7 +229,11 @@
 					<div class="flex items-center gap-2">
 						<p class="text-sm font-medium text-text-primary">Autenticação de Dois Fatores (2FA)</p>
 						<span
-							class="text-[10px] uppercase font-bold px-2 py-0.5 bg-amber-950/60 border border-amber-800/80 text-amber-400 rounded-md"
+							class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md border
+							{page.data.user?.is2FAEnabled
+								? 'bg-emerald-950/60 border-emerald-800/80 text-emerald-400'
+								: 'bg-amber-950/60 border-amber-800/80 text-amber-400'}
+							 "
 						>
 							Desativado
 						</span>

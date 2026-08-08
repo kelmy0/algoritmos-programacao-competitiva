@@ -38,7 +38,8 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 					username: claims.username,
 					email: claims.email,
 					permissions: claims.permissions || [],
-					isEmployee: claims.isEmployee
+					isEmployee: claims.isEmployee,
+					is2FAEnabled: claims.is2FAEnabled || false
 				};
 				event.locals.accessToken = accessToken;
 			}
@@ -81,7 +82,8 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 					username: claims.username,
 					email: claims.email,
 					permissions: claims.permissions || [],
-					isEmployee: claims.isEmployee
+					isEmployee: claims.isEmployee,
+					is2FAEnabled: claims.is2FAEnabled || false
 				};
 				event.locals.accessToken = data.accessToken;
 

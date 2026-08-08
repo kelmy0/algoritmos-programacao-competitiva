@@ -124,7 +124,7 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 
 	_, accessToken, errAccess := utils.GenerateAccessToken(
 		userId, sanitizedUsername, sanitizedEmail, s.AppDomain, []string{},
-		s.JwtAccessPrivateKey, false,
+		s.JwtAccessPrivateKey, false, false,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 
