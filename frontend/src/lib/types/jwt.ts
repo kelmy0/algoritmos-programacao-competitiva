@@ -17,6 +17,7 @@ export interface BaseCustomJwtPayload extends JWTPayload {
 }
 
 export interface AccessJwtPayload extends BaseCustomJwtPayload {
+	name: string;
 	username: string;
 	email: string;
 	permissions: string[];

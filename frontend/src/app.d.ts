@@ -15,6 +15,7 @@ declare global {
 		interface Locals {
 			user: {
 				id: string;
+				name: string;
 				username: string;
 				email: string;
 				permissions: string[];
@@ -26,6 +27,7 @@ declare global {
 		interface PageData {
 			user?: {
 				id: string;
+				name: string;
 				username: string;
 				email: string;
 				permissions: string[];

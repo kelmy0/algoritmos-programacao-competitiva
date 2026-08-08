@@ -39,6 +39,7 @@
 						id="name"
 						name="name"
 						placeholder="Seu nome"
+						value={page.data.user?.name}
 						class="w-full px-4 py-2.5 bg-app-bg/50 border border-gray-800 rounded-lg text-text-primary placeholder-gray-600 text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
 					/>
 				</div>
@@ -58,6 +59,7 @@
 							id="username"
 							name="username"
 							placeholder="dev_user"
+							value={page.data.user?.username}
 							class="w-full pl-8 pr-4 py-2.5 bg-app-bg/50 border border-gray-800 rounded-lg text-text-primary placeholder-gray-600 text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
 						/>
 					</div>
@@ -75,7 +77,7 @@
 						type="email"
 						id="email"
 						name="email"
-						value="dev@exemplo.com"
+						value={page.data.user?.email}
 						disabled
 						class="w-full px-4 py-2.5 bg-app-bg/30 border border-gray-800/60 rounded-lg text-gray-400 text-sm cursor-not-allowed select-none opacity-80"
 					/>

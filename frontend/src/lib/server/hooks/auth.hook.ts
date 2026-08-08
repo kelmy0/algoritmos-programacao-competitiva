@@ -35,6 +35,7 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 
 				event.locals.user = {
 					id: claims.sub,
+					name: claims.name,
 					username: claims.username,
 					email: claims.email,
 					permissions: claims.permissions || [],
@@ -79,6 +80,7 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 			if (valid && claims) {
 				event.locals.user = {
 					id: claims.sub,
+					name: claims.name,
 					username: claims.username,
 					email: claims.email,
 					permissions: claims.permissions || [],

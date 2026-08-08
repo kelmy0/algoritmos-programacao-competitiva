@@ -133,6 +133,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
+	println(user.Name)
 	return s.issueSession(ctx, user, data.DeviceHash, user.TwoFactorAuthentication)
 }
 
@@ -283,7 +284,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 	}
 
 	_, newAccessToken, err := utils.GenerateAccessToken(
-		user.Id, user.Username, user.Email, s.AppDomain, user.Permissions,
+		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
 		s.JwtAccessPrivateKey, user.Role.IsEmployee, claims.Is2FAEnabled,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
@@ -607,7 +608,7 @@ func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, prov
 func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string, is2FAEnabled bool) (*AuthResult, error) {
 	// Access Token
 	_, accessToken, err := utils.GenerateAccessToken(
-		user.Id, user.Username, user.Email, s.AppDomain, user.Permissions,
+		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
 		s.JwtAccessPrivateKey, user.Role.IsEmployee, is2FAEnabled,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
