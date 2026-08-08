@@ -173,13 +173,18 @@ func HashSHA512(token string) string {
 
 func GenerateDeviceHash(userAgent, acceptLang, platform, mobile string) string {
 	lang := normalizeLanguage(acceptLang)
+	os, browser := parseUserAgent(userAgent)
 
-	ua := simplifyUserAgent(userAgent)
+	plat := strings.Trim(strings.TrimSpace(platform), `"`)
+	if plat == "" {
+		plat = os
+	} else {
+		plat = strings.ToLower(plat)
+	}
 
-	plat := strings.TrimSpace(platform)
-	mob := strings.TrimSpace(mobile)
-
-	rawFingerprint := fmt.Sprintf("%s|%s|%s|%s", ua, lang, plat, mob)
+	isMobile := normalizeMobile(mobile, os)
+	rawFingerprint := fmt.Sprintf("%s|%s|%t|%s", browser, plat, isMobile, lang)
+	fmt.Println("Raw Fingerprint:", rawFingerprint)
 	hash := sha512.Sum512([]byte(rawFingerprint))
 	return base64.RawURLEncoding.EncodeToString(hash[:16])
 }
@@ -188,25 +193,24 @@ func normalizeLanguage(acceptLang string) string {
 	if acceptLang == "" {
 		return "unknown"
 	}
-	firstLang := strings.Split(acceptLang, ",")[0]
+	firstLang, _, _ := strings.Cut(acceptLang, ",")
 	firstLang = strings.Split(firstLang, ";")[0]
 	firstLang = strings.TrimSpace(strings.ToLower(firstLang))
 
 	if firstLang == "" {
 		return "unknown"
 	}
-
 	return firstLang
 }
 
-func simplifyUserAgent(ua string) string {
+func parseUserAgent(ua string) (os string, browser string) {
 	if ua == "" {
-		return "unknown"
+		return "other-os", "other-browser"
 	}
 
 	uaLower := strings.ToLower(ua)
 
-	os := "other-os"
+	os = "other-os"
 	switch {
 	case strings.Contains(uaLower, "android"):
 		os = "android"
@@ -220,7 +224,7 @@ func simplifyUserAgent(ua string) string {
 		os = "linux"
 	}
 
-	browser := "other-browser"
+	browser = "other-browser"
 	switch {
 	case strings.Contains(uaLower, "edg/"):
 		browser = "edge"
@@ -234,5 +238,15 @@ func simplifyUserAgent(ua string) string {
 		browser = "safari"
 	}
 
-	return os + "|" + browser
+	return os, browser
+}
+
+func normalizeMobile(mobileHeader, os string) bool {
+	if strings.Contains(mobileHeader, "?1") {
+		return true
+	}
+	if strings.Contains(mobileHeader, "?0") {
+		return false
+	}
+	return os == "android" || os == "ios"
 }

@@ -34,6 +34,7 @@ func (h *SignUpHandler) SignUp(c *gin.Context) {
 		return
 	}
 
+	requestBody.DeviceHash = ExtractDeviceHash(c.Request)
 	result, err := h.Service.SignUp(c.Request.Context(), requestBody)
 
 	if err != nil {

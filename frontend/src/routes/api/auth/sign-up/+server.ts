@@ -7,11 +7,13 @@ import { authFlowLimiter, fiveHundredQuerySize } from "$lib/server/middlewares";
 import { hundredKbBodySize, useMiddlewares } from "$lib/server/middlewares";
 import { SIGN_UP_ERRORS } from "$lib/errors/auth/sign-up";
 import type { SignUpResponse, SignUpServerResponse } from "$lib/types/auth/sign-up";
+import { extractDeviceHeaders } from "$lib/utils/headers";
 
 const signUp: RequestHandler = async (event) => {
 	const body = await event.request.json().catch(() => ({}));
 	const turnstileToken = event.request.headers.get("x-cf-turnstile-response") || "";
 	const clientIp = event.getClientAddress();
+	const deviceHeaders = extractDeviceHeaders(event.request);
 
 	const { data, error, status, headers } = await customFetch<SignUpResponse>(
 		event.fetch,
@@ -21,7 +23,8 @@ const signUp: RequestHandler = async (event) => {
 			headers: {
 				"Content-Type": "application/json",
 				"X-Forwarded-For": clientIp,
-				"X-CF-Turnstile-Response": turnstileToken
+				"X-CF-Turnstile-Response": turnstileToken,
+				...deviceHeaders
 			},
 			body: JSON.stringify(body)
 		},

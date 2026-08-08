@@ -1,9 +1,8 @@
 import { redirect, type RequestHandler } from "@sveltejs/kit";
-import { setAuthCookie } from "$lib/server/cookies";
 import { standardApiLimiter, twoThousandUrlSize, useMiddlewares } from "$lib/server/middlewares";
 
 const callback: RequestHandler = async ({ url, cookies }) => {
-	const accessToken = url.searchParams.get("access_token");
+	const accessToken = url.searchParams.get("access_token") === "true";
 	const preToken = url.searchParams.get("pre_token");
 	const error = url.searchParams.get("error");
 
@@ -16,7 +15,6 @@ const callback: RequestHandler = async ({ url, cookies }) => {
 	}
 
 	if (accessToken) {
-		setAuthCookie(cookies, "access_token", accessToken, 15);
 		redirect(303, "/");
 	}
 

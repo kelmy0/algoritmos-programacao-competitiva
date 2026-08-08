@@ -222,7 +222,7 @@ export class SignUpController {
 					username: this.username,
 					email: this.email,
 					password: this.password,
-					confirm_password: this.confirmPassword
+					confirmPassword: this.confirmPassword
 				})
 			},
 			SIGN_UP_ERRORS

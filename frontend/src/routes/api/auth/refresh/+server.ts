@@ -8,6 +8,7 @@ import { useMiddlewares } from "$lib/server/middlewares";
 import type { AccessJwtPayload, RefreshResponse } from "$lib/types/jwt";
 import { validateJWT } from "$lib/utils/jwt";
 import { clearAllAuthCookies } from "$lib/utils/cookies";
+import { extractDeviceHeaders } from "$lib/utils/headers";
 
 const refreshToken: RequestHandler = async (event) => {
 	const cookieHeader = event.request.headers.get("cookie") || "";
@@ -19,12 +20,13 @@ const refreshToken: RequestHandler = async (event) => {
 		});
 	}
 
+	const deviceHeaders = extractDeviceHeaders(event.request);
 	const { data, error, status, headers } = await customFetch<RefreshResponse>(
 		event.fetch,
 		`${API_URL}/api/auth/refresh`,
 		{
 			method: "POST",
-			headers: { cookie: cookieHeader, "X-Forwarded-For": clientIp }
+			headers: { cookie: cookieHeader, "X-Forwarded-For": clientIp, ...deviceHeaders }
 		}
 	);
 

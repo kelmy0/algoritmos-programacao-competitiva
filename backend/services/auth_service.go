@@ -116,7 +116,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 	}
 
 	if user.TwoFactorAuthentication {
-		_, preAuthToken, err := utils.GeneratePreAuthToken(user.Id, s.AppDomain, s.JwtAccessPrivateKey, time.Now().Add(5*time.Minute))
+		_, preAuthToken, err := utils.GeneratePreAuthToken(user.Id, s.AppDomain, data.DeviceHash, s.JwtAccessPrivateKey, time.Now().Add(5*time.Minute))
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to generate 2FA pre-auth token",
 				slog.String("user_id", user.Id),
@@ -133,7 +133,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
-	return s.issueSession(ctx, user)
+	return s.issueSession(ctx, user, data.DeviceHash)
 }
 
 func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
@@ -148,6 +148,18 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 		slog.WarnContext(ctx, "pre-auth token claims missing Subject field")
 		return nil, models.ErrSessionData
 	}
+
+	/*
+		if claims.DeviceHash != data.DeviceHash {
+			slog.WarnContext(ctx, "[SECURITY ALERT] Device hash mismatch!",
+				slog.String("user_id", claims.Subject),
+				slog.String("token_id", claims.ID),
+				slog.String("token_dvh", claims.DeviceHash),
+				slog.String("dvh", data.DeviceHash),
+			)
+
+			return nil, models.ErrSessionExpired
+		}*/
 
 	if claims.ID != "" {
 		blacklisted, _ := s.RedisClient.Exists(ctx, "blacklist:jti:"+claims.ID).Result()
@@ -200,13 +212,25 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 		}
 	}
 
-	return s.issueSession(ctx, user)
+	return s.issueSession(ctx, user, data.DeviceHash)
 }
 
-func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString string) (*RefreshTokenResult, error) {
+func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, deviceHash string) (*RefreshTokenResult, error) {
 	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		slog.WarnContext(ctx, "refresh token JWT validation failed", slog.Any("error", err))
+		return nil, models.ErrInvalidOrExpiredRefresh
+	}
+
+	if claims.DeviceHash != deviceHash {
+		slog.WarnContext(ctx, "[SECURITY ALERT] Device hash mismatch! Revoking entire family.",
+			slog.String("user_id", claims.Subject),
+			slog.String("family_id", claims.FamilyId),
+			slog.String("token_id", claims.ID),
+			slog.String("token_dvh", claims.DeviceHash),
+			slog.String("dvh", deviceHash),
+		)
+		_ = s.AuthRepo.RevokeFamily(ctx, claims.FamilyId)
 		return nil, models.ErrInvalidOrExpiredRefresh
 	}
 
@@ -259,8 +283,8 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 	}
 
 	_, newAccessToken, err := utils.GenerateAccessToken(
-		user.Id, user.Username, user.Email, user.Permissions,
-		s.JwtAccessPrivateKey, s.AppDomain, user.Role.IsEmployee,
+		user.Id, user.Username, user.Email, s.AppDomain, user.Permissions,
+		s.JwtAccessPrivateKey, user.Role.IsEmployee,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
@@ -273,7 +297,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString strin
 
 	newRefreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
 	newTokenId, _, newRefreshToken, err := utils.GenerateRefreshToken(
-		user.Id, s.JwtRefreshPrivateKey, s.AppDomain, newRefreshExpiresAt, dbToken.FamilyId,
+		user.Id, s.AppDomain, dbToken.FamilyId, deviceHash, s.JwtRefreshPrivateKey, newRefreshExpiresAt,
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to sign new refresh token during rotation",
@@ -404,7 +428,7 @@ func (s *AuthService) LogoutAll(ctx context.Context, userId, refreshTokenString,
 	return nil
 }
 
-func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, socialUserId, email, name string) (*AuthResult, error) {
+func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, socialUserId, email, name, deviceHash string) (*AuthResult, error) {
 	maskedEmail := utils.MaskEmail(email)
 	user, err := s.UserRepo.GetUserBySocialID(ctx, provider, socialUserId)
 	if err != nil {
@@ -472,7 +496,7 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 
 	if user.TwoFactorAuthentication {
 		_, preAuthToken, err := utils.GeneratePreAuthToken(
-			user.Id, s.AppDomain, s.JwtAccessPrivateKey, time.Now().Add(5*time.Minute),
+			user.Id, s.AppDomain, deviceHash, s.JwtAccessPrivateKey, time.Now().Add(5*time.Minute),
 		)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to generate 2FA pre-auth token during social auth",
@@ -490,7 +514,7 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
-	return s.issueSession(ctx, user)
+	return s.issueSession(ctx, user, deviceHash)
 }
 
 func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, provider, socialUserId, email string) error {
@@ -542,11 +566,11 @@ func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, prov
 	return nil
 }
 
-func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*AuthResult, error) {
+func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string) (*AuthResult, error) {
 	// Access Token
 	_, accessToken, err := utils.GenerateAccessToken(
-		user.Id, user.Username, user.Email, user.Permissions,
-		s.JwtAccessPrivateKey, s.AppDomain, user.Role.IsEmployee,
+		user.Id, user.Username, user.Email, s.AppDomain, user.Permissions,
+		s.JwtAccessPrivateKey, user.Role.IsEmployee,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
@@ -560,7 +584,7 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User) (*Aut
 	// Refresh Token
 	refreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
 	idToken, familyId, refreshToken, err := utils.GenerateRefreshToken(
-		user.Id, s.JwtRefreshPrivateKey, s.AppDomain, refreshExpiresAt, "",
+		user.Id, s.AppDomain, "", deviceHash, s.JwtRefreshPrivateKey, refreshExpiresAt,
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to generate refresh token",

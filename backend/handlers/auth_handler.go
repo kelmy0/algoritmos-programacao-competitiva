@@ -29,6 +29,7 @@ func (h *AuthHandler) Auth(c *gin.Context) {
 		return
 	}
 
+	requestBody.DeviceHash = ExtractDeviceHash(c.Request)
 	result, err := h.service.Auth(c.Request.Context(), requestBody)
 	if err != nil {
 		HandleAPIError(c, err)
@@ -56,6 +57,7 @@ func (h *AuthHandler) Verify2FA(c *gin.Context) {
 		return
 	}
 
+	requestBody.DeviceHash = ExtractDeviceHash(c.Request)
 	result, err := h.service.VerifyLogin2FA(c.Request.Context(), requestBody)
 	if err != nil {
 		HandleAPIError(c, err)
@@ -76,7 +78,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.RefreshToken(c.Request.Context(), refreshToken)
+	deviceHash := ExtractDeviceHash(c.Request)
+	result, err := h.service.RefreshToken(c.Request.Context(), refreshToken, deviceHash)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -109,10 +112,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", "", -1, "/", h.appDomain, h.isProduce, true)
-	c.JSON(http.StatusOK, dto.MessageResponse{
-		Message: "Successfully logged out.",
-	})
+	ClearCookie(c, "refresh_token", h.appDomain, h.isProduce)
+	c.Status(http.StatusNoContent)
 }
 
 func (h *AuthHandler) LogoutAll(c *gin.Context) {

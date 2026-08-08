@@ -6,6 +6,7 @@ type SignUpRequest struct {
 	Email           string `json:"email" binding:"required,min=5,max=128"`
 	Password        string `json:"password" binding:"required,min=8"`
 	ConfirmPassword string `json:"confirmPassword" binding:"required,min=8"`
+	DeviceHash      string `json:"-"`
 }
 
 type SignUpResponse struct {

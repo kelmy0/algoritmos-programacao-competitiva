@@ -14,20 +14,21 @@ type Claims struct {
 	Permissions []string `json:"permissions,omitempty"`
 	IsEmployee  bool     `json:"isEmployee,omitempty"`
 	FamilyId    string   `json:"familyId,omitempty"`
+	DeviceHash  string   `json:"dvh,omitempty"`
 	jwt.RegisteredClaims
 }
 
-func GenerateAccessToken(userId, username, email string, permissions []string, privateKey ed25519.PrivateKey, issuer string, isEmployee bool, expire_time time.Time) (tokenId string, tokenString string, err error) {
-	tokenId, _, tokenString, err = generateToken(userId, username, email, issuer, "", permissions, privateKey, isEmployee, expire_time, false)
+func GenerateAccessToken(userId, username, email, issuer string, permissions []string, privateKey ed25519.PrivateKey, isEmployee bool, expire_time time.Time) (tokenId string, tokenString string, err error) {
+	tokenId, _, tokenString, err = generateToken(userId, username, email, issuer, "", "", permissions, privateKey, isEmployee, expire_time, false)
 	return tokenId, tokenString, err
 }
 
-func GenerateRefreshToken(userId string, privateKey ed25519.PrivateKey, issuer string, expire_time time.Time, familyId string) (tokenId string, finalFamilyId string, tokenString string, err error) {
-	return generateToken(userId, "", "", issuer, familyId, nil, privateKey, false, expire_time, true)
+func GenerateRefreshToken(userId, issuer, familyId, deviceHash string, privateKey ed25519.PrivateKey, expire_time time.Time) (tokenId string, finalFamilyId string, tokenString string, err error) {
+	return generateToken(userId, "", "", issuer, familyId, deviceHash, nil, privateKey, false, expire_time, true)
 }
 
-func GeneratePreAuthToken(userId, issuer string, privateKey ed25519.PrivateKey, expireTime time.Time) (tokenId string, tokenString string, err error) {
-	tokenId, _, tokenString, err = generateToken(userId, "", "", issuer, "", nil, privateKey, false, expireTime, false)
+func GeneratePreAuthToken(userId, issuer, deviceHash string, privateKey ed25519.PrivateKey, expireTime time.Time) (tokenId string, tokenString string, err error) {
+	tokenId, _, tokenString, err = generateToken(userId, "", "", issuer, "", deviceHash, nil, privateKey, false, expireTime, false)
 	return tokenId, tokenString, err
 }
 
@@ -40,7 +41,7 @@ func ValidateRefreshToken(tokenString string, publicKey ed25519.PublicKey, expec
 }
 
 func generateToken(
-	userId, username, email, issuer, familyId string,
+	userId, username, email, issuer, familyId, deviceHash string,
 	permissions []string,
 	privateKey ed25519.PrivateKey,
 	isEmployee bool,
@@ -74,6 +75,7 @@ func generateToken(
 		Permissions: permissions,
 		IsEmployee:  isEmployee,
 		FamilyId:    finalFamilyId,
+		DeviceHash:  deviceHash,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        tokenId,
 			Subject:   userId,

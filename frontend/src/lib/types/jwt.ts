@@ -25,9 +25,12 @@ export interface AccessJwtPayload extends BaseCustomJwtPayload {
 
 export interface RefreshJwtPayload extends BaseCustomJwtPayload {
 	familyId: string;
+	dvh: string;
 }
 
-export interface PreAuthToken extends BaseCustomJwtPayload {}
+export interface PreAuthToken extends BaseCustomJwtPayload {
+	dvh: string;
+}
 
 export interface JwtValided<T extends BaseCustomJwtPayload = AccessJwtPayload> {
 	claims: T | null;

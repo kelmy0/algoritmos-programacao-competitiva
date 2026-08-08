@@ -5,8 +5,9 @@ import (
 )
 
 type AuthRequest struct {
-	Email    string `json:"email" binding:"required,min=5"`
-	Password string `json:"password" binding:"required,min=8"`
+	Email      string `json:"email" binding:"required,min=5"`
+	Password   string `json:"password" binding:"required,min=8"`
+	DeviceHash string `json:"-"`
 }
 
 type LoginResponse struct {
@@ -18,6 +19,7 @@ type LoginResponse struct {
 type Verify2FARequest struct {
 	PreAuthToken string `json:"preAuthToken" binding:"required"`
 	Code         string `json:"code" binding:"required,len=6"`
+	DeviceHash   string `json:"-"`
 }
 
 type RefreshResponse struct {

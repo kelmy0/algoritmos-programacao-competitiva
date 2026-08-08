@@ -95,7 +95,8 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 		return
 	}
 
-	result, err := h.Service.AuthWithSocialProvider(c.Request.Context(), "google", googleUser.Subject, googleUser.Email, googleUser.Name)
+	deviceHash := ExtractDeviceHash(c.Request)
+	result, err := h.Service.AuthWithSocialProvider(c.Request.Context(), "google", googleUser.Subject, googleUser.Email, googleUser.Name, deviceHash)
 	if err != nil {
 		h.socialError(c, err)
 		return
@@ -108,10 +109,14 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 	}
 
 	if result.RefreshToken != "" {
-		c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.RefreshDurationDays, "/", h.AppDomain, h.IsProduce, true)
+		SetRefreshCookie(c, result.RefreshToken, h.AppDomain, h.RefreshDurationDays, h.IsProduce)
 	}
 
-	frontendURL := fmt.Sprintf("%s/auth/callback?access_token=%s", h.FrontendUrl, result.LoginResponse.AccessToken)
+	if result.LoginResponse.AccessToken != "" {
+		SetAccessToken(c, result.LoginResponse.AccessToken, h.AppDomain, h.IsProduce)
+	}
+
+	frontendURL := fmt.Sprintf("%s/auth/callback?access_token=true", h.FrontendUrl)
 	c.Redirect(http.StatusFound, frontendURL)
 }
 
@@ -202,7 +207,8 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 		return
 	}
 
-	result, err := h.Service.AuthWithSocialProvider(c.Request.Context(), "github", socialUserId, email, name)
+	deviceHash := ExtractDeviceHash(c.Request)
+	result, err := h.Service.AuthWithSocialProvider(c.Request.Context(), "github", socialUserId, email, name, deviceHash)
 	if err != nil {
 		h.socialError(c, err)
 		return
@@ -212,7 +218,11 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 		c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.RefreshDurationDays, "/", h.AppDomain, h.IsProduce, true)
 	}
 
-	frontendURL := fmt.Sprintf("%s/auth/callback?access_token=%s", h.FrontendUrl, result.LoginResponse.AccessToken)
+	if result.LoginResponse.AccessToken != "" {
+		SetAccessToken(c, result.LoginResponse.AccessToken, h.AppDomain, h.IsProduce)
+	}
+
+	frontendURL := fmt.Sprintf("%s/auth/callback?access_token=true", h.FrontendUrl)
 	c.Redirect(http.StatusFound, frontendURL)
 }
 
@@ -227,7 +237,7 @@ func (h *AuthSocialHandler) startSocialLogin(c *gin.Context, cookieName string, 
 		return
 	}
 
-	c.SetCookie(cookieName, state, 300, "/", h.AppDomain, h.IsProduce, true)
+	SetOAuthStateCookie(c, cookieName, state, h.AppDomain, h.IsProduce)
 
 	url := config.AuthCodeURL(state)
 	c.Redirect(http.StatusTemporaryRedirect, url)

@@ -5,6 +5,7 @@ import { customFetch } from "$lib/api/client";
 import type { AccessJwtPayload, RefreshResponse } from "$lib/types/jwt";
 import { validateJWT } from "$lib/utils/jwt";
 import { clearAllAuthCookies } from "$lib/utils/cookies";
+import { extractDeviceHeaders } from "$lib/utils/headers";
 
 export const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
@@ -52,6 +53,7 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 	if (!isTokenValid && refreshToken) {
 		const cookieHeader = event.request.headers.get("cookie") || "";
 		const clientIp = event.getClientAddress();
+		const deviceHeaders = extractDeviceHeaders(event.request);
 
 		const {
 			data,
@@ -62,7 +64,8 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 			headers: {
 				cookie: cookieHeader,
 				"X-Forwarded-For": clientIp,
-				"X-Real-Ip": clientIp
+				"X-Real-Ip": clientIp,
+				...deviceHeaders
 			}
 		});
 

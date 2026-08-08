@@ -123,14 +123,14 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 	}
 
 	_, accessToken, errAccess := utils.GenerateAccessToken(
-		userId, sanitizedUsername, sanitizedEmail, []string{},
-		s.JwtAccessPrivateKey, s.AppDomain, false,
+		userId, sanitizedUsername, sanitizedEmail, s.AppDomain, []string{},
+		s.JwtAccessPrivateKey, false,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 
 	refreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
 	idToken, familyId, refreshToken, errRefresh := utils.GenerateRefreshToken(
-		userId, s.JwtRefreshPrivateKey, s.AppDomain, refreshExpiresAt, "",
+		userId, s.AppDomain, "", data.DeviceHash, s.JwtRefreshPrivateKey, refreshExpiresAt,
 	)
 
 	var errSave error
