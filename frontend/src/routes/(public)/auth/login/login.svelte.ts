@@ -102,7 +102,7 @@ export class LoginController {
 		}
 
 		if (data.requires2FA) {
-			await goto(`/auth/verify-2fa?token=${data.preAuthToken}`);
+			await goto(`/auth/verify-2fa`);
 			return;
 		}
 

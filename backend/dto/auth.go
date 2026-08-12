@@ -17,7 +17,7 @@ type LoginResponse struct {
 }
 
 type Verify2FARequest struct {
-	PreAuthToken string `json:"preAuthToken" binding:"required"`
+	PreAuthToken string `json:"-"`
 	Code         string `json:"code" binding:"required,len=6"`
 	DeviceHash   string `json:"-"`
 }

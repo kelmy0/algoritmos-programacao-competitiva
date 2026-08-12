@@ -48,6 +48,15 @@ func (h *AuthHandler) Auth(c *gin.Context) {
 }
 
 func (h *AuthHandler) Verify2FA(c *gin.Context) {
+	preAuthToken, err := c.Cookie("pre_auth_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeMissingCookie,
+			dto.MsgMissingRefreshCookie,
+		))
+		return
+	}
+
 	var requestBody dto.Verify2FARequest
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
@@ -57,6 +66,7 @@ func (h *AuthHandler) Verify2FA(c *gin.Context) {
 		return
 	}
 
+	requestBody.PreAuthToken = preAuthToken
 	requestBody.DeviceHash = ExtractDeviceHash(c.Request)
 	result, err := h.service.VerifyLogin2FA(c.Request.Context(), requestBody)
 	if err != nil {

@@ -188,7 +188,7 @@ func (r *UserRepository) CreateUser(ctx context.Context, data models.NewUser) (s
 func (r *UserRepository) GetUserBySocialID(ctx context.Context, provider, socialId string) (*models.User, error) {
 	query := `
         SELECT 
-            u.id, u.username, u.email, u.password_hash, u.enable, 
+            u.id, u.name, u.username, u.email, u.password_hash, u.enable, 
             u.two_factor_authentication, u.two_factor_secret, r.is_employee,
             COALESCE(array_agg(p.slug) FILTER (WHERE p.slug IS NOT NULL), '{}') as permissions
         FROM users u
@@ -201,7 +201,7 @@ func (r *UserRepository) GetUserBySocialID(ctx context.Context, provider, social
     `
 	var user models.User
 	err := r.db.QueryRow(ctx, query, provider, socialId).Scan(
-		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.Enable,
+		&user.Id, &user.Name, &user.Username, &user.Email, &user.PasswordHash, &user.Enable,
 		&user.TwoFactorAuthentication, &user.TwoFactorSecret, &user.Role.IsEmployee,
 		&user.Permissions,
 	)

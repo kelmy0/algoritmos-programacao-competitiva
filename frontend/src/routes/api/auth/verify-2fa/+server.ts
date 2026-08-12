@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { API_URL } from "$env/static/private";
 import { normalizeApiError } from "$lib/utils/errors";
-import { setAuthCookie } from "$lib/server/cookies";
+import { deleteCookie, setAuthCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import { authFlowLimiter, fiveHundredQuerySize } from "$lib/server/middlewares";
 import { hundredKbBodySize, useMiddlewares } from "$lib/server/middlewares";
@@ -14,6 +14,13 @@ const verify2FA: RequestHandler = async (event) => {
 	const clientIp = event.getClientAddress();
 	const turnstileToken = event.request.headers.get("x-cf-turnstile-response") || "";
 	const deviceHeaders = extractDeviceHeaders(event.request);
+	const cookieHeader = event.request.headers.get("cookie") || "";
+
+	if (cookieHeader === "") {
+		return json(normalizeApiError("MISSING_COOKIE"), {
+			status: 400
+		});
+	}
 
 	const { data, error, status, headers } = await customFetch<LoginResponse>(
 		event.fetch,
@@ -21,6 +28,7 @@ const verify2FA: RequestHandler = async (event) => {
 		{
 			method: "POST",
 			headers: {
+				cookie: cookieHeader,
 				"Content-Type": "application/json",
 				"X-Forwarded-For": clientIp,
 				"X-CF-Turnstile-Response": turnstileToken,
@@ -39,9 +47,11 @@ const verify2FA: RequestHandler = async (event) => {
 		return json(normalizeApiError("INTERNAL_SERVER_ERROR"), { status: 500 });
 	}
 
+	deleteCookie(event.cookies, "pre_auth_token");
+
 	//this will be removed
 	if (data.accessToken) {
-		setAuthCookie(event.cookies, "accessToken", data.accessToken, 15);
+		setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
 	}
 
 	const sanitizedResponse: TwoFactorServerResponse = {

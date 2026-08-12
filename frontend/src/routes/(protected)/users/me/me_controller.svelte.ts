@@ -84,11 +84,36 @@ export class MeController {
 			return;
 		}
 
+		this.apiError = null;
 		this.twoFactorSecret = data.secret;
 		this.qrCodeUrl = data.qrCode;
 	}
 
 	async save2FA(e: SubmitEvent) {
 		e.preventDefault();
+		this.touched.code = true;
+
+		if (this.is2FAEnabled || !this.isCodeValid) return;
+		this.isLoading = true;
+
+		const bodyrequest = { code: this.code };
+
+		const { error } = await customFetch<null>(
+			window.fetch,
+			"/api/users/me/enable-2FA",
+			{ method: "POST", body: JSON.stringify(bodyrequest) },
+			TWO_FACTOR_ERRORS
+		);
+
+		this.isLoading = false;
+
+		if (error) {
+			this.apiError = error;
+			return;
+		}
+
+		this.apiError = null;
+		this.twoFactorSecret = "";
+		this.qrCodeUrl = "";
 	}
 }

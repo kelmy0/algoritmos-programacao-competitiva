@@ -133,8 +133,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
-	println(user.Name)
-	return s.issueSession(ctx, user, data.DeviceHash, user.TwoFactorAuthentication)
+	return s.issueSession(ctx, user, data.DeviceHash)
 }
 
 func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
@@ -150,17 +149,16 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 		return nil, models.ErrSessionData
 	}
 
-	/*
-		if claims.DeviceHash != data.DeviceHash {
-			slog.WarnContext(ctx, "[SECURITY ALERT] Device hash mismatch!",
-				slog.String("user_id", claims.Subject),
-				slog.String("token_id", claims.ID),
-				slog.String("token_dvh", claims.DeviceHash),
-				slog.String("dvh", data.DeviceHash),
-			)
+	if claims.DeviceHash != data.DeviceHash {
+		slog.WarnContext(ctx, "[SECURITY ALERT] Device hash mismatch!",
+			slog.String("user_id", claims.Subject),
+			slog.String("token_id", claims.ID),
+			slog.String("token_dvh", claims.DeviceHash),
+			slog.String("dvh", data.DeviceHash),
+		)
 
-			return nil, models.ErrSessionExpired
-		}*/
+		return nil, models.ErrSessionExpired
+	}
 
 	if claims.ID != "" {
 		blacklisted, _ := s.RedisClient.Exists(ctx, "blacklist:jti:"+claims.ID).Result()
@@ -213,7 +211,7 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 		}
 	}
 
-	return s.issueSession(ctx, user, data.DeviceHash, user.TwoFactorAuthentication)
+	return s.issueSession(ctx, user, data.DeviceHash)
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, deviceHash string) (*RefreshTokenResult, error) {
@@ -553,7 +551,7 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
-	return s.issueSession(ctx, user, deviceHash, user.TwoFactorAuthentication)
+	return s.issueSession(ctx, user, deviceHash)
 }
 
 func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, provider, socialUserId, email string) error {
@@ -605,11 +603,11 @@ func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, prov
 	return nil
 }
 
-func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string, is2FAEnabled bool) (*AuthResult, error) {
+func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string) (*AuthResult, error) {
 	// Access Token
 	_, accessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
-		s.JwtAccessPrivateKey, user.Role.IsEmployee, is2FAEnabled,
+		s.JwtAccessPrivateKey, user.Role.IsEmployee, user.TwoFactorAuthentication,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {

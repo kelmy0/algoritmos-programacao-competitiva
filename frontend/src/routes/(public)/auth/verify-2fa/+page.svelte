@@ -4,8 +4,6 @@
 	import { onMount } from "svelte";
 
 	const controller = new TwoFactorController();
-
-	onMount(() => controller.getToken());
 </script>
 
 <svelte:head>

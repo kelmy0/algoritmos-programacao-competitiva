@@ -7,12 +7,10 @@ import { TWO_FACTOR_ERRORS } from "$lib/errors/auth/verify-2fa";
 import type { TwoFactorServerResponse } from "$lib/types/auth/two-factor";
 
 interface TwoFactorRequest {
-	pre_auth_token: string;
 	code: string;
 }
 
 export class TwoFactorController {
-	token = "";
 	code = $state("");
 	turnstileToken = $state("");
 	isLoading = $state(false);
@@ -45,17 +43,6 @@ export class TwoFactorController {
 		}
 	}
 
-	getToken() {
-		const token = page.url.searchParams.get("token");
-
-		if (!token) {
-			goto("/auth/login?error=MISSING_PRE_TOKEN");
-			return;
-		}
-
-		this.token = token;
-	}
-
 	onTurnstileSuccess(token: string) {
 		this.turnstileToken = token;
 	}
@@ -82,7 +69,6 @@ export class TwoFactorController {
 		this.apiError = null;
 
 		const bodyRequest: TwoFactorRequest = {
-			pre_auth_token: this.token,
 			code: this.code
 		};
 

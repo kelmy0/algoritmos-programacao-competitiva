@@ -1,7 +1,7 @@
 export interface LoginServerResponse {
 	accessToken: boolean;
 	requires2FA: boolean;
-	preAuthToken?: string;
+	preAuthToken: boolean;
 }
 
 export interface LoginResponse {

@@ -44,10 +44,14 @@ const login: RequestHandler = async (event) => {
 		setAuthCookie(event.cookies, "access_token", data.accessToken, 15);
 	}
 
+	if (data.preAuthToken) {
+		setAuthCookie(event.cookies, "pre_auth_token", data.preAuthToken, 5);
+	}
+
 	const sanitizedResponse: LoginServerResponse = {
 		accessToken: Boolean(data.accessToken),
 		requires2FA: data.requires2FA,
-		preAuthToken: data.preAuthToken || ""
+		preAuthToken: data.preAuthToken ? true : false
 	};
 
 	const response = json(sanitizedResponse);
