@@ -34,7 +34,7 @@ func NewTwoFactorService(userRepo TwoFactorUserRepository, authRepo TwoFactorAut
 	return &TwoFactorService{UserRepo: userRepo, AuthRepo: authRepo, EncryptSecret: encryptSecret, AppName: appName}
 }
 
-func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string) (*dto.TwoFactorGenerateResponse, error) {
+func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email, password string) (*dto.TwoFactorGenerateResponse, error) {
 	twoFactorData, err := s.UserRepo.GetAuthData(ctx, userId)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
@@ -51,6 +51,20 @@ func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email string
 
 	if twoFactorData.IsEnabled {
 		return nil, models.Err2FAAlreadyEnabled
+	}
+
+	isValid, err := utils.VerifyPassword(password, twoFactorData.PasswordHash)
+	if err != nil {
+		slog.ErrorContext(ctx, "Argon2 verification system error",
+			"op", "Disable2FA",
+			"user_id", userId,
+			"error", err,
+		)
+		return nil, models.ErrPasswordVerificationFailed
+	}
+
+	if !isValid {
+		return nil, models.ErrIncorrectPassword
 	}
 
 	key, err := totp.Generate(totp.GenerateOpts{

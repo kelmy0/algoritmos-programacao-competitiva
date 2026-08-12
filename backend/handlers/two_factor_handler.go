@@ -23,7 +23,16 @@ func (h *TwoFactorHandler) Generate2FA(c *gin.Context) {
 		return
 	}
 
-	response, err := h.service.Generate2FA(c.Request.Context(), id, email)
+	var requestBody dto.TwoFactorGenerateRequest
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.CodeInvalidRequestBody,
+			err.Error(),
+		))
+		return
+	}
+
+	response, err := h.service.Generate2FA(c.Request.Context(), id, email, requestBody.Password)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
