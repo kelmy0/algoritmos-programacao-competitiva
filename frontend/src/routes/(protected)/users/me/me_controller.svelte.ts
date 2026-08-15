@@ -1,4 +1,4 @@
-import { invalidateAll } from "$app/navigation";
+import { goto, invalidateAll } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
 import { TWO_FACTOR_ERRORS } from "$lib/errors/users/me/two_factor";
 import type { ApiError } from "$lib/types/api";
@@ -87,6 +87,8 @@ export class MeController {
 
 		this.apiError = null;
 		this.twoFactorSecret = data.secret;
+		this.password = "";
+		this.touched.password = false;
 		this.qrCodeUrl = data.qrCode;
 	}
 
@@ -116,6 +118,8 @@ export class MeController {
 		this.apiError = null;
 		this.twoFactorSecret = "";
 		this.qrCodeUrl = "";
+		this.touched.code = false;
+		this.close2FAModal();
 		await invalidateAll();
 	}
 
@@ -144,7 +148,9 @@ export class MeController {
 		}
 
 		this.apiError = null;
+		this.password = "";
+		this.touched.password = false;
 		this.close2FAModal();
-		await invalidateAll();
+		await goto("/auth/login", { invalidateAll: true });
 	}
 }

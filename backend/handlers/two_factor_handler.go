@@ -96,6 +96,15 @@ func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
 		return
 	}
 
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeMissingCookie,
+			dto.MsgMissingRefreshCookie,
+		))
+		return
+	}
+
 	var requestBody dto.TwoFactorDisableRequest
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
@@ -104,10 +113,17 @@ func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
 		))
 		return
 	}
-	err := h.service.Disable2FA(c.Request.Context(), id, requestBody.Password)
+
+	requestBody.DeviceHash = ExtractDeviceHash(c.Request)
+	requestBody.RefreshToken = refreshToken
+	requestBody.UserId = id
+
+	err = h.service.Disable2FA(c.Request.Context(), requestBody)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
+
+	SetRefreshCookie(c, "", h.appDomain, -1, h.isProduction)
 	c.Status(http.StatusNoContent)
 }

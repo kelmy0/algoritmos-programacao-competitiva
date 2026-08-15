@@ -1,11 +1,7 @@
 package dto
 
-type requirePassword struct {
-	Password string `json:"password" binding:"required,min=8"`
-}
-
 type TwoFactorGenerateRequest struct {
-	requirePassword
+	Password string `json:"password" binding:"required,min=8"`
 }
 
 type TwoFactorGenerateResponse struct {
@@ -25,7 +21,7 @@ type TwoFactorEnableResponse struct {
 }
 
 type TwoFactorDisableRequest struct {
-	requirePassword
+	TwoFactorGenerateRequest
 	DeviceHash   string `json:"-"`
 	RefreshToken string `json:"-"`
 	UserId       string `json:"-"`

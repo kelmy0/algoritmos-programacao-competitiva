@@ -16,3 +16,5 @@ export const generate2FASchema = z.object({
 export const enable2FASchema = z.object({
 	code: sanitized2FACode(6, "INVALID_2FA_CODE")
 });
+
+export const disable2FASchema = generate2FASchema;
