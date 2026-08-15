@@ -14,9 +14,19 @@ type TwoFactorGenerateResponse struct {
 }
 
 type TwoFactorEnableRequest struct {
-	Code string `json:"code" binding:"required,len=6"`
+	Code         string `json:"code" binding:"required,len=6"`
+	DeviceHash   string `json:"-"`
+	RefreshToken string `json:"-"`
+	UserId       string `json:"-"`
+}
+
+type TwoFactorEnableResponse struct {
+	AccessToken string `json:"accessToken"`
 }
 
 type TwoFactorDisableRequest struct {
 	requirePassword
+	DeviceHash   string `json:"-"`
+	RefreshToken string `json:"-"`
+	UserId       string `json:"-"`
 }

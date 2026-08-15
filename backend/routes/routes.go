@@ -73,8 +73,8 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 	signUpHandler := handlers.NewSignUpHandler(signUpService, cfg.JwtRefreshExpiresDays, cfg.AppDomain, isProd)
 
 	//TwoFactor
-	twoFactorService := services.NewTwoFactorService(userRepo, authRepo, cfg.EncryptSecretKey, cfg.AppName)
-	twoFactorHandler := handlers.NewTwoFactorHandler(twoFactorService)
+	twoFactorService := services.NewTwoFactorService(userRepo, authRepo, redisClient, cfg.EncryptSecretKey, cfg.AppName, cfg.AppDomain, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.JwtAccessPublicKey, cfg.JwtRefreshPublicKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	twoFactorHandler := handlers.NewTwoFactorHandler(twoFactorService, isProd, cfg.AppDomain, cfg.JwtRefreshExpiresDays)
 
 	//UserConfig
 	emailService := services.NewEmailService(cfg.HostEmail, cfg.PortEmail, cfg.UserEmail, cfg.PasswordEmail, cfg.FromEmail, cfg.FrontendUrl, cfg.AppName)

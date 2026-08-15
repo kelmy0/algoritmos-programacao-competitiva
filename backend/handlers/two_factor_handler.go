@@ -9,11 +9,18 @@ import (
 )
 
 type TwoFactorHandler struct {
-	service *services.TwoFactorService
+	service             *services.TwoFactorService
+	isProduction        bool
+	appDomain           string
+	refreshDurationDays int
 }
 
-func NewTwoFactorHandler(service *services.TwoFactorService) *TwoFactorHandler {
-	return &TwoFactorHandler{service: service}
+func NewTwoFactorHandler(service *services.TwoFactorService, isProduction bool, appDomain string, refreshDuration int) *TwoFactorHandler {
+	return &TwoFactorHandler{service: service,
+		isProduction:        isProduction,
+		appDomain:           appDomain,
+		refreshDurationDays: refreshDuration,
+	}
 }
 
 func (h *TwoFactorHandler) Generate2FA(c *gin.Context) {
@@ -48,21 +55,38 @@ func (h *TwoFactorHandler) Enable2FA(c *gin.Context) {
 		return
 	}
 
-	var req dto.TwoFactorEnableRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.CodeMissingCookie,
+			dto.MsgMissingRefreshCookie,
+		))
+		return
+	}
+
+	var requestBody dto.TwoFactorEnableRequest
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
 			dto.CodeInvalidRequestBody,
 			"Code must be 6 digits.",
 		))
 		return
 	}
-	err := h.service.Enable2FA(c.Request.Context(), id, req.Code)
+
+	requestBody.DeviceHash = ExtractDeviceHash(c.Request)
+	requestBody.RefreshToken = refreshToken
+	requestBody.UserId = id
+
+	result, err := h.service.Enable2FA(c.Request.Context(), requestBody)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	SetRefreshCookie(c, result.RefreshToken, h.appDomain, h.refreshDurationDays, h.isProduction)
+	c.JSON(http.StatusOK, &dto.TwoFactorEnableResponse{
+		AccessToken: result.AccessToken,
+	})
 }
 
 func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
@@ -72,20 +96,18 @@ func (h *TwoFactorHandler) Disable2FA(c *gin.Context) {
 		return
 	}
 
-	var req dto.TwoFactorDisableRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var requestBody dto.TwoFactorDisableRequest
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
 			dto.CodeInvalidRequestBody,
 			err.Error(),
 		))
 		return
 	}
-	err := h.service.Disable2FA(c.Request.Context(), id, req.Password)
+	err := h.service.Disable2FA(c.Request.Context(), id, requestBody.Password)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.MessageResponse{
-		Message: "Two-factor authentication disabled successfully",
-	})
+	c.Status(http.StatusNoContent)
 }

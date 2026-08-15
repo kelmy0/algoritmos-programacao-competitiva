@@ -1,3 +1,4 @@
+import { invalidateAll } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
 import { TWO_FACTOR_ERRORS } from "$lib/errors/users/me/two_factor";
 import type { ApiError } from "$lib/types/api";
@@ -67,7 +68,7 @@ export class MeController {
 
 		const { data, error } = await customFetch<TwoFactorGenerateResponse>(
 			window.fetch,
-			"/api/users/me/generate-2FA",
+			"/api/users/me/2fa/generate",
 			{ method: "POST", body: JSON.stringify(bodyrequest) },
 			TWO_FACTOR_ERRORS
 		);
@@ -100,7 +101,7 @@ export class MeController {
 
 		const { error } = await customFetch<null>(
 			window.fetch,
-			"/api/users/me/enable-2FA",
+			"/api/users/me/2fa/enable",
 			{ method: "POST", body: JSON.stringify(bodyrequest) },
 			TWO_FACTOR_ERRORS
 		);
@@ -115,5 +116,35 @@ export class MeController {
 		this.apiError = null;
 		this.twoFactorSecret = "";
 		this.qrCodeUrl = "";
+		await invalidateAll();
+	}
+
+	async disable2FA(e: SubmitEvent) {
+		e.preventDefault();
+		this.touched.password = true;
+
+		if (!this.is2FAEnabled || !this.isPasswordValid) return;
+
+		this.isLoading = true;
+
+		const bodyrequest = { password: this.password };
+
+		const { error } = await customFetch<null>(
+			window.fetch,
+			"/api/users/me/2fa/disable",
+			{ method: "POST", body: JSON.stringify(bodyrequest) },
+			TWO_FACTOR_ERRORS
+		);
+
+		this.isLoading = false;
+
+		if (error) {
+			this.apiError = error;
+			return;
+		}
+
+		this.apiError = null;
+		this.close2FAModal();
+		await invalidateAll();
 	}
 }

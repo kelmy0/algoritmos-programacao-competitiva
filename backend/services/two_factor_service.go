@@ -2,14 +2,18 @@ package services
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/repositories"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"github.com/pquerna/otp/totp"
+	"github.com/redis/go-redis/v9"
 )
 
 type TwoFactorUserRepository interface {
@@ -17,21 +21,52 @@ type TwoFactorUserRepository interface {
 	Enable2FA(ctx context.Context, userId string) error
 	Disable2FA(ctx context.Context, userId string) error
 	GetAuthData(ctx context.Context, userId string) (*repositories.UserAuthData, error)
+	GetUserByIdForAuth(ctx context.Context, id string) (*models.User, error)
 }
 
 type TwoFactorAuthRepository interface {
 	DeleteAllUserRefreshTokens(ctx context.Context, userId string) error
+	RevokeFamily(ctx context.Context, familyId string) error
+	SaveRefreshToken(ctx context.Context, tokenId, userId, familyId string, expiresAt time.Time) error
 }
 
 type TwoFactorService struct {
-	UserRepo      TwoFactorUserRepository
-	AuthRepo      TwoFactorAuthRepository
-	EncryptSecret string
-	AppName       string
+	UserRepo             TwoFactorUserRepository
+	AuthRepo             TwoFactorAuthRepository
+	RedisClient          *redis.Client
+	EncryptSecret        string
+	AppName              string
+	AppDomain            string
+	JwtAccessPrivateKey  ed25519.PrivateKey
+	JwtRefreshPrivateKey ed25519.PrivateKey
+	JwtAccessPublicKey   ed25519.PublicKey
+	JwtRefreshPublicKey  ed25519.PublicKey
+	JwtAccessExpiration  int
+	JwtRefreshExpiration int
 }
 
-func NewTwoFactorService(userRepo TwoFactorUserRepository, authRepo TwoFactorAuthRepository, encryptSecret, appName string) *TwoFactorService {
-	return &TwoFactorService{UserRepo: userRepo, AuthRepo: authRepo, EncryptSecret: encryptSecret, AppName: appName}
+type Enable2FAResult struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+func NewTwoFactorService(userRepo TwoFactorUserRepository, authRepo TwoFactorAuthRepository, redisClient *redis.Client,
+	encryptSecret, appName, appDomain string, accessPrivate, refreshPrivate ed25519.PrivateKey,
+	accessPublic, refreshPublic ed25519.PublicKey, accessDuration, refreshDuration int) *TwoFactorService {
+	return &TwoFactorService{
+		UserRepo:             userRepo,
+		AuthRepo:             authRepo,
+		RedisClient:          redisClient,
+		EncryptSecret:        encryptSecret,
+		AppName:              appName,
+		AppDomain:            appDomain,
+		JwtAccessPrivateKey:  accessPrivate,
+		JwtRefreshPrivateKey: refreshPrivate,
+		JwtAccessPublicKey:   accessPublic,
+		JwtRefreshPublicKey:  refreshPublic,
+		JwtRefreshExpiration: refreshDuration,
+		JwtAccessExpiration:  accessDuration,
+	}
 }
 
 func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email, password string) (*dto.TwoFactorGenerateResponse, error) {
@@ -107,63 +142,139 @@ func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email, passw
 	}, nil
 }
 
-func (s *TwoFactorService) Enable2FA(ctx context.Context, userId, code string) error {
-	twoFactorData, err := s.UserRepo.GetAuthData(ctx, userId)
+func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnableRequest) (*Enable2FAResult, error) {
+	claims, err := utils.ValidateRefreshToken(data.RefreshToken, s.JwtRefreshPublicKey, s.AppDomain)
+
+	if err != nil {
+		slog.WarnContext(ctx, "refresh token JWT validation failed", slog.Any("error", err))
+		return nil, models.ErrInvalidOrExpiredRefresh
+	}
+
+	if claims.Subject != data.UserId {
+		slog.WarnContext(ctx, "security mismatch during 2fa enable",
+			slog.String("token_subject", claims.Subject),
+			slog.String("user_id_param", data.UserId),
+		)
+		return nil, models.ErrTokenMetadataMisMatch
+	}
+
+	if claims.DeviceHash != data.DeviceHash {
+		slog.WarnContext(ctx, "[SECURITY ALERT] Device hash mismatch! Revoking entire family.",
+			slog.String("user_id", claims.Subject),
+			slog.String("family_id", claims.FamilyId),
+			slog.String("token_id", claims.ID),
+			slog.String("token_dvh", claims.DeviceHash),
+			slog.String("dvh", data.DeviceHash),
+		)
+		_ = s.AuthRepo.RevokeFamily(ctx, claims.FamilyId)
+		return nil, models.ErrInvalidOrExpiredRefresh
+	}
+
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, data.UserId)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			return models.ErrUserNotFound
+			return nil, models.ErrUserNotFound
 		}
 
 		slog.ErrorContext(ctx, "database query error",
 			"op", "Enable2FA",
-			"user_id", userId,
+			"user_id", user.Id,
 			"error", err,
 		)
-		return models.Err2FAGetDataFailed
+		return nil, models.Err2FAGetDataFailed
 	}
 
-	if twoFactorData.IsEnabled {
-		return models.Err2FAAlreadyEnabled
+	if user.TwoFactorAuthentication {
+		return nil, models.Err2FAAlreadyEnabled
 	}
 
-	if twoFactorData.Secret == "" {
-		return models.Err2FANotInitiated
+	if user.TwoFactorSecret == nil {
+		return nil, models.Err2FANotInitiated
 	}
 
-	decryptedSecret, err := utils.Decrypt(twoFactorData.Secret, s.EncryptSecret)
+	decryptedSecret, err := utils.Decrypt(*user.TwoFactorSecret, s.EncryptSecret)
 	if err != nil {
 		slog.ErrorContext(ctx, "AES decryption of 2FA secret failed",
-			"op", "Enable2FA",
-			"user_id", userId,
+			"user_id", user.Id,
 			"error", err,
 		)
-		return models.ErrDecryptTokenFailed
+		return nil, models.ErrDecryptTokenFailed
 	}
 
-	isValid := totp.Validate(code, decryptedSecret)
+	isValid := totp.Validate(data.Code, decryptedSecret)
 	if !isValid {
-		return models.Err2FAInvalid
+		return nil, models.Err2FAInvalid
 	}
 
-	err = s.UserRepo.Enable2FA(ctx, userId)
-	if err != nil {
+	if err = s.UserRepo.Enable2FA(ctx, user.Id); err != nil {
 		slog.ErrorContext(ctx, "failed to update 2FA status to enabled in DB",
 			"op", "Enable2FA",
-			"user_id", userId,
+			"user_id", user.Id,
 			"error", err,
 		)
-		return models.Err2FAUpdateFailed
+		return nil, models.Err2FAUpdateFailed
+	}
+	user.TwoFactorAuthentication = true
+
+	err = s.AuthRepo.DeleteAllUserRefreshTokens(ctx, user.Id)
+	if err != nil {
+		slog.ErrorContext(ctx, "database error revoking all tokens for user",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
+		return nil, models.ErrUnexpectedLogout
 	}
 
-	if err = s.AuthRepo.DeleteAllUserRefreshTokens(ctx, userId); err != nil {
-		slog.WarnContext(ctx, "failed to revoke refresh tokens",
-			"op", "Enable2FA",
-			"user_id", userId,
-			"error", err,
+	nowTimestamp := time.Now().Unix()
+	redisTTL := time.Duration(s.JwtAccessExpiration) * time.Minute
+
+	redisValue := fmt.Sprintf("%d", nowTimestamp)
+	err = s.RedisClient.Set(ctx, "logout_all:"+user.Id, redisValue, redisTTL).Err()
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set logout_all timestamp in redis",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
 		)
 	}
 
-	return nil
+	_, accessToken, err := utils.GenerateAccessToken(
+		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
+		s.JwtAccessPrivateKey, user.Role.IsEmployee, user.TwoFactorAuthentication,
+		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to generate access token",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
+		return nil, models.ErrGeneratingToken
+	}
+
+	refreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
+	idToken, familyId, refreshToken, err := utils.GenerateRefreshToken(
+		user.Id, s.AppDomain, "", data.DeviceHash, s.JwtRefreshPrivateKey, refreshExpiresAt,
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to generate refresh token",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
+		return nil, models.ErrGeneratingToken
+	}
+
+	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, user.Id, familyId, refreshExpiresAt)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to persist refresh token into database",
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
+		)
+		return nil, models.ErrGeneratingToken
+	}
+
+	return &Enable2FAResult{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
 func (s *TwoFactorService) Disable2FA(ctx context.Context, userId, password string) error {

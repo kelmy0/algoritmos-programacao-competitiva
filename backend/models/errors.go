@@ -18,7 +18,7 @@ func (e *AppError) Error() string {
 var (
 	ErrPasswordsDontMatch          = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORDS_DONT_MATCH", Message: "Passwords don't match."}
 	ErrPasswordIsNotValid          = &AppError{StatusCode: http.StatusBadRequest, Code: "USER_PASSWORD_NOT_VALID", Message: "Password is not valid."}
-	ErrIncorrectPassword           = &AppError{StatusCode: http.StatusBadRequest, Code: "AUTH_INCORRECT_PASSWORD", Message: "Incorrect password."}
+	ErrIncorrectPassword           = &AppError{StatusCode: http.StatusUnauthorized, Code: "AUTH_INCORRECT_PASSWORD", Message: "Incorrect password."}
 	ErrUserNotFound                = &AppError{StatusCode: http.StatusNotFound, Code: "USER_NOT_FOUND", Message: "User not found."}
 	ErrInvalidOrExpiredRefresh     = &AppError{StatusCode: http.StatusUnauthorized, Code: "AUTH_INVALID_REFRESH_TOKEN", Message: "Invalid or expired refresh token."}
 	ErrInvalidOrExpiredToken       = &AppError{StatusCode: http.StatusUnauthorized, Code: "AUTH_INVALID_TOKEN", Message: "Invalid or expired token."}

@@ -283,7 +283,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 
 	_, newAccessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
-		s.JwtAccessPrivateKey, user.Role.IsEmployee, claims.Is2FAEnabled,
+		s.JwtAccessPrivateKey, user.Role.IsEmployee, user.TwoFactorAuthentication,
 		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
