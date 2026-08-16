@@ -32,16 +32,16 @@
 </svelte:head>
 
 <div class="max-w-7xl mx-auto space-y-6 font-inter p-6">
-	<header class="border-b border-gray-800 pb-4">
+	<header class="border-b border-app-border pb-4">
 		<h1 class="font-montserrat text-2xl font-bold text-text-primary">Criar Novo Algoritmo</h1>
-		<p class="text-sm text-gray-300 mt-1">
+		<p class="text-sm text-text-secondary mt-1">
 			Preencha os metadados e escreva o conteúdo em Markdown com o preview ao lado.
 		</p>
 	</header>
 
 	<form onsubmit={handleSubmit} class="space-y-6" aria-label="Formulário de criação de algoritmo">
 		<fieldset
-			class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-app-surface p-5 rounded-xl border border-gray-800"
+			class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-app-surface p-5 rounded-xl border border-app-border"
 		>
 			<legend class="sr-only">Metadados do Algoritmo</legend>
 
@@ -127,7 +127,7 @@
 		<div
 			class="flex flex-col md:flex-row {editor.hasContentError || controller.hasContentError
 				? 'justify-between'
-				: 'justify-end'} items-stretch md:items-center gap-4 pt-4 border-t border-gray-800/60"
+				: 'justify-end'} items-stretch md:items-center gap-4 pt-4 border-t border-app-border/60"
 		>
 			{#if editor.hasContentError || controller.hasContentError}
 				<p id="content-error" role="alert" class="text-xs text-amber-500 self-center">

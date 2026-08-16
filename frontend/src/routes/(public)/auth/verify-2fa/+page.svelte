@@ -14,13 +14,13 @@
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4">
-	<div class="w-full max-w-md p-8 bg-app-surface border border-gray-800 rounded-xl shadow-xl">
+	<div class="w-full max-w-md p-8 bg-app-surface border border-app-border rounded-xl shadow-xl">
 		<!-- Header -->
 		<div class="mb-8 text-center">
 			<h1 class="font-montserrat font-bold text-2xl text-text-primary tracking-tight mb-2">
 				Autenticação em dois fatores
 			</h1>
-			<p id="code-hint" class="text-sm text-gray-400 font-inter">
+			<p id="code-hint" class="text-sm text-text-muted font-inter">
 				Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador.
 			</p>
 		</div>

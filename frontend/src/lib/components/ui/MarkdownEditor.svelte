@@ -26,13 +26,13 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 	<section
-		class="flex flex-col h-150 bg-app-surface border border-gray-800 rounded-xl overflow-hidden"
+		class="flex flex-col h-150 bg-app-surface border border-app-border rounded-xl overflow-hidden"
 		aria-label="Editor de código Markdown"
 	>
 		<div
 			role="toolbar"
 			aria-label="Ferramentas de formatação Markdown"
-			class="min-h-12 flex flex-wrap items-center gap-1.5 px-3 py-2 bg-gray-900 border-b border-gray-800 text-xs"
+			class="min-h-12 flex flex-wrap items-center gap-1.5 px-3 py-2 bg-app-overlay border-b border-app-border text-xs"
 		>
 			<button
 				type="button"
@@ -91,30 +91,32 @@
 			aria-required="true"
 			aria-invalid={hasError}
 			aria-describedby={hasError ? "content-error" : undefined}
-			class="w-full flex-1 p-4 bg-transparent text-gray-200 font-mono text-sm resize-none focus:outline-none focus-visible:ring-2 leading-relaxed border disabled:cursor-not-allowed
+			class="w-full flex-1 p-4 bg-transparent text-text-primary font-mono text-sm resize-none focus:outline-none focus-visible:ring-2 leading-relaxed border disabled:cursor-not-allowed
             {hasError
 				? 'border-red-500 focus:ring-red-500'
 				: 'border-transparent focus:ring-text-brand'}"></textarea>
 	</section>
 
 	<section
-		class="flex flex-col h-150 bg-app-surface border border-gray-800 rounded-xl overflow-hidden"
+		class="flex flex-col h-150 bg-app-surface border border-app-border rounded-xl overflow-hidden"
 		aria-label="Preview do conteúdo"
 	>
 		<div
-			class="min-h-12 px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between gap-2"
+			class="min-h-12 px-4 py-2 bg-app-overlay border-b border-app-border flex items-center justify-between gap-2"
 		>
-			<span class="text-xs font-mono font-medium text-gray-300">Preview em Tempo Real</span>
+			<span class="text-xs font-mono font-medium text-text-secondary">Preview em Tempo Real</span>
 			{#if previewUrl}
 				<a
 					href={previewUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-gray-300 bg-gray-800/60 hover:bg-gray-800 hover:text-white border border-gray-700/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-text-brand transition-all"
+					class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium
+					text-text-secondary bg-app-surface/60 hover:bg-app-surface hover:text-white border border-app-border
+					focus:outline-none focus-visible:ring-2 focus-visible:ring-text-brand transition-all"
 					title="Abrir visualização em nova aba"
 				>
 					<svg
-						class="w-4 h-4 text-gray-400 group-hover:text-white"
+						class="w-4 h-4 text-text-secondary group-hover:text-white"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -140,16 +142,18 @@
 
 		<div
 			aria-live="polite"
-			class="p-6 whitespace-pre-wrap wrap-break-word overflow-y-auto prose prose-invert max-w-none font-mono text-sm text-gray-200 prose-pre:whitespace-pre-wrap prose-pre:wrap-break-words"
+			class="p-6 whitespace-pre-wrap wrap-break-word overflow-y-auto prose prose-invert max-w-none font-mono text-sm text-text-primary prose-pre:whitespace-pre-wrap prose-pre:wrap-break-words"
 		>
 			{#if content.trim()}
 				{#await previewPromise}
-					<p role="status" class="text-gray-400 italic font-sans text-sm">Gerando preview...</p>
+					<p role="status" class="text-text-secondary italic font-sans text-sm">
+						Gerando preview...
+					</p>
 				{:then html}
 					{@html html}
 				{/await}
 			{:else}
-				<p class="text-gray-400 italic font-sans text-sm">
+				<p class="text-text-secondary italic font-sans text-sm">
 					O preview aparecerá aqui conforme você digita...
 				</p>
 			{/if}

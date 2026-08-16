@@ -3,15 +3,35 @@
 	import { focusTrap } from "$lib/utils/a11y";
 	import { slide } from "svelte/transition";
 	import { MeController } from "./me_controller.svelte";
+	import Button from "$lib/components/ui/Button.svelte";
+	import Modal from "$lib/components/ui/Modal.svelte";
+	import Input from "$lib/components/ui/Input.svelte";
+	import CodeInput from "$lib/components/ui/CodeInput.svelte";
 
 	const controller = new MeController();
 	controller.is2FAEnabled = page.data.user?.is2FAEnabled || false;
+
+	const is2FAEnabled = $derived(page.data.user?.is2FAEnabled);
+	const modal2FAVariant = $derived(is2FAEnabled ? "danger" : "success");
+	const modal2FATitle = $derived(
+		is2FAEnabled
+			? "Desativar autenticação em dois fatores?"
+			: "Ativar autenticação em dois fatores?"
+	);
 
 	const twoFactorLabels: Record<string, string> = {
 		generateCode:
 			"Você precisará de um aplicativo autenticador. Insira sua senha e clique em gerar chave.",
 		saveCode: "Salve a chave em seu aplicativo autenticador e insira o código gerado nele."
 	};
+
+	const modal2FADescription = $derived(
+		is2FAEnabled
+			? "Desativar a autenticação em dois fatores deixará sua conta vulnerável! Caso realmente queira desativar, insira sua senha novamente."
+			: !controller.twoFactorSecret
+				? twoFactorLabels.generateCode
+				: twoFactorLabels.saveCode
+	);
 </script>
 
 <svelte:head>
@@ -22,48 +42,50 @@
 
 <div class="max-w-4xl space-y-8 font-inter">
 	<header
-		class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-800"
+		class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-app-border"
 	>
 		<div>
 			<h1 class="font-montserrat font-bold text-2xl md:text-3xl text-text-primary tracking-tight">
 				Minha conta
 			</h1>
-			<p class="text-sm text-gray-400 mt-1">
+			<p class="text-sm text-text-muted mt-1">
 				Ajuste suas informações pessoais e configurações de segurança.
 			</p>
 		</div>
 	</header>
 
 	<!-- Account -->
-	<section class="bg-app-surface border border-gray-800 rounded-xl p-6 shadow-xl space-y-6">
-		<div class="border-b border-gray-800/80 pb-4">
+	<section class="bg-app-surface border border-app-border rounded-xl p-6 shadow-xl space-y-6">
+		<div class="border-b border-app-border/80 pb-4">
 			<h2 class="font-montserrat font-semibold text-lg text-text-primary">Perfil</h2>
-			<p class="text-xs text-gray-400 mt-0.5">Informações visíveis do seu perfil.</p>
+			<p class="text-xs text-text-muted mt-0.5">Informações visíveis do seu perfil.</p>
 		</div>
 
 		<form onsubmit={(e) => e.preventDefault()} class="space-y-5">
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 				<!-- Name -->
 				<div class="space-y-2">
-					<label for="name" class="block text-sm font-medium text-gray-300">Nome completo</label>
+					<label for="name" class="block text-sm font-medium text-text-secondary"
+						>Nome completo</label
+					>
 					<input
 						type="text"
 						id="name"
 						name="name"
 						placeholder="Seu nome"
 						value={page.data.user?.name}
-						class="w-full px-4 py-2.5 bg-app-bg/50 border border-gray-800 rounded-lg text-text-primary placeholder-gray-600 text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
+						class="w-full px-4 py-2.5 bg-app-bg/50 border border-app-border rounded-lg text-text-primary placeholder-text-muted text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
 					/>
 				</div>
 
 				<!-- Username -->
 				<div class="space-y-2">
-					<label for="username" class="block text-sm font-medium text-gray-300"
+					<label for="username" class="block text-sm font-medium text-text-secondary"
 						>Nome de usuário</label
 					>
 					<div class="relative flex items-center">
 						<span
-							class="absolute left-3.5 text-gray-500 text-sm font-medium leading-none pointer-events-none select-none"
+							class="absolute left-3.5 text-text-muted text-sm font-medium leading-none pointer-events-none select-none"
 							>@</span
 						>
 						<input
@@ -72,7 +94,7 @@
 							name="username"
 							placeholder="dev_user"
 							value={page.data.user?.username}
-							class="w-full pl-8 pr-4 py-2.5 bg-app-bg/50 border border-gray-800 rounded-lg text-text-primary placeholder-gray-600 text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
+							class="w-full pl-8 pr-4 py-2.5 bg-app-bg/50 border border-app-border rounded-lg text-text-primary placeholder-text-muted text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
 						/>
 					</div>
 				</div>
@@ -81,8 +103,8 @@
 			<!-- Email -->
 			<div class="space-y-2">
 				<div class="flex items-center justify-between">
-					<label for="email" class="block text-sm font-medium text-gray-300">E-mail</label>
-					<span class="text-xs text-gray-500">O e-mail não pode ser alterado</span>
+					<label for="email" class="block text-sm font-medium text-text-secondary">E-mail</label>
+					<span class="text-xs text-text-muted">O e-mail não pode ser alterado</span>
 				</div>
 				<div class="relative flex items-center">
 					<input
@@ -91,10 +113,10 @@
 						name="email"
 						value={page.data.user?.email}
 						disabled
-						class="w-full px-4 py-2.5 bg-app-bg/30 border border-gray-800/60 rounded-lg text-gray-400 text-sm cursor-not-allowed select-none opacity-80"
+						class="w-full px-4 py-2.5 bg-app-bg/30 border border-app-border/60 rounded-lg text-text-muted text-sm cursor-not-allowed select-none opacity-80"
 					/>
 					<svg
-						class="w-4 h-4 text-gray-500 absolute right-3.5"
+						class="w-4 h-4 text-text-muted absolute right-3.5"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -121,19 +143,19 @@
 	</section>
 
 	<!-- Social accounts -->
-	<section class="bg-app-surface border border-gray-800 rounded-xl p-6 shadow-xl space-y-6">
-		<div class="border-b border-gray-800/80 pb-4">
+	<section class="bg-app-surface border border-app-border rounded-xl p-6 shadow-xl space-y-6">
+		<div class="border-b border-app-border/80 pb-4">
 			<h2 class="font-montserrat font-semibold text-lg text-text-primary">Contas vinculadas</h2>
-			<p class="text-xs text-gray-400 mt-0.5">Conecte suas redes para facilitar o login.</p>
+			<p class="text-xs text-text-muted mt-0.5">Conecte suas redes para facilitar o login.</p>
 		</div>
 
 		<div class="space-y-3">
 			<!-- Google -->
 			<div
-				class="flex items-center justify-between p-4 bg-app-bg/40 border border-gray-800 rounded-lg transition-all hover:border-gray-700"
+				class="flex items-center justify-between p-4 bg-app-bg/40 border border-app-border rounded-lg transition-all hover:border-app-border"
 			>
 				<div class="flex items-center gap-3">
-					<div class="p-2 bg-app-bg border border-gray-800 rounded-md shrink-0">
+					<div class="p-2 bg-app-bg border border-app-border rounded-md shrink-0">
 						<svg class="w-5 h-5" viewBox="0 0 24 24">
 							<path
 								fill="#EA4335"
@@ -155,7 +177,7 @@
 					</div>
 					<div>
 						<p class="text-sm font-medium text-text-primary">Google</p>
-						<p class="text-xs text-gray-400">Conectado como dev@exemplo.com</p>
+						<p class="text-xs text-text-muted">Conectado como dev@exemplo.com</p>
 					</div>
 				</div>
 
@@ -170,10 +192,10 @@
 
 			<!-- GitHub -->
 			<div
-				class="flex items-center justify-between p-4 bg-app-bg/40 border border-gray-800 rounded-lg transition-all hover:border-gray-700"
+				class="flex items-center justify-between p-4 bg-app-bg/40 border border-app-border rounded-lg transition-all hover:border-app-border"
 			>
 				<div class="flex items-center gap-3">
-					<div class="p-2 bg-app-bg border border-gray-800 rounded-md shrink-0">
+					<div class="p-2 bg-app-bg border border-app-border rounded-md shrink-0">
 						<svg class="w-5 h-5 fill-current text-text-primary" viewBox="0 0 24 24">
 							<path
 								d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
@@ -182,14 +204,14 @@
 					</div>
 					<div>
 						<p class="text-sm font-medium text-text-primary">GitHub</p>
-						<p class="text-xs text-gray-500">Não conectado</p>
+						<p class="text-xs text-text-muted">Não conectado</p>
 					</div>
 				</div>
 
 				<!-- Disconnected state -->
 				<button
 					type="button"
-					class="px-3 py-1.5 bg-app-bg border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 rounded-md text-xs font-medium transition-all cursor-pointer"
+					class="px-3 py-1.5 bg-app-bg border border-app-border text-text-secondary hover:text-text-primary hover:border-text-muted rounded-md text-xs font-medium transition-all cursor-pointer"
 				>
 					Vincular
 				</button>
@@ -198,35 +220,33 @@
 	</section>
 
 	<!-- Security -->
-	<section class="bg-app-surface border border-gray-800 rounded-xl p-6 shadow-xl space-y-6">
-		<div class="border-b border-gray-800/80 pb-4">
+	<section class="bg-app-surface border border-app-border rounded-xl p-6 shadow-xl space-y-6">
+		<div class="border-b border-app-border/80 pb-4">
 			<h2 class="font-montserrat font-semibold text-lg text-text-primary">Segurança</h2>
-			<p class="text-xs text-gray-400 mt-0.5">Gerencie sua senha e autenticação de dois fatores.</p>
+			<p class="text-xs text-text-muted mt-0.5">
+				Gerencie sua senha e autenticação de dois fatores.
+			</p>
 		</div>
 
 		<div class="space-y-6">
 			<!-- Change password -->
 			<div
-				class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-app-bg/40 border border-gray-800 rounded-lg"
+				class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-app-bg/40 border border-app-border rounded-lg"
 			>
 				<div>
 					<p class="text-sm font-medium text-text-primary">Senha de acesso</p>
-					<p class="text-xs text-gray-400 mt-0.5">Última alteração há mais de 30 dias</p>
+					<p class="text-xs text-text-muted mt-0.5">Última alteração há mais de 30 dias</p>
 				</div>
 
-				<button
-					type="button"
-					onclick={() => controller.openChangePasswordModal()}
-					disabled={controller.isLoading}
+				<Button
+					variant="outline"
 					aria-haspopup="dialog"
+					disabled={controller.isLoading}
 					aria-expanded={controller.isChangePasswordModalOpen}
-					class="px-4 py-2 rounded-lg border font-semibold text-sm focus:outline-none focus-visible:ring-2
-						focus-visible:ring-offset-2 transition-all flex items-center justify-center gap-2 disabled:opacity-50
-						cursor-pointer disabled:cursor-not-allowed shrink-0 w-full sm:w-auto
-						bg-app-bg border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
+					onclick={() => controller.openChangePasswordModal()}
 				>
 					<svg
-						class="w-4 h-4 text-gray-400"
+						class="w-4 h-4 text-text-muted"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -240,12 +260,12 @@
 						/>
 					</svg>
 					<span>Alterar senha</span>
-				</button>
+				</Button>
 			</div>
 
 			<!-- 2FA -->
 			<div
-				class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-app-bg/40 border border-gray-800 rounded-lg"
+				class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-app-bg/40 border border-app-border rounded-lg"
 			>
 				<div class="space-y-1">
 					<div class="flex items-center gap-2">
@@ -260,510 +280,78 @@
 							{page.data.user?.is2FAEnabled ? "Ativado" : "Desativado"}
 						</span>
 					</div>
-					<p class="text-xs text-gray-400 max-w-md">
+					<p class="text-xs text-text-muted max-w-md">
 						Adicione uma camada extra de segurança usando um aplicativo autenticador (Google
 						Authenticator, Authy, etc).
 					</p>
 				</div>
-				{#if page.data.user?.is2FAEnabled}
-					<button
-						type="button"
-						onclick={() => controller.open2FAModal()}
-						disabled={controller.isLoading}
-						aria-haspopup="dialog"
-						aria-expanded={controller.is2FAModalOpen}
-						class="px-4 py-2 rounded-lg border font-semibold text-sm focus:outline-none focus-visible:ring-2
-						focus-visible:ring-offset-2 transition-all flex items-center justify-center gap-2 disabled:opacity-50
-						cursor-pointer disabled:cursor-not-allowed shrink-0 w-full sm:w-auto
-						border-red-900/50 bg-red-950/30 text-red-400 hover:bg-red-900/50 hover:text-red-300
-						focus-visible:ring-red-500 focus-visible:ring-offset-gray-900"
+				<Button
+					variant={page.data.user?.is2FAEnabled ? "danger-soft" : "success-soft"}
+					aria-haspopup="dialog"
+					disabled={controller.isLoading}
+					aria-expanded={controller.is2FAModalOpen}
+					onclick={() => controller.open2FAModal()}
+				>
+					<svg
+						class="w-4 h-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+						aria-hidden="true"
 					>
-						<svg
-							class="w-4 h-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-							aria-hidden="true"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-							/>
-						</svg>
-						<span>Desativar 2FA</span>
-					</button>
-				{:else}
-					<button
-						type="button"
-						onclick={() => controller.open2FAModal()}
-						disabled={controller.isLoading}
-						aria-haspopup="dialog"
-						aria-expanded={controller.is2FAModalOpen}
-						class="px-4 py-2 rounded-lg border font-semibold text-sm focus:outline-none focus-visible:ring-2
-						focus-visible:ring-offset-2 transition-all flex items-center justify-center gap-2 disabled:opacity-50
-						cursor-pointer disabled:cursor-not-allowed shrink-0 w-full sm:w-auto
-						border-emerald-900/50 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-900/50 hover:text-emerald-300
-						focus-visible:ring-emerald-500 focus-visible:ring-offset-gray-900"
-					>
-						<svg
-							class="w-4 h-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-							aria-hidden="true"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-							/>
-						</svg>
-						<span>Ativar 2FA</span>
-					</button>
-				{/if}
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+						/>
+					</svg>
+					<span>{page.data.user?.is2FAEnabled ? "Desativar 2FA" : "Ativar 2FA"}</span>
+				</Button>
 			</div>
 		</div>
 	</section>
 </div>
 
 {#if controller.is2FAModalOpen}
-	<div
-		use:focusTrap
-		class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm overflow-y-auto flex min-h-full items-center justify-center p-4"
-		role="dialog"
-		aria-modal="true"
-		aria-busy={controller.isLoading}
-		aria-labelledby="two-factor-modal-title"
-		aria-describedby="two-factor-modal-description"
-		onkeydown={(e) => e.key === "Escape" && controller.close2FAModal()}
-		tabindex="-1"
+	<Modal
+		isOpen={controller.is2FAModalOpen}
+		title={modal2FATitle}
+		description={modal2FADescription}
+		variant={modal2FAVariant}
+		isLoading={controller.isLoading}
+		onClose={() => controller.close2FAModal()}
+		{focusTrap}
 	>
-		<div
-			class="bg-app-surface border border-gray-800 rounded-xl p-6 max-w-md w-full flex flex-col gap-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 relative my-auto"
-		>
-			{#if !page.data.user?.is2FAEnabled}
-				<!-- Modal Header -->
-				<div class="flex items-start gap-3">
-					<div
-						class="p-2.5 self-start rounded-lg shrink-0 border bg-emerald-950/80 border-emerald-900/60 text-emerald-400"
-					>
-						<svg
-							class="w-6 h-6"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							aria-hidden="true"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-							/>
-						</svg>
-					</div>
-
-					<div class="flex-1 pr-6">
-						<h2 id="two-factor-modal-title" class="text-lg font-bold text-gray-100 font-montserrat">
-							Ativar autenticação em dois fatores?
-						</h2>
-						<p
-							id="two-factor-modal-description"
-							class="text-sm text-gray-300 mt-1 leading-relaxed"
-							aria-live="polite"
-						>
-							{#if !controller.twoFactorSecret}
-								{twoFactorLabels.generateCode}
-							{:else}
-								{twoFactorLabels.saveCode}
-							{/if}
-						</p>
-					</div>
-
-					<button
-						type="button"
-						onclick={() => controller.close2FAModal()}
+		{#if !is2FAEnabled}
+			{#if !controller.twoFactorSecret}
+				<form onsubmit={(e) => controller.generate2FA(e)} class="space-y-5">
+					<Input
+						id="password"
+						name="password"
+						type={controller.showPassword ? "text" : "password"}
+						label="Senha"
+						placeholder="••••••••"
+						autocomplete="current-password"
+						minlength={8}
+						required
 						disabled={controller.isLoading}
-						aria-label="Fechar modal"
-						class="hover:cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:opacity-50 transition-colors"
+						bind:value={controller.password}
+						touched={controller.touched.password}
+						error={(controller.touched.password && !controller.isPasswordValid) ||
+						controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+							? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+								? "Senha incorreta."
+								: "A senha deve conter no mínimo 8 caracteres."
+							: undefined}
+						oninput={() => controller.onInput()}
+						onblur={() => (controller.touched.password = true)}
 					>
-						<svg
-							class="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							aria-hidden="true"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
-				</div>
-
-				<!-- FORMS -->
-				{#if !controller.twoFactorSecret}
-					<form onsubmit={(e) => controller.generate2FA(e)} class="space-y-5 font-inter">
-						<!-- Password -->
-						<div class="space-y-2">
-							<label for="password" class="block text-sm font-medium text-gray-300">Senha</label>
-							<div class="relative flex items-center">
-								<input
-									type={controller.showPassword ? "text" : "password"}
-									id="password"
-									name="password"
-									autocomplete="current-password"
-									minlength="8"
-									bind:value={controller.password}
-									oninput={() => controller.onInput()}
-									onblur={() => (controller.touched.password = true)}
-									aria-required="true"
-									aria-invalid={controller.touched.password && !controller.isPasswordValid}
-									aria-describedby={controller.touched.password && !controller.isPasswordValid
-										? "password-error"
-										: undefined}
-									placeholder="••••••••"
-									required
-									disabled={controller.isLoading}
-									class="w-full px-4 pr-10 py-2.5 bg-app-bg/50 border rounded-lg text-text-primary placeholder-gray-600 text-sm focus:bg-app-bg focus:ring-1 focus:outline-none transition-all disabled:opacity-50
-                				{(controller.touched.password && !controller.isPasswordValid) ||
-									controller.apiError?.code === 'AUTH_INCORRECT_PASSWORD'
-										? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-										: 'border-gray-800 focus:border-text-brand focus:ring-text-brand'}"
-								/>
-								<button
-									type="button"
-									onclick={() => controller.togglePassword()}
-									class="absolute right-3 p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-									aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
-								>
-									{#if controller.showPassword}
-										<svg
-											class="h-5 w-5"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											aria-hidden="true"
-										>
-											<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-											<circle cx="12" cy="12" r="3" />
-										</svg>
-									{:else}
-										<svg
-											class="h-5 w-5"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											aria-hidden="true"
-										>
-											<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-											<path
-												d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
-											/>
-											<path
-												d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"
-											/>
-											<line x1="2" x2="22" y1="2" y2="22" />
-										</svg>
-									{/if}
-								</button>
-							</div>
-							{#if (controller.touched.password && !controller.isPasswordValid) || controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"}
-								<p id="password-error" role="alert" class="text-xs text-red-400">
-									{controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
-										? "Senha incorreta."
-										: "A senha deve conter no mínimo 8 caracteres."}
-								</p>
-							{/if}
-						</div>
-
-						<div
-							class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-800"
-						>
-							<button
-								type="button"
-								onclick={() => controller.close2FAModal()}
-								disabled={controller.isLoading}
-								class="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-900 text-gray-300 hover:text-white border border-gray-700 text-sm font-medium hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-							>
-								Cancelar
-							</button>
-							<button
-								type="submit"
-								disabled={controller.isLoading}
-								aria-busy={controller.isLoading}
-								class="
-					w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2
-					transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed border
-					border-emerald-900/60 bg-emerald-950/70 text-emerald-400 hover:bg-emerald-900/50 hover:text-emerald-300
-					focus-visible:ring-emerald-500 focus-visible:ring-offset-gray-900 flex items-center justify-center gap-2"
-							>
-								{#if controller.isLoading}
-									<svg
-										class="animate-spin h-4 w-4 text-emerald-400"
-										fill="none"
-										viewBox="0 0 24 24"
-										aria-hidden="true"
-									>
-										<circle
-											class="opacity-25"
-											cx="12"
-											cy="12"
-											r="10"
-											stroke="currentColor"
-											stroke-width="4"
-										></circle>
-										<path
-											class="opacity-75"
-											fill="currentColor"
-											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-										></path>
-									</svg>
-									<span>Gerando...</span>
-								{:else}
-									<span>Gerar chave</span>
-								{/if}
-							</button>
-						</div>
-					</form>
-				{:else}
-					<form onsubmit={(e) => controller.save2FA(e)} class="space-y-5 font-inter">
-						<div
-							transition:slide={{ duration: 250 }}
-							class="flex flex-col items-center gap-5 p-4 bg-black/20 border border-gray-800 rounded-lg"
-						>
-							<div class="bg-white p-2.5 rounded-xl shadow-inner shrink-0">
-								<img
-									src={controller.qrCodeUrl}
-									alt="QR Code para Autenticação 2FA"
-									class="w-48 h-48 rounded"
-								/>
-							</div>
-
-							<div class="w-full space-y-2">
-								<label for="twoFactorSecret" class="text-xs font-medium text-gray-300">
-									Chave secreta (se não conseguir escanear):
-								</label>
-								<div class="flex items-center gap-2">
-									<div
-										class="flex-1 p-2.5 bg-app-bg border border-gray-700 rounded-lg shadow-inner"
-									>
-										<code
-											id="twoFactorSecret"
-											aria-label="Chave secreta de configuração"
-											class="text-sm font-mono font-medium text-emerald-300 break-all leading-relaxed tracking-wider"
-										>
-											{controller.twoFactorSecret || "Gerando chave..."}
-										</code>
-									</div>
-
-									<button
-										type="button"
-										title="Copiar chave secreta"
-										aria-label="Copiar chave secreta para a área de transferência"
-										class="p-2.5 rounded-lg border border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500"
-									>
-										<svg
-											class="w-5 h-5"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-											aria-hidden="true"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-											/>
-										</svg>
-									</button>
-								</div>
-							</div>
-						</div>
-						<div class="space-y-2">
-							<input
-								type="text"
-								inputmode="numeric"
-								pattern="[0-9]*"
-								id="code"
-								name="code"
-								minlength="6"
-								maxlength="6"
-								autocomplete="one-time-code"
-								bind:value={controller.code}
-								oninput={(e) => controller.on2FAInput(e)}
-								onblur={() => (controller.touched.code = true)}
-								aria-required="true"
-								aria-invalid={controller.touched.code && !controller.isCodeValid}
-								aria-describedby="code-hint {controller.touched.code && !controller.isCodeValid
-									? 'code-error'
-									: ''}"
-								placeholder="000000"
-								required
-								disabled={controller.isLoading}
-								class="w-full px-4 pr-10 py-2.5 bg-app-bg/50 border rounded-lg text-text-primary placeholder-gray-600
-                           text-center font-mono text-lg tracking-[0.5em] focus:bg-app-bg focus:ring-2 focus:outline-none
-                           transition-all disabled:opacity-50
-                    {(controller.touched.code && !controller.isCodeValid) ||
-								controller.apiError?.code === '2FA_INVALID_CODE'
-									? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-									: 'border-gray-800 focus:border-text-brand focus:ring-text-brand/20'}"
-							/>
-						</div>
-						<div
-							class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-800"
-						>
-							<button
-								type="button"
-								onclick={() => controller.close2FAModal()}
-								disabled={controller.isLoading}
-								class="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-900 text-gray-300 hover:text-white border border-gray-700 text-sm font-medium hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-							>
-								Cancelar
-							</button>
-							<button
-								type="submit"
-								disabled={controller.isLoading}
-								aria-busy={controller.isLoading}
-								class="
-					w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2
-					transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed border
-					border-emerald-900/60 bg-emerald-950/70 text-emerald-400 hover:bg-emerald-900/50 hover:text-emerald-300
-					focus-visible:ring-emerald-500 focus-visible:ring-offset-gray-900 flex items-center justify-center gap-2"
-							>
-								{#if controller.isLoading}
-									<svg
-										class="animate-spin h-4 w-4 text-emerald-400"
-										fill="none"
-										viewBox="0 0 24 24"
-										aria-hidden="true"
-									>
-										<circle
-											class="opacity-25"
-											cx="12"
-											cy="12"
-											r="10"
-											stroke="currentColor"
-											stroke-width="4"
-										></circle>
-										<path
-											class="opacity-75"
-											fill="currentColor"
-											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-										></path>
-									</svg>
-									<span>Salvando...</span>
-								{:else}
-									<span>Salvar chave</span>
-								{/if}
-							</button>
-						</div>
-					</form>
-				{/if}
-			{:else}
-				<div class="flex items-start gap-3">
-					<div
-						class="p-2.5 self-start rounded-lg shrink-0 border bg-red-950/80 border-red-900/60 text-red-400"
-					>
-						<svg
-							class="w-6 h-6"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							aria-hidden="true"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-							/>
-						</svg>
-					</div>
-
-					<div class="flex-1 pr-6">
-						<h2 id="two-factor-modal-title" class="text-lg font-bold text-gray-100 font-montserrat">
-							Desativar autenticação em dois fatores?
-						</h2>
-						<p
-							id="two-factor-modal-description"
-							class="text-sm text-gray-300 mt-1 leading-relaxed"
-							aria-live="polite"
-						>
-							Desativar a autenticação em dois fatores deixará sua conta vulnerável! Caso realmente
-							queira desativar insira sua senha novamente!
-						</p>
-					</div>
-
-					<button
-						type="button"
-						onclick={() => controller.close2FAModal()}
-						disabled={controller.isLoading}
-						aria-label="Fechar modal"
-						class="hover:cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:opacity-50 transition-colors"
-					>
-						<svg
-							class="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							aria-hidden="true"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
-				</div>
-
-				<form onsubmit={(e) => controller.disable2FA(e)} class="space-y-5 font-inter">
-					<!-- Password -->
-					<div class="space-y-2">
-						<label for="password" class="block text-sm font-medium text-gray-300">Senha</label>
-						<div class="relative flex items-center">
-							<input
-								type={controller.showPassword ? "text" : "password"}
-								id="password"
-								name="password"
-								autocomplete="current-password"
-								minlength="8"
-								bind:value={controller.password}
-								oninput={() => controller.onInput()}
-								onblur={() => (controller.touched.password = true)}
-								aria-required="true"
-								aria-invalid={controller.touched.password && !controller.isPasswordValid}
-								aria-describedby={controller.touched.password && !controller.isPasswordValid
-									? "password-error"
-									: undefined}
-								placeholder="••••••••"
-								required
-								disabled={controller.isLoading}
-								class="w-full px-4 pr-10 py-2.5 bg-app-bg/50 border rounded-lg text-text-primary placeholder-gray-600 text-sm focus:bg-app-bg focus:ring-1 focus:outline-none transition-all disabled:opacity-50
-                				{(controller.touched.password && !controller.isPasswordValid) ||
-								controller.apiError?.code === 'AUTH_INCORRECT_PASSWORD'
-									? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-									: 'border-gray-800 focus:border-text-brand focus:ring-text-brand'}"
-							/>
+						{#snippet suffixIcon()}
 							<button
 								type="button"
 								onclick={() => controller.togglePassword()}
-								class="absolute right-3 p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+								class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
 								aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
 							>
 								{#if controller.showPassword}
@@ -802,143 +390,229 @@
 									</svg>
 								{/if}
 							</button>
-						</div>
-						{#if (controller.touched.password && !controller.isPasswordValid) || controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"}
-							<p id="password-error" role="alert" class="text-xs text-red-400">
-								{controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
-									? "Senha incorreta."
-									: "A senha deve conter no mínimo 8 caracteres."}
-							</p>
-						{/if}
-					</div>
+						{/snippet}
+					</Input>
 
 					<div
-						class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-800"
+						class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-app-border"
 					>
-						<button
+						<Button
 							type="button"
-							onclick={() => controller.close2FAModal()}
+							variant="dark"
+							size="md"
 							disabled={controller.isLoading}
-							class="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-900 text-gray-300 hover:text-white border border-gray-700 text-sm font-medium hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+							onclick={() => controller.close2FAModal()}
+							class="w-full sm:w-auto"
 						>
 							Cancelar
-						</button>
-						<button
+						</Button>
+						<Button
 							type="submit"
-							disabled={controller.isLoading}
-							aria-busy={controller.isLoading}
-							class="
-					w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2
-					transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed border
-					border-red-900/60 bg-red-950/70 text-red-400 hover:bg-red-900/50 hover:text-red-300
-					focus-visible:ring-red-500 focus-visible:ring-offset-gray-900 flex items-center justify-center gap-2"
+							variant="success-soft"
+							size="md"
+							isLoading={controller.isLoading}
+							class="w-full sm:w-auto"
 						>
-							{#if controller.isLoading}
-								<svg
-									class="animate-spin h-4 w-4 text-red-400"
-									fill="none"
-									viewBox="0 0 24 24"
-									aria-hidden="true"
+							<span>{controller.isLoading ? "Gerando..." : "Gerar chave"}</span>
+						</Button>
+					</div>
+				</form>
+			{:else}
+				<form onsubmit={(e) => controller.save2FA(e)} class="space-y-5 font-inter">
+					<div
+						transition:slide={{ duration: 250 }}
+						class="flex flex-col items-center gap-5 p-4 bg-app-bg/20 border border-app-border rounded-lg"
+					>
+						<div class="bg-white p-2.5 rounded-xl shadow-inner shrink-0">
+							<img
+								src={controller.qrCodeUrl}
+								alt="QR Code para Autenticação 2FA"
+								class="w-48 h-48 rounded"
+							/>
+						</div>
+
+						<div class="w-full space-y-2">
+							<label for="twoFactorSecret" class="text-xs font-medium text-text-secondary">
+								Chave secreta (se não conseguir escanear):
+							</label>
+							<div class="flex items-center gap-2">
+								<div
+									class="flex-1 p-2.5 bg-app-bg border border-app-border rounded-lg shadow-inner"
 								>
-									<circle
-										class="opacity-25"
-										cx="12"
-										cy="12"
-										r="10"
+									<code
+										id="twoFactorSecret"
+										aria-label="Chave secreta de configuração"
+										class="text-sm font-mono font-medium text-emerald-300 break-all leading-relaxed tracking-wider"
+									>
+										{controller.twoFactorSecret || "Gerando chave..."}
+									</code>
+								</div>
+
+								<button
+									type="button"
+									title="Copiar chave secreta"
+									aria-label="Copiar chave secreta para a área de transferência"
+									class="p-2.5 rounded-lg border border-app-border bg-app-bg text-text-muted hover:bg-app-surface hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
 										stroke="currentColor"
-										stroke-width="4"
-									></circle>
-									<path
-										class="opacity-75"
-										fill="currentColor"
-										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-									></path>
-								</svg>
-								<span>Desativando...</span>
-							{:else}
-								<span>Desativar</span>
-							{/if}
-						</button>
+										viewBox="0 0 24 24"
+										aria-hidden="true"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+										/>
+									</svg>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<CodeInput
+						bind:value={controller.code}
+						touched={controller.touched.code}
+						error={!controller.isCodeValid || controller.apiError?.code === "2FA_INVALID_CODE"
+							? "O código deve conter exatamente 6 números."
+							: undefined}
+						disabled={controller.isLoading}
+						oninput={(e) => controller.on2FAInput(e)}
+						onblur={() => (controller.touched.code = true)}
+					/>
+
+					<div
+						class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-app-border"
+					>
+						<Button
+							type="button"
+							variant="dark"
+							size="md"
+							disabled={controller.isLoading}
+							onclick={() => controller.close2FAModal()}
+							class="w-full sm:w-auto"
+						>
+							Cancelar
+						</Button>
+						<Button
+							type="submit"
+							variant="success-soft"
+							size="md"
+							isLoading={controller.isLoading}
+							class="w-full sm:w-auto"
+						>
+							<span>{controller.isLoading ? "Salvando..." : "Salvar chave"}</span>
+						</Button>
 					</div>
 				</form>
 			{/if}
-		</div>
-	</div>
+		{:else}
+			<form onsubmit={(e) => controller.disable2FA(e)} class="space-y-5 font-inter">
+				<Input
+					id="password"
+					name="password"
+					type={controller.showPassword ? "text" : "password"}
+					label="Senha"
+					placeholder="••••••••"
+					autocomplete="current-password"
+					minlength={8}
+					required
+					disabled={controller.isLoading}
+					bind:value={controller.password}
+					touched={controller.touched.password}
+					error={(controller.touched.password && !controller.isPasswordValid) ||
+					controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+						? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+							? "Senha incorreta."
+							: "A senha deve conter no mínimo 8 caracteres."
+						: undefined}
+					oninput={() => controller.onInput()}
+					onblur={() => (controller.touched.password = true)}
+				>
+					{#snippet suffixIcon()}
+						<button
+							type="button"
+							onclick={() => controller.togglePassword()}
+							class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+							aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
+						>
+							{#if controller.showPassword}
+								<svg
+									class="h-5 w-5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+									<circle cx="12" cy="12" r="3" />
+								</svg>
+							{:else}
+								<svg
+									class="h-5 w-5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+									<path
+										d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+									/>
+									<path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+									<line x1="2" x2="22" y1="2" y2="22" />
+								</svg>
+							{/if}
+						</button>
+					{/snippet}
+				</Input>
+
+				<div
+					class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-app-border"
+				>
+					<Button
+						type="button"
+						variant="dark"
+						size="md"
+						disabled={controller.isLoading}
+						onclick={() => controller.close2FAModal()}
+						class="w-full sm:w-auto"
+					>
+						Cancelar
+					</Button>
+					<Button
+						type="submit"
+						variant="danger"
+						size="md"
+						isLoading={controller.isLoading}
+						class="w-full sm:w-auto"
+					>
+						<span>{controller.isLoading ? "Desativando..." : "Desativar"}</span>
+					</Button>
+				</div>
+			</form>
+		{/if}
+	</Modal>
 {/if}
 
 {#if controller.isChangePasswordModalOpen}
-	<div
-		use:focusTrap
-		class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm overflow-y-auto flex min-h-full items-center justify-center p-4"
-		role="dialog"
-		aria-modal="true"
-		aria-busy={controller.isLoading}
-		aria-labelledby="two-factor-modal-title"
-		aria-describedby="two-factor-modal-description"
-		onkeydown={(e) => e.key === "Escape" && controller.close2FAModal()}
-		tabindex="-1"
-	>
-		<div
-			class="bg-app-surface border border-gray-800 rounded-xl p-6 max-w-md w-full flex flex-col gap-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 relative my-auto"
-		>
-			<!-- Modal Header -->
-			<div class="flex items-start gap-3">
-				<div
-					class="p-2.5 self-start rounded-lg shrink-0 border bg-amber-950/80 border-amber-900/60 text-amber-400"
-				>
-					<svg
-						class="w-6 h-6"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-						/>
-					</svg>
-				</div>
-
-				<div class="flex-1 pr-6">
-					<h2 id="two-factor-modal-title" class="text-lg font-bold text-gray-100 font-montserrat">
-						Mudar senha?
-					</h2>
-					<p
-						id="two-factor-modal-description"
-						class="text-sm text-gray-300 mt-1 leading-relaxed"
-						aria-live="polite"
-					>
-						Para mudar sua senha digite sua senha antiga e a nova senha. Você será desconectado de
-						outros dispositivos!
-					</p>
-				</div>
-
-				<button
-					type="button"
-					onclick={() => controller.closeChangePasswordModal()}
-					disabled={controller.isLoading}
-					aria-label="Fechar modal"
-					class="hover:cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:opacity-50 transition-colors"
-				>
-					<svg
-						class="w-5 h-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						/>
-					</svg>
-				</button>
-			</div>
-		</div>
-	</div>
+	<Modal
+		isOpen={controller.isChangePasswordModalOpen}
+		title="Mudar senha?"
+		description="Para mudar sua senha digite sua senha antiga e a nova senha. Você será desconectado de
+						outros dispositivos!"
+		variant="warning"
+		isLoading={controller.isLoading}
+		onClose={() => controller.closeChangePasswordModal()}
+		{focusTrap}
+	></Modal>
 {/if}

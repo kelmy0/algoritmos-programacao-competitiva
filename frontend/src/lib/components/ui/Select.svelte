@@ -42,14 +42,14 @@
 <div class="space-y-2">
 	{#if label}
 		<div class="flex items-center justify-between">
-			<label for={id} class="block text-sm font-medium text-gray-300">
+			<label for={id} class="block text-sm font-medium text-text-secondary">
 				{label}
 				{#if required}
 					<span class="text-red-400" aria-hidden="true">*</span>
 				{/if}
 			</label>
 			{#if helperText}
-				<span class="text-xs text-gray-500">{helperText}</span>
+				<span class="text-xs text-text-muted">{helperText}</span>
 			{/if}
 		</div>
 	{/if}
@@ -64,10 +64,11 @@
 			aria-required={required ? "true" : undefined}
 			aria-invalid={hasError}
 			aria-describedby={hasError ? errorId : undefined}
-			class="w-full py-2.5 px-3 bg-app-bg/50 border rounded-lg text-text-primary text-sm focus:bg-app-bg focus:ring-1 focus:outline-none transition-all hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+			class="w-full py-2.5 px-3 bg-app-bg/50 border rounded-lg text-text-primary text-sm focus:bg-app-bg
+			focus:ring-1 focus:outline-none transition-all hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
             {hasError
 				? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-				: 'border-gray-800 focus:border-text-brand focus:ring-text-brand'} 
+				: 'border-app-border focus:border-text-brand focus:ring-text-brand'} 
             {className}"
 			{...restProps}
 		>

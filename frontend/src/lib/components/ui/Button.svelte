@@ -37,21 +37,21 @@
 		primary:
 			"bg-text-brand text-app-bg font-semibold hover:opacity-90 focus-visible:ring-text-brand",
 		secondary:
-			"bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 focus-visible:ring-zinc-400",
+			"bg-app-overlay text-text-primary border border-app-border hover:bg-app-border hover:border-app-border-hover focus-visible:ring-text-brand",
 		success:
 			"bg-emerald-600 text-white font-medium hover:bg-emerald-500 focus-visible:ring-emerald-500",
 		"success-soft":
 			"border border-emerald-900/50 bg-emerald-950/30 text-emerald-400 font-semibold hover:bg-emerald-900/50 hover:text-emerald-300 focus-visible:ring-emerald-500",
 		warning:
-			"bg-amber-500 text-zinc-950 font-semibold hover:bg-amber-400 focus-visible:ring-amber-400",
+			"bg-amber-500 text-app-bg font-semibold hover:bg-amber-400 focus-visible:ring-amber-400",
 		danger: "bg-red-600 text-white font-medium hover:bg-red-500 focus-visible:ring-red-500",
 		"danger-soft":
 			"border border-red-900/50 bg-red-950/30 text-red-400 font-semibold hover:bg-red-900/50 hover:text-red-300 focus-visible:ring-red-500",
-		dark: "bg-zinc-950 text-zinc-200 border border-zinc-800 hover:bg-zinc-900 focus-visible:ring-zinc-700",
+		dark: "bg-app-bg text-text-primary border border-app-border hover:bg-app-surface focus-visible:ring-text-brand",
 		outline:
-			"bg-transparent border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 focus-visible:ring-zinc-400",
+			"bg-transparent border border-app-border text-text-secondary hover:text-text-primary hover:border-app-border-hover focus-visible:ring-text-brand",
 		ghost:
-			"bg-transparent text-zinc-300 hover:bg-zinc-800/60 hover:text-white focus-visible:ring-zinc-400"
+			"bg-transparent text-text-secondary hover:bg-app-overlay hover:text-text-primary focus-visible:ring-text-brand"
 	};
 
 	const sizeClasses: Record<Size, string> = {

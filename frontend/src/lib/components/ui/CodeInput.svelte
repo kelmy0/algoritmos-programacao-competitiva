@@ -30,7 +30,7 @@
 
 <div class="space-y-2">
 	{#if label}
-		<label for={id} class="block text-sm font-medium text-gray-300">
+		<label for={id} class="block text-sm font-medium text-text-secondary">
 			{label}
 		</label>
 	{/if}
@@ -53,12 +53,12 @@
 		placeholder={"0".repeat(length)}
 		required
 		{disabled}
-		class="w-full px-4 py-3 bg-app-bg/50 border rounded-lg text-text-primary placeholder-gray-600
+		class="w-full px-4 py-3 bg-app-bg/50 border rounded-lg text-text-primary placeholder:text-text-muted
                text-center font-mono text-xl tracking-[0.5em] focus:bg-app-bg focus:ring-2 focus:outline-none
                transition-all disabled:opacity-50
         {hasError
 			? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-			: 'border-gray-800 focus:border-text-brand focus:ring-text-brand/20'}"
+			: 'border-app-border focus:border-text-brand focus:ring-text-brand/20'}"
 	/>
 
 	{#if hasError}

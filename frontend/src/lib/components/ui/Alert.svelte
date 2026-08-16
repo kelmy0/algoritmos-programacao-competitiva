@@ -18,7 +18,7 @@
 			error: {
 				role: "alert",
 				ariaLive: "assertive" as const,
-				containerClass: "bg-red-950/40 border-red-900/60 text-red-300",
+				containerClass: "bg-red-950/30 border-red-900/50 text-red-300",
 				titleClass: "text-red-200",
 				messageClass: "text-red-300/80",
 				iconClass: "text-red-400",
@@ -28,7 +28,7 @@
 			success: {
 				role: "status",
 				ariaLive: "polite" as const,
-				containerClass: "bg-emerald-950/40 border-emerald-900/60 text-emerald-300",
+				containerClass: "bg-emerald-950/30 border-emerald-900/50 text-emerald-300",
 				titleClass: "text-emerald-200",
 				messageClass: "text-emerald-300/80",
 				iconClass: "text-emerald-400",
@@ -37,7 +37,7 @@
 			warning: {
 				role: "alert",
 				ariaLive: "polite" as const,
-				containerClass: "bg-amber-950/40 border-amber-900/60 text-amber-300",
+				containerClass: "bg-amber-950/30 border-amber-900/50 text-amber-300",
 				titleClass: "text-amber-200",
 				messageClass: "text-amber-300/80",
 				iconClass: "text-amber-400",
@@ -47,10 +47,10 @@
 			info: {
 				role: "status",
 				ariaLive: "polite" as const,
-				containerClass: "bg-blue-950/40 border-blue-900/60 text-blue-300",
-				titleClass: "text-blue-200",
-				messageClass: "text-blue-300/80",
-				iconClass: "text-blue-400",
+				containerClass: "bg-sky-950/30 border-sky-900/50 text-sky-300",
+				titleClass: "text-sky-200",
+				messageClass: "text-sky-300/80",
+				iconClass: "text-sky-400",
 				iconPath: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 			}
 		}[type]

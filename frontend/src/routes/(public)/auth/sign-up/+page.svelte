@@ -28,13 +28,13 @@
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4 scroll-smooth">
-	<div class="w-full max-w-md p-8 bg-app-surface border border-gray-800 rounded-xl shadow-xl">
+	<div class="w-full max-w-md p-8 bg-app-surface border border-app-border rounded-xl shadow-xl">
 		<!-- Header do Card -->
 		<div class="mb-8 text-center">
 			<h2 class="font-montserrat font-bold text-2xl text-text-primary tracking-tight mb-2">
 				Bem-vindo!
 			</h2>
-			<p class="text-sm text-gray-400 font-inter">
+			<p class="text-sm text-text-muted font-inter">
 				Crie uma conta para salvar seus algoritmos favoritos.
 			</p>
 		</div>
@@ -120,7 +120,7 @@
 					<button
 						type="button"
 						onclick={() => controller.togglePassword()}
-						class="p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+						class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
 						aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
 					>
 						{#if controller.showPassword}
@@ -202,7 +202,7 @@
 					<button
 						type="button"
 						onclick={() => controller.toggleConfirmPassword()}
-						class="p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+						class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
 						aria-label={controller.showConfirmPassword
 							? "Ocultar confirmação de senha"
 							: "Mostrar confirmação de senha"}
@@ -272,7 +272,7 @@
 			</Button>
 
 			<!-- Login -->
-			<p class="text-center text-sm text-gray-400 pt-2">
+			<p class="text-center text-sm text-text-muted pt-2">
 				Já tem uma conta?
 				<a
 					href="/auth/login"
@@ -285,9 +285,9 @@
 		<!-- Divider -->
 		<div class="relative my-6 flex items-center justify-center">
 			<div class="absolute inset-0 flex items-center">
-				<div class="w-full border-t border-gray-800"></div>
+				<div class="w-full border-t border-app-border"></div>
 			</div>
-			<div class="relative bg-app-bg px-3 text-xs text-gray-400 uppercase tracking-wider">
+			<div class="relative bg-app-bg px-3 text-xs text-text-muted uppercase tracking-wider">
 				ou continue com
 			</div>
 		</div>
@@ -297,7 +297,7 @@
 			<!-- Google -->
 			<a
 				href="/api/auth/social/google"
-				class="flex items-center justify-center gap-2 py-2.5 px-3 bg-app-bg/50 border border-gray-800 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-800/40 hover:border-gray-700 hover:text-white transition-all focus:outline-none focus:ring-1 focus:ring-text-brand"
+				class="flex items-center justify-center gap-2 py-2.5 px-3 bg-app-bg/50 border border-app-border rounded-lg text-xs font-medium text-text-secondary hover:bg-app-bg/40 hover:border-app-border-hover hover:text-text-primary transition-all focus:outline-none focus:ring-1 focus:ring-text-brand"
 				aria-label="Entrar com o Google"
 			>
 				<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -324,7 +324,7 @@
 			<!-- GitHub -->
 			<a
 				href="/api/auth/social/github"
-				class="flex items-center justify-center gap-2 py-2.5 px-3 bg-app-bg/50 border border-gray-800 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-800/40 hover:border-gray-700 hover:text-white transition-all focus:outline-none focus:ring-1 focus:ring-text-brand"
+				class="flex items-center justify-center gap-2 py-2.5 px-3 bg-app-bg/50 border border-app-border rounded-lg text-xs font-medium text-text-secondary hover:bg-app-bg/40 hover:border-app-border-hover hover:text-text-primary transition-all focus:outline-none focus:ring-1 focus:ring-text-brand"
 				aria-label="Entrar com o GitHub"
 			>
 				<svg class="w-4 h-4 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">

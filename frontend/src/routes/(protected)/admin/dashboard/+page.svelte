@@ -115,13 +115,13 @@
 
 <div class="space-y-6 font-inter">
 	<header
-		class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-800"
+		class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-app-border"
 	>
 		<div>
 			<h1 class="font-montserrat font-bold text-2xl md:text-3xl text-text-primary tracking-tight">
 				Painel Administrativo
 			</h1>
-			<p class="text-sm text-gray-400 mt-1">
+			<p class="text-sm text-text-muted mt-1">
 				Gerencie os conteúdos, algoritmos e configurações gerais da plataforma.
 			</p>
 		</div>

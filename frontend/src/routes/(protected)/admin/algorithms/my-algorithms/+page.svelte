@@ -13,13 +13,13 @@
 
 <div class="space-y-6 font-inter">
 	<header
-		class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-800"
+		class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-app-border"
 	>
 		<div>
 			<h1 class="font-montserrat font-bold text-2xl md:text-3xl text-text-primary tracking-tight">
 				Meus Algoritmos
 			</h1>
-			<p class="text-sm text-gray-400 mt-1">Veja seus algoritmos.</p>
+			<p class="text-sm text-text-muted mt-1">Veja seus algoritmos.</p>
 		</div>
 	</header>
 
@@ -28,11 +28,11 @@
 		{#each data.algorithms as item (item.publicId)}
 			{@const diff = DIFFICULTY_MAP[item.difficulty] ?? {
 				label: item.difficulty,
-				style: "bg-gray-800/60 text-gray-300 border-gray-700"
+				style: "bg-app-bg/60 text-text-secondary border-app-border"
 			}}
 			{@const st = STATUS_MAP[item.status] ?? {
 				label: item.status,
-				style: "bg-gray-800/60 text-gray-300 border-gray-700"
+				style: "bg-app-bg/60 text-text-secondary border-app-border"
 			}}
 
 			<Card title={item.name} href="/admin/algorithms/my-algorithms/{item.slug}-{item.publicId}">
@@ -44,7 +44,7 @@
 					</span>
 				{/snippet}
 
-				<p class="text-xs font-medium text-gray-400 flex items-center gap-2">
+				<p class="text-xs font-medium text-text-muted flex items-center gap-2">
 					<span class="inline-block w-2 h-2 rounded-full bg-text-brand" aria-hidden="true"></span>
 					{item.category}
 				</p>
@@ -59,7 +59,7 @@
 
 				{#snippet footerLeft()}
 					<span
-						class="text-xs font-mono text-gray-400 truncate max-w-30 select-all"
+						class="text-xs font-mono text-text-muted truncate max-w-30 select-all"
 						title="Copiar ID"
 					>
 						{item.publicId}
@@ -69,7 +69,7 @@
 		{:else}
 			<div
 				role="status"
-				class="col-span-full py-12 text-center bg-app-surface border border-gray-800 rounded-xl text-gray-400 text-sm"
+				class="col-span-full py-12 text-center bg-app-surface border border-app-border rounded-xl text-text-muted text-sm"
 			>
 				Nenhum algoritmo encontrado.
 			</div>

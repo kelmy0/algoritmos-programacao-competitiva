@@ -38,7 +38,7 @@
 
 {#if !hasBeenAuthenticated && showAuthOverlay}
 	<div class="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4">
-		<div class="w-full max-w-md p-8 bg-app-surface border border-gray-800 rounded-xl shadow-xl">
+		<div class="w-full max-w-md p-8 bg-app-surface border border-app-border rounded-xl shadow-xl">
 			{@render AuthForm("auth-title-login")}
 		</div>
 	</div>
@@ -55,10 +55,10 @@
 				aria-modal="true"
 				aria-labelledby="auth-title-overlay"
 				tabindex="-1"
-				class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+				class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-app-bg/60 backdrop-blur-md animate-in fade-in duration-200"
 			>
 				<div
-					class="w-full max-w-md p-8 bg-app-surface/95 border border-gray-800 rounded-xl shadow-2xl backdrop-blur-xl"
+					class="w-full max-w-md p-8 bg-app-surface/95 border border-app-border rounded-xl shadow-2xl backdrop-blur-xl"
 				>
 					<div class="mb-4 text-center">
 						<span
@@ -82,7 +82,7 @@
 		>
 			Chave de Segurança Administrador
 		</h2>
-		<p class="text-sm text-gray-400 font-inter">
+		<p class="text-sm text-text-muted font-inter">
 			Digite sua senha para desbloquear e continuar de onde parou.
 		</p>
 	</div>
@@ -111,7 +111,7 @@
 				<button
 					type="button"
 					onclick={() => controller.togglePassword()}
-					class="p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+					class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
 					aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
 				>
 					{#if controller.showPassword}

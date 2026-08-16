@@ -20,7 +20,7 @@
 <div class="mx-auto max-w-4xl space-y-6 font-inter">
 	<a
 		href="/"
-		class="inline-flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand rounded-md py-1 px-1.5 -ml-1.5 w-fit"
+		class="inline-flex items-center gap-2 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand rounded-md py-1 px-1.5 -ml-1.5 w-fit"
 	>
 		<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -30,9 +30,9 @@
 
 	{#if algorithm}
 		<article
-			class="bg-app-surface border-gray-800 space-y-6 rounded-xl border p-6 shadow-xl md:p-8"
+			class="bg-app-surface border-app-border space-y-6 rounded-xl border p-6 shadow-xl md:p-8"
 		>
-			<header class="border-gray-800 space-y-3 border-b pb-6">
+			<header class="border-app-border space-y-3 border-b pb-6">
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<span
 						class="text-text-brand bg-text-brand/10 border-text-brand/20 rounded-md border px-2.5 py-1 font-mono text-xs"
@@ -40,7 +40,7 @@
 					>
 						{algorithm.category}
 					</span>
-					<span class="font-mono text-xs text-gray-400">
+					<span class="font-mono text-xs text-text-muted">
 						<span class="sr-only">Identificador: </span>ID: {algorithm.publicId}
 					</span>
 				</div>
@@ -53,12 +53,12 @@
 			<section class="space-y-4" aria-labelledby="heading-implementacao">
 				<h2
 					id="heading-implementacao"
-					class="text-sm font-semibold uppercase tracking-wider text-gray-200"
+					class="text-sm font-semibold uppercase tracking-wider text-text-secondary"
 				>
 					Implementação
 				</h2>
 
-				<div class="prose prose-invert max-w-none font-mono text-sm text-gray-200">
+				<div class="prose prose-invert max-w-none font-mono text-sm text-text-secondary">
 					{@html algorithm.contentHtml}
 				</div>
 			</section>

@@ -38,7 +38,7 @@
 <div class="min-h-screen bg-app-bg text-text-primary font-inter flex flex-col">
 	<!--Topbar-->
 	<header
-		class="bg-app-surface h-16 border-b border-gray-800 fixed top-0 left-0 right-0 flex items-center justify-between px-6 z-50"
+		class="bg-app-surface h-16 border-b border-app-border fixed top-0 left-0 right-0 flex items-center justify-between px-6 z-50"
 	>
 		{#if navigating.to}
 			<div
@@ -62,7 +62,7 @@
 			<form role="search" onsubmit={(e) => e.preventDefault()}>
 				<div class="relative">
 					<span
-						class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500"
+						class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-text-muted"
 						aria-hidden="true"
 					>
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +79,7 @@
 						id="global-search"
 						aria-label="Pesquisar algoritmos e tópicos"
 						placeholder="Pesquisar..."
-						class="w-full pl-10 pr-4 py-2 bg-app-bg/50 border border-gray-800 rounded-lg text-text-primary placeholder-gray-500 text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
+						class="w-full pl-10 pr-4 py-2 bg-app-bg/50 border border-app-border rounded-lg text-text-primary placeholder-text-muted text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
 					/>
 				</div>
 			</form>
@@ -92,7 +92,7 @@
 				<button
 					type="button"
 					onclick={() => (isProfileMenuOpen = !isProfileMenuOpen)}
-					class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-app-bg border border-transparent hover:border-gray-800 transition-all focus:outline-none focus:ring-1 focus:ring-text-brand z-50 cursor-pointer"
+					class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-app-bg border border-transparent hover:border-app-border transition-all focus:outline-none focus:ring-1 focus:ring-text-brand z-50 cursor-pointer"
 					aria-expanded={isProfileMenuOpen}
 					aria-haspopup="true"
 					aria-label="Menu do usuário para {page.data.user.username ?? 'Usuário'}"
@@ -113,7 +113,7 @@
 
 					<!-- Dropdown indicator -->
 					<svg
-						class="w-4 h-4 text-gray-400 transition-transform duration-200 {isProfileMenuOpen
+						class="w-4 h-4 text-text-muted transition-transform duration-200 {isProfileMenuOpen
 							? 'rotate-180'
 							: ''}"
 						fill="none"
@@ -139,11 +139,11 @@
 						use:focusTrap
 						use:clickOutside={closeProfileMenu}
 						aria-label="Opções do perfil"
-						class="absolute right-0 top-full mt-2 w-56 bg-app-surface border border-gray-800 rounded-xl shadow-2xl py-2 z-50 flex flex-col text-sm"
+						class="absolute right-0 top-full mt-2 w-56 bg-app-surface border border-app-border rounded-xl shadow-2xl py-2 z-50 flex flex-col text-sm"
 					>
 						<!-- Menu header -->
-						<div class="px-4 py-2 border-b border-gray-800/80 mb-1">
-							<p class="text-xs text-gray-400">Conectado como</p>
+						<div class="px-4 py-2 border-b border-app-border/80 mb-1">
+							<p class="text-xs text-text-muted">Conectado como</p>
 							<p class="font-semibold text-text-primary truncate">
 								{page.data.user.username ?? "Usuário"}
 							</p>
@@ -154,11 +154,11 @@
 							href="/users/me"
 							role="menuitem"
 							onclick={closeProfileMenu}
-							class="flex items-center gap-2.5 px-4 py-2 text-gray-300 hover:text-text-primary hover:bg-app-bg transition-colors"
+							class="flex items-center gap-2.5 px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-app-bg transition-colors"
 						>
 							<svg
 								aria-hidden="true"
-								class="w-4 h-4 text-gray-400"
+								class="w-4 h-4 text-text-muted"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -177,11 +177,11 @@
 							href="/"
 							role="menuitem"
 							onclick={closeProfileMenu}
-							class="flex items-center gap-2.5 px-4 py-2 text-gray-300 hover:text-text-primary hover:bg-app-bg transition-colors"
+							class="flex items-center gap-2.5 px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-app-bg transition-colors"
 						>
 							<svg
 								aria-hidden="true"
-								class="w-4 h-4 text-gray-400"
+								class="w-4 h-4 text-text-muted"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -202,7 +202,7 @@
 							Configurações
 						</a>
 
-						<div class="my-1 border-t border-gray-800"></div>
+						<div class="my-1 border-t border-app-border"></div>
 
 						<!-- Logout -->
 						<form method="POST" action="/auth/logout">
@@ -278,7 +278,7 @@
 				tabindex="-1"
 				onkeydown={(e) => (e.key === "Enter" || e.key === "Space") && closeMobileMenu()}
 				aria-label="Fechar menu de navegação"
-				class="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm border-0 cursor-default"
+				class="fixed inset-0 bg-app-bg/60 z-40 md:hidden backdrop-blur-sm border-0 cursor-default"
 			></div>
 		{/if}
 		<!-- ========================================== -->
@@ -289,7 +289,7 @@
 			aria-label="Navegação mobile"
 			inert={!isSidebarOpen}
 			use:focusTrap
-			class="fixed top-16 bottom-0 right-0 z-50 w-64 bg-app-surface border-l border-gray-800 transform transition-transform duration-200 ease-in-out md:hidden
+			class="fixed top-16 bottom-0 right-0 z-50 w-64 bg-app-surface border-l border-app-border transform transition-transform duration-200 ease-in-out md:hidden
     		{isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}"
 		>
 			<nav class="p-4 flex flex-col h-full justify-between">
@@ -300,7 +300,7 @@
 						class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
                 {page.url.pathname === '/'
 							? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
-							: 'text-gray-400 border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
+							: 'text-text-muted border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
 						onclick={() => (isSidebarOpen = false)}
 					>
 						<svg
@@ -327,7 +327,7 @@
 							class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
                 {page.url.pathname === '/admin/dashboard'
 								? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
-								: 'text-gray-400 border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
+								: 'text-text-muted border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
 							onclick={() => (isSidebarOpen = false)}
 						>
 							<svg
@@ -350,7 +350,7 @@
 					<!-- Other mobile links will go here -->
 				</div>
 
-				<div class="pt-4 border-t border-gray-800 mt-auto">
+				<div class="pt-4 border-t border-app-border mt-auto">
 					{#if page.data.user}
 						<div class="flex flex-col gap-3">
 							<div class="flex items-center gap-3 px-2">
@@ -363,7 +363,7 @@
 									<span class="text-sm font-medium text-text-primary truncate">
 										{page.data.user.username ?? "Usuário"}
 									</span>
-									<span class="text-xs text-gray-500 truncate">
+									<span class="text-xs text-text-muted truncate">
 										{page.data.user.email ?? ""}
 									</span>
 								</div>
@@ -373,7 +373,7 @@
 								<a
 									href="/users/me"
 									onclick={() => (isSidebarOpen = false)}
-									class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-400 hover:text-text-primary hover:bg-app-bg/30 rounded-lg transition-colors"
+									class="flex items-center gap-2.5 px-3 py-2 text-sm text-text-muted hover:text-text-primary hover:bg-app-bg/30 rounded-lg transition-colors"
 								>
 									<svg
 										class="w-4 h-4"
@@ -395,11 +395,11 @@
 								<a
 									href="/"
 									onclick={() => (isSidebarOpen = false)}
-									class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-400 hover:text-text-primary hover:bg-app-bg/30 rounded-lg transition-colors"
+									class="flex items-center gap-2.5 px-3 py-2 text-sm text-text-muted hover:text-text-primary hover:bg-app-bg/30 rounded-lg transition-colors"
 								>
 									<svg
 										aria-hidden="true"
-										class="w-4 h-4 text-gray-400"
+										class="w-4 h-4 text-text-muted"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -464,13 +464,13 @@
 
 		<aside
 			aria-label="Navegação principal"
-			class="hidden md:block w-64 bg-app-surface border-r border-gray-800 sticky top-16 h-[calc(100vh-4rem)]"
+			class="hidden md:block w-64 bg-app-surface border-r border-app-border sticky top-16 h-[calc(100vh-4rem)]"
 		>
 			<nav class="p-4 flex flex-col h-full justify-between">
 				<div class="space-y-6">
 					<div>
 						<!-- MAIN MENU -->
-						<p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+						<p class="px-4 text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
 							Menu
 						</p>
 						<div class="space-y-1">
@@ -480,7 +480,7 @@
 								class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
                         {page.url.pathname === '/'
 									? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
-									: 'text-gray-400 border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
+									: 'text-text-muted border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
 							>
 								<svg
 									class="w-5 h-5"
@@ -507,7 +507,7 @@
 									class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg font-medium transition-colors
                         {page.url.pathname === '/admin/dashboard'
 										? 'bg-app-bg/50 text-text-brand border-l-2 border-text-brand'
-										: 'text-gray-400 border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
+										: 'text-text-muted border-transparent hover:bg-app-bg/30 hover:text-text-primary'}"
 								>
 									<svg
 										class="w-5 h-5"
@@ -525,7 +525,7 @@
 									</svg>
 									<span>Dashboard</span>
 								</a>
-								<div class="ml-4 pl-3 border-l border-gray-800/80 my-1 space-y-0.5">
+								<div class="ml-4 pl-3 border-l border-app-border/80 my-1 space-y-0.5">
 									<!-- New / edit / trash -->
 									{#if page.data.user?.permissions?.includes("create:algorithms")}
 										<a
@@ -536,7 +536,7 @@
 											class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
                                     {page.url.pathname === '/admin/algorithms/new'
 												? 'text-emerald-400 bg-emerald-500/10'
-												: 'text-gray-400 hover:text-gray-200 hover:bg-app-bg/30'}"
+												: 'text-text-muted hover:text-text-secondary hover:bg-app-bg/30'}"
 										>
 											<svg
 												class="w-3.5 h-3.5"
@@ -563,7 +563,7 @@
 											class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
                                     {page.url.pathname.includes('/admin/algorithms/edit')
 												? 'text-amber-400 bg-amber-500/10'
-												: 'text-gray-400 hover:text-gray-200 hover:bg-app-bg/30'}"
+												: 'text-text-muted hover:text-text-secondary hover:bg-app-bg/30'}"
 										>
 											<svg
 												class="w-3.5 h-3.5"
@@ -590,7 +590,7 @@
 											class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
                                     {page.url.pathname.includes('/admin/algorithms/my-algorithms')
 												? 'text-teal-400 bg-teal-500/10'
-												: 'text-gray-400 hover:text-gray-200 hover:bg-app-bg/30'}"
+												: 'text-text-muted hover:text-text-secondary hover:bg-app-bg/30'}"
 										>
 											<svg
 												class="w-3.5 h-3.5"
@@ -617,7 +617,7 @@
 											class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
                                     {page.url.pathname === '/admin/algorithms/trash'
 												? 'text-rose-400 bg-rose-500/10'
-												: 'text-gray-400 hover:text-gray-200 hover:bg-app-bg/30'}"
+												: 'text-text-muted hover:text-text-secondary hover:bg-app-bg/30'}"
 										>
 											<svg
 												class="w-3.5 h-3.5"
@@ -643,7 +643,7 @@
 
 					<!-- OTHERS -->
 					<div>
-						<p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+						<p class="px-4 text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
 							Categorias
 						</p>
 
@@ -656,7 +656,7 @@
 								class="flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition-all
             {page.url.searchParams.get('category') === 'tecnologia'
 									? 'bg-text-brand/10 text-text-brand'
-									: 'text-gray-400 hover:bg-app-bg/40 hover:text-text-primary'}"
+									: 'text-text-muted hover:bg-app-bg/40 hover:text-text-primary'}"
 							>
 								<div class="flex items-center gap-2.5 truncate">
 									<svg
@@ -677,7 +677,9 @@
 								</div>
 
 								<!-- Count -->
-								<span class="text-xs px-2 py-0.5 rounded-full bg-app-bg/80 text-gray-400 font-mono">
+								<span
+									class="text-xs px-2 py-0.5 rounded-full bg-app-bg/80 text-text-muted font-mono"
+								>
 									5
 								</span>
 							</a>
@@ -690,7 +692,7 @@
 								class="flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition-all
             {page.url.searchParams.get('category') === 'design'
 									? 'bg-text-brand/10 text-text-brand'
-									: 'text-gray-400 hover:bg-app-bg/40 hover:text-text-primary'}"
+									: 'text-text-muted hover:bg-app-bg/40 hover:text-text-primary'}"
 							>
 								<div class="flex items-center gap-2.5 truncate">
 									<svg
@@ -709,7 +711,9 @@
 									</svg>
 									<span class="truncate">Programação Dinâmica</span>
 								</div>
-								<span class="text-xs px-2 py-0.5 rounded-full bg-app-bg/80 text-gray-400 font-mono">
+								<span
+									class="text-xs px-2 py-0.5 rounded-full bg-app-bg/80 text-text-muted font-mono"
+								>
 									2
 								</span>
 							</a>
@@ -717,7 +721,7 @@
 					</div>
 				</div>
 
-				<div class="pt-4 border-t border-gray-800 text-xs text-gray-400 text-center">
+				<div class="pt-4 border-t border-app-border text-xs text-text-muted text-center">
 					v1.0.0 • Algoritmos de Programação
 				</div>
 			</nav>

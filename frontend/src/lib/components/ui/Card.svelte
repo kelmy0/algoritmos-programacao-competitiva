@@ -27,13 +27,13 @@
 </script>
 
 <article
-	class="relative bg-app-surface border border-gray-800/80 rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-gray-700 hover:shadow-xl transition-all duration-200 group"
+	class="relative bg-app-surface border border-app-border rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-app-border-hover hover:shadow-xl transition-all duration-200 group"
 >
 	<div class="space-y-3">
 		{#if icon}
 			<div class="flex items-center justify-between gap-3">
 				<div
-					class="p-2.5 rounded-lg bg-app-bg/60 border border-gray-800 text-text-brand group-hover:border-text-brand/40 transition-colors flex items-center justify-center shrink-0"
+					class="p-2.5 rounded-lg bg-app-bg/60 border border-app-border text-text-brand group-hover:border-text-brand/40 transition-colors flex items-center justify-center shrink-0"
 				>
 					{@render icon()}
 				</div>
@@ -59,7 +59,7 @@
 				</h2>
 
 				{#if description}
-					<p class="text-xs text-gray-400 mt-2 leading-relaxed">
+					<p class="text-xs text-text-secondary mt-2 leading-relaxed">
 						{description}
 					</p>
 				{/if}
@@ -95,7 +95,7 @@
 				<div class="flex items-center justify-between gap-3 min-h-7">
 					<div class="flex-1 flex items-center">
 						{#if description}
-							<p class="text-xs text-gray-400 leading-relaxed line-clamp-2">
+							<p class="text-xs text-text-secondary leading-relaxed line-clamp-2">
 								{description}
 							</p>
 						{/if}
@@ -115,7 +115,7 @@
 		{/if}
 	</div>
 
-	<div class="pt-4 mt-4 border-t border-gray-800/80 flex items-center justify-between">
+	<div class="pt-4 mt-4 border-t border-app-border flex items-center justify-between">
 		<div class="relative z-10 flex items-center">
 			{#if footerLeft}
 				{@render footerLeft()}
