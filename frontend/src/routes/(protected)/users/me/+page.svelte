@@ -214,9 +214,16 @@
 					<p class="text-xs text-gray-400 mt-0.5">Última alteração há mais de 30 dias</p>
 				</div>
 
-				<a
-					href="/"
-					class="px-4 py-2 bg-app-bg border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer flex items-center justify-center gap-2"
+				<button
+					type="button"
+					onclick={() => controller.openChangePasswordModal()}
+					disabled={controller.isLoading}
+					aria-haspopup="dialog"
+					aria-expanded={controller.isChangePasswordModalOpen}
+					class="px-4 py-2 rounded-lg border font-semibold text-sm focus:outline-none focus-visible:ring-2
+						focus-visible:ring-offset-2 transition-all flex items-center justify-center gap-2 disabled:opacity-50
+						cursor-pointer disabled:cursor-not-allowed shrink-0 w-full sm:w-auto
+						bg-app-bg border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
 				>
 					<svg
 						class="w-4 h-4 text-gray-400"
@@ -224,6 +231,7 @@
 						viewBox="0 0 24 24"
 						stroke="currentColor"
 						stroke-width="2"
+						aria-hidden="true"
 					>
 						<path
 							stroke-linecap="round"
@@ -232,7 +240,7 @@
 						/>
 					</svg>
 					<span>Alterar senha</span>
-				</a>
+				</button>
 			</div>
 
 			<!-- 2FA -->
@@ -275,6 +283,7 @@
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
+							stroke-width="2"
 							aria-hidden="true"
 						>
 							<path
@@ -303,6 +312,7 @@
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
+							stroke-width="2"
 							aria-hidden="true"
 						>
 							<path
@@ -470,9 +480,11 @@
 									{/if}
 								</button>
 							</div>
-							{#if controller.touched.password && !controller.isPasswordValid}
+							{#if (controller.touched.password && !controller.isPasswordValid) || controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"}
 								<p id="password-error" role="alert" class="text-xs text-red-400">
-									A senha deve conter no mínimo 8 caracteres.
+									{controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+										? "Senha incorreta."
+										: "A senha deve conter no mínimo 8 caracteres."}
 								</p>
 							{/if}
 						</div>
@@ -791,9 +803,11 @@
 								{/if}
 							</button>
 						</div>
-						{#if controller.touched.password && !controller.isPasswordValid}
+						{#if (controller.touched.password && !controller.isPasswordValid) || controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"}
 							<p id="password-error" role="alert" class="text-xs text-red-400">
-								A senha deve conter no mínimo 8 caracteres.
+								{controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+									? "Senha incorreta."
+									: "A senha deve conter no mínimo 8 caracteres."}
 							</p>
 						{/if}
 					</div>
@@ -848,6 +862,83 @@
 					</div>
 				</form>
 			{/if}
+		</div>
+	</div>
+{/if}
+
+{#if controller.isChangePasswordModalOpen}
+	<div
+		use:focusTrap
+		class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm overflow-y-auto flex min-h-full items-center justify-center p-4"
+		role="dialog"
+		aria-modal="true"
+		aria-busy={controller.isLoading}
+		aria-labelledby="two-factor-modal-title"
+		aria-describedby="two-factor-modal-description"
+		onkeydown={(e) => e.key === "Escape" && controller.close2FAModal()}
+		tabindex="-1"
+	>
+		<div
+			class="bg-app-surface border border-gray-800 rounded-xl p-6 max-w-md w-full flex flex-col gap-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 relative my-auto"
+		>
+			<!-- Modal Header -->
+			<div class="flex items-start gap-3">
+				<div
+					class="p-2.5 self-start rounded-lg shrink-0 border bg-amber-950/80 border-amber-900/60 text-amber-400"
+				>
+					<svg
+						class="w-6 h-6"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+						/>
+					</svg>
+				</div>
+
+				<div class="flex-1 pr-6">
+					<h2 id="two-factor-modal-title" class="text-lg font-bold text-gray-100 font-montserrat">
+						Mudar senha?
+					</h2>
+					<p
+						id="two-factor-modal-description"
+						class="text-sm text-gray-300 mt-1 leading-relaxed"
+						aria-live="polite"
+					>
+						Para mudar sua senha digite sua senha antiga e a nova senha. Você será desconectado de
+						outros dispositivos!
+					</p>
+				</div>
+
+				<button
+					type="button"
+					onclick={() => controller.closeChangePasswordModal()}
+					disabled={controller.isLoading}
+					aria-label="Fechar modal"
+					class="hover:cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:opacity-50 transition-colors"
+				>
+					<svg
+						class="w-5 h-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}

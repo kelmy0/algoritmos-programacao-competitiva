@@ -14,7 +14,10 @@ export class MeController {
 	twoFactorSecret = $state("");
 	qrCodeUrl = $state("");
 
+	isChangePasswordModalOpen = $state(false);
+
 	password = $state("");
+	confirmPassword = $state("");
 	showPassword = $state(false);
 
 	code = $state("");
@@ -32,12 +35,21 @@ export class MeController {
 		return this.code.length === 6;
 	}
 
+	// MODALS
 	open2FAModal() {
 		this.is2FAModalOpen = true;
 	}
 
 	close2FAModal() {
 		this.is2FAModalOpen = false;
+	}
+
+	openChangePasswordModal() {
+		this.isChangePasswordModalOpen = true;
+	}
+
+	closeChangePasswordModal() {
+		this.isChangePasswordModalOpen = false;
 	}
 
 	onInput() {
