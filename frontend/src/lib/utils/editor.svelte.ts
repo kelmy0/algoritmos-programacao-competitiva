@@ -2,8 +2,8 @@ import { renderMarkdown } from "$lib/services/markdown";
 import type { ApiError } from "$lib/types/api";
 import { normalizeApiError, scrollToAndFocus } from "./errors";
 import { sanitizeTitle } from "./sanitize";
-import { DIFFICULTIES, type Difficulty, type AlgorithmPayload } from "$lib/schemas/algorithm";
-import type { Algorithm } from "$lib/types/algorithm";
+import { DIFFICULTIES, type Algorithm, type Difficulty } from "$lib/types/algorithm";
+import type { AlgorithmPayload } from "$lib/schemas/algorithm";
 
 export const EDITOR_ERRORS: Record<string, string> = {
 	INVALID_NAME: "Nome inválido.",

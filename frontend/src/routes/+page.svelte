@@ -3,6 +3,8 @@
 	import type { Algorithm } from "$lib/types/algorithm";
 	import { untrack } from "svelte";
 	import type { PageData } from "./$types";
+	import { DIFFICULTY_MAP } from "$lib/constants/algorithms";
+	import Card from "$lib/components/ui/Card.svelte";
 
 	let { data }: { data: PageData } = $props();
 
@@ -62,20 +64,6 @@
 			observer.disconnect();
 		};
 	});
-
-	const difficultyStyles: Record<string, string> = {
-		beginner: "bg-emerald-950 text-emerald-300 border-emerald-800",
-		intermediate: "bg-amber-950 text-amber-300 border-amber-800",
-		advanced: "bg-orange-950 text-orange-300 border-orange-800",
-		expert: "bg-red-950 text-red-300 border-red-800"
-	};
-
-	const difficultyLabels: Record<string, string> = {
-		beginner: "Iniciante",
-		intermediate: "Intermediário",
-		advanced: "Avançado",
-		expert: "Especialista"
-	};
 </script>
 
 <svelte:head>
@@ -124,69 +112,40 @@
 	<!-- Algorithm Grid -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 		{#each algorithms as item (item.publicId)}
-			<article
-				class="relative bg-app-surface border border-gray-800 rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-gray-700 hover:shadow-xl transition-all duration-200 group"
-			>
-				<div class="space-y-3">
-					<div class="flex items-start justify-between gap-3">
-						<h2
-							class="font-montserrat font-semibold text-base text-text-primary group-hover:text-text-brand transition-colors line-clamp-2"
-							title={item.name}
-						>
-							<a
-								href="/algorithms/{item.slug}-{item.publicId}"
-								class="after:absolute after:inset-0 focus:outline-none focus:ring-2 focus:ring-text-brand focus:ring-offset-2 focus:ring-offset-app-surface rounded-xl"
-							>
-								{item.name}
-							</a>
-						</h2>
+			{@const diff = DIFFICULTY_MAP[item.difficulty] ?? {
+				label: item.difficulty,
+				style: "bg-gray-800/60 text-gray-300 border-gray-700"
+			}}
 
-						<span
-							class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border shrink-0 relative z-10 {difficultyStyles[
-								item.difficulty
-							] ?? 'bg-gray-800 text-gray-300 border-gray-700'}"
-						>
-							{difficultyLabels[item.difficulty] ?? item.difficulty}
-						</span>
-					</div>
-
-					<p class="text-xs font-medium text-gray-400 flex items-center gap-2">
-						<span class="inline-block w-2 h-2 rounded-full bg-text-brand" aria-hidden="true"></span>
-						{item.category}
-					</p>
-				</div>
-
-				<div class="pt-4 mt-4 border-t border-gray-800/80 flex items-center justify-between">
+			<Card title={item.name} href="/algorithms/{item.slug}-{item.publicId}">
+				{#snippet headerRightTop()}
 					<span
-						class="text-xs font-mono text-gray-400 truncate max-w-30 relative z-10 select-all"
+						class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border {diff.style}"
+					>
+						{diff.label}
+					</span>
+				{/snippet}
+
+				<p class="text-xs font-medium text-gray-400 flex items-center gap-2">
+					<span class="inline-block w-2 h-2 rounded-full bg-text-brand" aria-hidden="true"></span>
+					{item.category}
+				</p>
+
+				{#snippet footerLeft()}
+					<span
+						class="text-xs font-mono text-gray-400 truncate max-w-30 select-all"
 						title="Copiar ID"
 					>
 						{item.publicId}
 					</span>
-
-					<div
-						aria-hidden="true"
-						class="text-xs font-medium text-text-brand group-hover:underline flex items-center gap-1 transition-all pointer-events-none"
-					>
-						<span>Ver detalhes</span>
-						<svg
-							class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-						</svg>
-					</div>
-				</div>
-			</article>
+				{/snippet}
+			</Card>
 		{:else}
 			<div
 				role="status"
-				class="col-span-full py-12 text-center bg-app-surface border border-gray-800 rounded-xl"
+				class="col-span-full py-12 text-center bg-app-surface border border-gray-800 rounded-xl text-gray-400 text-sm"
 			>
-				<p class="text-gray-400 text-sm">Nenhum algoritmo encontrado.</p>
+				Nenhum algoritmo encontrado.
 			</div>
 		{/each}
 	</div>

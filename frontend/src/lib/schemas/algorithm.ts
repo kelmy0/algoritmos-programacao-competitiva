@@ -1,7 +1,6 @@
+import { DIFFICULTIES } from "$lib/types/algorithm";
 import { sanitizeTitle } from "$lib/utils/sanitize";
 import z from "zod";
-
-export const DIFFICULTIES = ["beginner", "intermediate", "advanced", "expert"] as const;
 
 const sanitizedString = (minLen: number, errorCode: string) =>
 	z
@@ -17,4 +16,3 @@ export const algorithmSchema = z.object({
 });
 
 export type AlgorithmPayload = z.infer<typeof algorithmSchema>;
-export type Difficulty = (typeof DIFFICULTIES)[number];

@@ -1,6 +1,5 @@
 import { goto } from "$app/navigation";
 import type { ApiError } from "$lib/types/api";
-import { page } from "$app/state";
 import { normalizeApiError } from "$lib/utils/errors";
 import { customFetch } from "$lib/api/client";
 import { TWO_FACTOR_ERRORS } from "$lib/errors/auth/verify-2fa";
@@ -88,6 +87,10 @@ export class TwoFactorController {
 
 		this.isLoading = false;
 		if (error) {
+			if (error.code === "MISSING_COOKIE") {
+				await goto("/auth/login?error=MISSING_COOKIE", { invalidateAll: true });
+			}
+
 			this.apiError = error;
 			this.turnstileToken = "";
 			this.turnstileComponent?.reset();

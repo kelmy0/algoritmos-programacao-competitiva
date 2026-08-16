@@ -1,11 +1,17 @@
+export const DIFFICULTIES = ["beginner", "intermediate", "advanced", "expert"] as const;
+export const STATUS = ["pending", "approved", "rejected", "deleted"] as const;
+
+export type Difficulty = (typeof DIFFICULTIES)[number];
+export type Status = (typeof STATUS)[number];
+
 export interface Algorithm {
 	publicId: string;
 	slug: string;
 	name: string;
 	category: string;
 	content: string;
-	difficulty: string;
-	status: string;
+	difficulty: Difficulty;
+	status: Status;
 	authorId: string;
 	createdAt: Date;
 	updatedAt: Date;

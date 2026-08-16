@@ -1,4 +1,9 @@
 <script lang="ts">
+	import Alert from "$lib/components/ui/Alert.svelte";
+	import Button from "$lib/components/ui/Button.svelte";
+	import Input from "$lib/components/ui/Input.svelte";
+	import MarkdownEditor from "$lib/components/ui/MarkdownEditor.svelte";
+	import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
 	import { AlgorithmEditor } from "$lib/utils/editor.svelte";
 	import { NewAlgorithmController } from "./newAlgorithm.svelte";
 
@@ -12,6 +17,13 @@
 			await controller.submit(payload);
 		}
 	}
+
+	const difficultyOptions: SelectOption[] = [
+		{ value: "beginner", label: "Iniciante" },
+		{ value: "intermediate", label: "Intermediário" },
+		{ value: "advanced", label: "Avançado" },
+		{ value: "expert", label: "Especialista" }
+	];
 </script>
 
 <svelte:head>
@@ -33,285 +45,98 @@
 		>
 			<legend class="sr-only">Metadados do Algoritmo</legend>
 
-			<div class="space-y-2">
-				<label for="name" class="block text-sm font-medium text-gray-200">
-					Nome do Algoritmo <span class="text-red-400" aria-hidden="true">*</span>
-				</label>
-				<input
-					id="name"
-					type="text"
-					placeholder="Ex: Busca Binária"
-					required
-					autocomplete="off"
-					disabled={controller.isLoading}
-					bind:value={editor.name}
-					bind:this={editor.nameInput}
-					oninput={() => editor.onNameInput()}
-					onblur={() => editor.onNameBlur()}
-					aria-required="true"
-					aria-invalid={editor.hasNameError || controller.hasNameError}
-					aria-describedby={editor.hasNameError || controller.hasNameError
-						? "name-error"
-						: undefined}
-					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
-					{editor.hasNameError || controller.hasNameError
-						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
-				/>
-				{#if editor.hasNameError || controller.hasNameError}
-					<p id="name-error" role="alert" class="text-xs text-amber-500">
-						O nome precisa ter no mínimo 3 letras válidas.
-					</p>
-				{/if}
-			</div>
+			<Input
+				id="name"
+				label="Nome do Algoritmo *"
+				placeholder="Ex: Busca Binária"
+				required
+				autocomplete="off"
+				disabled={controller.isLoading}
+				bind:value={editor.name}
+				bind:inputRef={editor.nameInput}
+				touched={editor.hasNameError || controller.hasNameError}
+				error="O nome precisa ter no mínimo 3 letras válidas."
+				oninput={() => editor.onNameInput()}
+				onblur={() => editor.onNameBlur()}
+			/>
 
-			<div class="space-y-2">
-				<label for="category" class="block text-sm font-medium text-gray-200">
-					Categoria <span class="text-red-400" aria-hidden="true">*</span>
-				</label>
-				<input
-					id="category"
-					type="text"
-					placeholder="Ex: Grafos, Busca, DP"
-					required
-					autocomplete="off"
-					bind:value={editor.category}
-					bind:this={editor.categoryInput}
-					disabled={controller.isLoading}
-					oninput={() => editor.onCategoryInput()}
-					onblur={() => editor.onCategoryBlur()}
-					aria-required="true"
-					aria-invalid={editor.hasCategoryError || controller.hasCategoryError}
-					aria-describedby={editor.hasCategoryError || controller.hasCategoryError
-						? "category-error"
-						: undefined}
-					class="w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
-					{editor.hasCategoryError || controller.hasCategoryError
-						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
-				/>
-				{#if editor.hasCategoryError || controller.hasCategoryError}
-					<p id="category-error" role="alert" class="text-xs text-amber-500">
-						A categoria precisa ter no mínimo 3 letras válidas.
-					</p>
-				{/if}
-			</div>
+			<Input
+				id="category"
+				label="Categoria"
+				placeholder="Ex: Grafos, Busca, DP"
+				required
+				autocomplete="off"
+				disabled={controller.isLoading}
+				bind:value={editor.category}
+				bind:inputRef={editor.categoryInput}
+				touched={editor.hasCategoryError || controller.hasCategoryError}
+				error="A categoria precisa ter no mínimo 3 letras válidas."
+				oninput={() => editor.onCategoryInput()}
+				onblur={() => editor.onCategoryBlur()}
+			/>
 
-			<div class="space-y-2">
-				<label for="difficulty" class="block text-sm font-medium text-gray-200">Dificuldade</label>
-				<select
-					id="difficulty"
-					required
-					bind:value={editor.difficulty}
-					bind:this={editor.difficultyInput}
-					disabled={controller.isLoading}
-					oninput={() => editor.onDifficultyInput()}
-					onblur={() => editor.onDifficultyBlur()}
-					aria-required="true"
-					aria-invalid={editor.hasDifficultyError}
-					aria-describedby={editor.hasDifficultyError ? "difficulty-error" : undefined}
-					class="hover:cursor-pointer w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2
-					{editor.hasDifficultyError
-						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-700 focus:border-text-brand focus:ring-text-brand'} disabled:cursor-not-allowed"
-				>
-					<option value="beginner">Iniciante</option>
-					<option value="intermediate">Intermediário</option>
-					<option value="advanced">Avançado</option>
-					<option value="expert">Especialista</option>
-				</select>
-				{#if editor.hasDifficultyError}
-					<p id="difficulty-error" role="alert" class="text-xs text-amber-500">
-						A dificuldade precisa ser uma das 4 opções.
-					</p>
-				{/if}
-			</div>
+			<Select
+				id="difficulty"
+				label="Dificuldade"
+				required
+				options={difficultyOptions}
+				bind:value={editor.difficulty}
+				bind:selectRef={editor.difficultyInput}
+				disabled={controller.isLoading}
+				touched={editor.hasDifficultyError}
+				error="A dificuldade precisa ser uma das 4 opções."
+				onchange={() => editor.onDifficultyInput()}
+				onblur={() => editor.onDifficultyBlur()}
+			/>
 		</fieldset>
 
 		<div class="invisible" bind:this={controller.alertDiv}></div>
 		{#if controller.apiError}
-			<div
-				role="alert"
-				aria-live="assertive"
-				class="p-4 bg-red-950/40 border border-red-900/60 rounded-xl text-red-300 text-sm flex items-start gap-3 shadow-lg transition-all
-			{controller.isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}"
-			>
-				<svg
-					class="w-5 h-5 shrink-0 mt-0.5 text-red-400"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-					/>
-				</svg>
-				<div class="space-y-0.5">
-					<span class="font-semibold block text-red-200">Erro ao salvar algoritmo</span>
-					<p class="text-xs text-red-300/80 leading-relaxed">
-						{controller.apiError.message || "Ocorreu um erro ao tentar salvar. Tente novamente."}
-					</p>
-				</div>
-			</div>
+			<Alert
+				type="error"
+				title="Erro ao salvar algoritmo"
+				message={controller.apiError.message ||
+					"Ocorreu um erro ao tentar salvar. Tente novamente."}
+				isLoading={controller.isLoading}
+			/>
 		{/if}
 
 		{#if controller.isSuccess}
-			<div
-				role="status"
-				aria-live="polite"
-				class="p-4 bg-emerald-950/40 border border-emerald-900/60 rounded-xl text-emerald-300 text-sm flex items-start gap-3 shadow-lg transition-all"
-			>
-				<svg
-					class="w-5 h-5 shrink-0 mt-0.5 text-emerald-400"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-					/>
-				</svg>
-				<div class="space-y-0.5">
-					<span class="font-semibold block text-emerald-200">Algoritmo salvo com sucesso!</span>
-					<p class="text-xs text-emerald-300/80 leading-relaxed">
-						Suas alterações foram enviadas e já estão em espera para aprovação.
-						<a href={controller.link} class="underline hover:text-emerald-200">
-							Visualizar o algoritmo enviado
-						</a>.
-					</p>
-				</div>
-			</div>
+			<Alert type="success" title="Algoritmo salvo com sucesso!">
+				Suas alterações foram enviadas e já estão em espera para aprovação.
+				{#if controller.link}
+					<a href={controller.link} class="underline hover:text-emerald-200">
+						Visualizar o algoritmo enviado
+					</a>.
+				{/if}
+			</Alert>
 		{/if}
 
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-			<section
-				class="flex flex-col h-150 bg-app-surface border border-gray-800 rounded-xl overflow-hidden"
-				aria-label="Editor de código Markdown"
-			>
-				<div
-					role="toolbar"
-					aria-label="Ferramentas de formatação Markdown"
-					class="min-h-12 flex flex-wrap items-center gap-1.5 px-3 py-2 bg-gray-900 border-b border-gray-800 text-xs"
-				>
-					<button
-						type="button"
-						onclick={() => editor.insertSnippet("## ", "", "Título")}
-						aria-label="Inserir Título Nível 2"
-						class="btn-toolbar hover:cursor-pointer">H2</button
-					>
-					<button
-						type="button"
-						onclick={() => editor.insertSnippet("### ", "", "Subtítulo")}
-						aria-label="Inserir Subtítulo Nível 3"
-						class="btn-toolbar hover:cursor-pointer">H3</button
-					>
-					<button
-						type="button"
-						onclick={() => editor.insertSnippet("**", "**", "negrito")}
-						aria-label="Texto em Negrito"
-						class="btn-toolbar hover:cursor-pointer"><b aria-hidden="true">B</b></button
-					>
-					<button
-						type="button"
-						onclick={() => editor.insertSnippet("*", "*", "itálico")}
-						aria-label="Texto em Itálico"
-						class="btn-toolbar hover:cursor-pointer"><i aria-hidden="true">I</i></button
-					>
-					<button
-						type="button"
-						onclick={() => editor.insertSnippet("\n```cpp\n", "\n```\n", "// seu código C++ aqui")}
-						aria-label="Inserir bloco de código C++"
-						class="btn-toolbar hover:cursor-pointer font-mono text-text-brand">C++ Code</button
-					>
-					<button
-						type="button"
-						onclick={() => editor.insertSnippet("> ", "", "Nota importante")}
-						aria-label="Inserir citação"
-						class="btn-toolbar hover:cursor-pointer">Quote</button
-					>
-					<button
-						type="button"
-						onclick={() => editor.insertSnippet("1. ", "", "Item")}
-						aria-label="Inserir lista numerada"
-						class="btn-toolbar hover:cursor-pointer">Lista</button
-					>
-				</div>
-
-				<label for="content-editor" class="sr-only">Conteúdo em Markdown</label>
-				<textarea
-					id="content-editor"
-					placeholder="Escreva o conteúdo em Markdown aqui..."
-					required
-					bind:value={editor.content}
-					bind:this={editor.contentInput}
-					disabled={controller.isLoading}
-					oninput={() => editor.onContentInput()}
-					onblur={() => editor.onContentBlur()}
-					aria-required="true"
-					aria-invalid={editor.hasContentError || controller.hasContentError}
-					aria-describedby={editor.hasContentError || controller.hasContentError
-						? "content-error"
-						: undefined}
-					class="w-full flex-1 p-4 bg-transparent text-gray-200 font-mono text-sm
-            resize-none focus:outline-none focus-visible:ring-2 leading-relaxed border
-            {editor.hasContentError || controller.hasContentError
-						? 'border-red-500 focus:ring-red-500'
-						: 'border-transparent focus:ring-text-brand'} 
-						disabled:cursor-not-allowed"></textarea>
-			</section>
-
-			<section
-				class="flex flex-col h-150 bg-app-surface border border-gray-800 rounded-xl overflow-hidden"
-				aria-label="Preview do conteúdo"
-			>
-				<div
-					class="min-h-12 px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between gap-2"
-				>
-					<span class="text-xs font-mono font-medium text-gray-300">Preview em Tempo Real</span>
-				</div>
-				<div
-					aria-live="polite"
-					class="p-6 whitespace-pre-wrap wrap-break-word overflow-y-auto prose prose-invert max-w-none font-mono text-sm text-gray-200 prose-pre:whitespace-pre-wrap prose-pre:wrap-break-words"
-				>
-					{#if editor.content.trim()}
-						{#await editor.previewPromise}
-							<p role="status" class="text-gray-400 italic font-sans text-sm">Gerando preview...</p>
-						{:then html}
-							{@html html}
-						{/await}
-					{:else}
-						<p class="text-gray-400 italic font-sans text-sm">
-							O preview aparecerá aqui conforme você digita...
-						</p>
-					{/if}
-				</div>
-			</section>
-		</div>
+		<MarkdownEditor
+			bind:content={editor.content}
+			bind:contentInput={editor.contentInput}
+			hasError={editor.hasContentError || controller.hasContentError}
+			disabled={controller.isLoading}
+			previewPromise={editor.previewPromise}
+			insertSnippet={(before, after, placeholder) =>
+				editor.insertSnippet(before, after, placeholder)}
+			onContentInput={() => editor.onContentInput()}
+			onContentBlur={() => editor.onContentBlur()}
+		/>
 
 		<div
-			class="flex flex-col sm:flex-row {editor.hasContentError || controller.hasContentError
+			class="flex flex-col md:flex-row {editor.hasContentError || controller.hasContentError
 				? 'justify-between'
-				: 'justify-end'} items-stretch sm:items-center gap-4 pt-4 border-t border-gray-800/60"
+				: 'justify-end'} items-stretch md:items-center gap-4 pt-4 border-t border-gray-800/60"
 		>
 			{#if editor.hasContentError || controller.hasContentError}
 				<p id="content-error" role="alert" class="text-xs text-amber-500 self-center">
 					O conteúdo precisa de no mínimo 10 letras.
 				</p>
 			{/if}
-			<button
-				type="submit"
-				class="px-6 py-2.5 rounded-lg bg-text-brand text-gray-950 font-semibold hover:bg-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-text-brand focus-visible:ring-offset-gray-900 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-			>
-				Salvar Algoritmo
-			</button>
+			<Button isLoading={controller.isLoading} disabled={controller.isLoading}>
+				{controller.isLoading ? "Salvando..." : "Salvar algoritmo"}
+			</Button>
 		</div>
 	</form>
 </div>

@@ -1,5 +1,6 @@
 <script>
 	import { page } from "$app/state";
+	import Card from "$lib/components/ui/Card.svelte";
 
 	const adminActions = [
 		{
@@ -129,72 +130,37 @@
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 		{#each adminActions as card}
 			{#if page.data.user?.permissions.includes(card.permission)}
-				<article
-					class="relative bg-app-surface border border-gray-800 rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-gray-700 hover:shadow-xl transition-all duration-200 group"
+				<Card
+					title={card.title}
+					description={card.description}
+					href={card.href}
+					actionLabel="Acessar rota"
 				>
-					<div class="space-y-4">
-						<div class="flex items-start justify-between gap-3">
-							<div
-								class="p-2.5 rounded-lg bg-app-bg/60 border border-gray-800 text-text-brand group-hover:border-text-brand/40 transition-colors"
-							>
-								<svg
-									class="w-6 h-6"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-									aria-hidden="true"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d={card.iconPath}
-									/>
-								</svg>
-							</div>
-
-							<span
-								class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border shrink-0 relative z-10 {card.badgeColor}"
-							>
-								{card.badge}
-							</span>
-						</div>
-
-						<div>
-							<h2
-								class="font-montserrat font-semibold text-lg text-text-primary group-hover:text-text-brand transition-colors"
-							>
-								<a
-									href={card.href}
-									class="after:absolute after:inset-0 focus:outline-none focus:ring-2 focus:ring-text-brand focus:ring-offset-2 focus:ring-offset-app-surface rounded-xl"
-								>
-									{card.title}
-								</a>
-							</h2>
-							<p class="text-xs text-gray-400 mt-2 leading-relaxed">
-								{card.description}
-							</p>
-						</div>
-					</div>
-
-					<div class="pt-4 mt-4 border-t border-gray-800/80 flex items-center justify-end">
-						<div
+					{#snippet icon()}
+						<svg
+							class="w-6 h-6"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
 							aria-hidden="true"
-							class="text-xs font-medium text-text-brand group-hover:underline flex items-center gap-1 transition-all pointer-events-none"
 						>
-							<span>Acessar rota</span>
-							<svg
-								class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
 								stroke-width="2"
-							>
-								<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-							</svg>
-						</div>
-					</div>
-				</article>
+								d={card.iconPath}
+							/>
+						</svg>
+					{/snippet}
+
+					{#snippet headerRightTop()}
+						<span
+							class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border {card.badgeColor}"
+						>
+							{card.badge}
+						</span>
+					{/snippet}
+				</Card>
 			{/if}
 		{/each}
 	</div>

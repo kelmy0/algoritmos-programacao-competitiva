@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Card from "$lib/components/ui/Card.svelte";
+	import { DIFFICULTY_MAP, STATUS_MAP } from "$lib/constants/algorithms";
 	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();
@@ -52,78 +54,52 @@
 	<!-- Algorithm Grid -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 		{#each data.algorithms as item (item.publicId)}
-			<article
-				class="relative bg-app-surface border border-gray-800 rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-gray-700 hover:shadow-xl transition-all duration-200 group"
-			>
-				<div class="space-y-3">
-					<div class="flex items-start justify-between gap-3">
-						<h2
-							class="font-montserrat font-semibold text-base text-text-primary group-hover:text-text-brand transition-colors line-clamp-2"
-							title={item.name}
-						>
-							<a
-								href="/"
-								class="after:absolute after:inset-0 focus:outline-none focus:ring-2 focus:ring-text-brand focus:ring-offset-2 focus:ring-offset-app-surface rounded-xl"
-							>
-								{item.name}
-							</a>
-						</h2>
+			{@const diff = DIFFICULTY_MAP[item.difficulty] ?? {
+				label: item.difficulty,
+				style: "bg-gray-800/60 text-gray-300 border-gray-700"
+			}}
+			{@const st = STATUS_MAP[item.status] ?? {
+				label: item.status,
+				style: "bg-gray-800/60 text-gray-300 border-gray-700"
+			}}
 
-						<span
-							class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border shrink-0 relative z-10 {difficultyStyles[
-								item.difficulty
-							] ?? 'bg-gray-800 text-gray-300 border-gray-700'}"
-						>
-							{difficultyLabels[item.difficulty] ?? item.difficulty}
-						</span>
-					</div>
-					<div class="flex items-start justify-between gap-3">
-						<p class="text-xs font-medium text-gray-400 flex items-center gap-2">
-							<span class="inline-block w-2 h-2 rounded-full bg-text-brand" aria-hidden="true"
-							></span>
-							{item.category}
-						</p>
-						<span
-							class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border shrink-0 relative z-10 {statusStyles[
-								item.status
-							] ?? 'bg-gray-800 text-gray-300 border-gray-700'}"
-						>
-							{statusLabels[item.status] ?? item.status}
-						</span>
-					</div>
-				</div>
-
-				<div class="pt-4 mt-4 border-t border-gray-800/80 flex items-center justify-between">
+			<Card title={item.name} href="/">
+				{#snippet headerRightTop()}
 					<span
-						class="text-xs font-mono text-gray-400 truncate max-w-30 relative z-10 select-all"
+						class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border {diff.style}"
+					>
+						{diff.label}
+					</span>
+				{/snippet}
+
+				<p class="text-xs font-medium text-gray-400 flex items-center gap-2">
+					<span class="inline-block w-2 h-2 rounded-full bg-text-brand" aria-hidden="true"></span>
+					{item.category}
+				</p>
+
+				{#snippet headerRightBottom()}
+					<span
+						class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border {st.style}"
+					>
+						{st.label}
+					</span>
+				{/snippet}
+
+				{#snippet footerLeft()}
+					<span
+						class="text-xs font-mono text-gray-400 truncate max-w-30 select-all"
 						title="Copiar ID"
 					>
 						{item.publicId}
 					</span>
-
-					<div
-						aria-hidden="true"
-						class="text-xs font-medium text-text-brand group-hover:underline flex items-center gap-1 transition-all pointer-events-none"
-					>
-						<span>Ver detalhes</span>
-						<svg
-							class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-						</svg>
-					</div>
-				</div>
-			</article>
+				{/snippet}
+			</Card>
 		{:else}
 			<div
 				role="status"
-				class="col-span-full py-12 text-center bg-app-surface border border-gray-800 rounded-xl"
+				class="col-span-full py-12 text-center bg-app-surface border border-gray-800 rounded-xl text-gray-400 text-sm"
 			>
-				<p class="text-gray-400 text-sm">Nenhum algoritmo encontrado.</p>
+				Nenhum algoritmo encontrado.
 			</div>
 		{/each}
 	</div>

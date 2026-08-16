@@ -5,6 +5,9 @@
 	import { createActivityKeeper } from "$lib/utils/idle-ping";
 	import { invalidateAll } from "$app/navigation";
 	import { focusTrap } from "$lib/utils/a11y";
+	import Input from "$lib/components/ui/Input.svelte";
+	import Alert from "$lib/components/ui/Alert.svelte";
+	import Button from "$lib/components/ui/Button.svelte";
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
@@ -86,41 +89,33 @@
 
 	<form onsubmit={(e) => controller.sendPassword(e)} class="space-y-5 font-inter">
 		<!-- Password -->
-		<div class="space-y-2">
-			<label for="password" class="block text-sm font-medium text-gray-300">Senha</label>
-			<div class="relative flex items-center">
-				<input
-					type={controller.showPassword ? "text" : "password"}
-					id="password"
-					name="password"
-					autocomplete="current-password"
-					minlength="8"
-					bind:value={controller.password}
-					oninput={() => controller.onInput()}
-					onblur={() => (controller.touched.password = true)}
-					aria-required="true"
-					aria-invalid={controller.touched.password && !controller.isPasswordValid}
-					aria-describedby={controller.touched.password && !controller.isPasswordValid
-						? "password-error"
-						: undefined}
-					placeholder="••••••••"
-					required
-					disabled={controller.isLoading}
-					class="w-full px-4 pr-10 py-2.5 bg-app-bg/50 border rounded-lg text-text-primary placeholder-gray-600 text-sm focus:bg-app-bg focus:ring-1 focus:outline-none transition-all disabled:opacity-50
-                {(controller.touched.password && !controller.isPasswordValid) ||
-					controller.apiError?.code === 'AUTH_INVALID_EMAIL_PASSWORD'
-						? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-						: 'border-gray-800 focus:border-text-brand focus:ring-text-brand'}"
-				/>
+		<Input
+			id="password"
+			name="password"
+			type={controller.showPassword ? "text" : "password"}
+			label="Senha"
+			placeholder="••••••••"
+			autocomplete="current-password"
+			minlength={8}
+			required
+			disabled={controller.isLoading}
+			bind:value={controller.password}
+			touched={controller.touched.password}
+			error={!controller.isPasswordValid
+				? "A senha deve conter no mínimo 8 caracteres."
+				: undefined}
+			oninput={() => controller.onInput()}
+			onblur={() => (controller.touched.password = true)}
+		>
+			{#snippet suffixIcon()}
 				<button
 					type="button"
 					onclick={() => controller.togglePassword()}
-					class="absolute right-3 p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+					class="p-1 rounded text-zinc-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
 					aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
 				>
 					{#if controller.showPassword}
 						<svg
-							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5"
 							viewBox="0 0 24 24"
 							fill="none"
@@ -135,7 +130,6 @@
 						</svg>
 					{:else}
 						<svg
-							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5"
 							viewBox="0 0 24 24"
 							fill="none"
@@ -154,71 +148,26 @@
 						</svg>
 					{/if}
 				</button>
-			</div>
-			{#if controller.touched.password && !controller.isPasswordValid}
-				<p id="password-error" role="alert" class="text-xs text-red-400">
-					A senha deve conter no mínimo 8 caracteres.
-				</p>
-			{/if}
-		</div>
+			{/snippet}
+		</Input>
 
 		<!-- Dynamic API Error Box -->
 		{#if controller.apiError}
-			<div
-				role="alert"
-				aria-live="assertive"
-				class="p-3 bg-red-950/30 border border-red-900/50 rounded-lg text-red-400 text-sm flex items-start gap-2
-            {controller.isLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}"
-			>
-				<svg
-					class="w-5 h-5 shrink-0 mt-0.5"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-					/>
-				</svg>
-				<div>
-					<span class="font-semibold block mb-0.5">Erro de Autenticação</span>
-					<p class="text-xs text-red-300/90">{controller.apiError.message}</p>
-				</div>
-			</div>
+			<Alert
+				title="Erro de Autenticação"
+				message={controller.apiError.message}
+				isLoading={controller.isLoading}
+			/>
 		{/if}
 
 		<!-- Submit button -->
-		<button
+		<Button
 			type="submit"
+			class="w-full"
+			isLoading={controller.isLoading}
 			disabled={controller.isLoading}
-			aria-busy={controller.isLoading}
-			class="w-full py-2.5 bg-text-brand text-app-bg font-semibold text-sm rounded-lg cursor-pointer
-        hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none
-        flex items-center justify-center gap-2"
 		>
-			{#if controller.isLoading}
-				<svg
-					class="animate-spin h-4 w-4 text-app-bg"
-					fill="none"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-				>
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
-					></circle>
-					<path
-						class="opacity-75"
-						fill="currentColor"
-						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-					></path>
-				</svg>
-				<span>Entrando...</span>
-			{:else}
-				<span>Entrar</span>
-			{/if}
-		</button>
+			{controller.isLoading ? "Entrando..." : "Entrar"}
+		</Button>
 	</form>
 {/snippet}
