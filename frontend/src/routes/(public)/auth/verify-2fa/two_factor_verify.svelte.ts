@@ -1,74 +1,38 @@
 import { goto } from "$app/navigation";
-import type { ApiError } from "$lib/types/api";
 import { normalizeApiError } from "$lib/utils/errors";
 import { customFetch } from "$lib/api/client";
 import { TWO_FACTOR_ERRORS } from "$lib/errors/auth/verify-2fa";
 import type { TwoFactorServerResponse } from "$lib/types/auth/two-factor";
+import { BaseAuthController } from "$lib/controllers/base_auth_controller.svelte";
 
 interface TwoFactorRequest {
 	code: string;
 }
 
-export class TwoFactorController {
-	code = $state("");
-	turnstileToken = $state("");
-	isLoading = $state(false);
-	apiError = $state<ApiError | null>(null);
+export class TwoFactorController extends BaseAuthController {
+	#code = $state("");
 
-	turnstileComponent: { reset: () => void } | null = null;
+	get code() {
+		return this.#code;
+	}
 
-	touched = $state({
-		code: false
-	});
+	set code(value: string) {
+		this.#code = value.replace(/\D/g, "");
+		this.clearApiError();
+	}
 
 	get isCodeValid() {
-		return this.code.length === 6;
+		return this.#code.length === 6;
 	}
 
-	onInput(event: Event) {
-		const input = event.target as HTMLInputElement;
+	async sendCode(): Promise<boolean> {
+		if (!this.isCodeValid || this._isLoading || !this.validateTurnstile()) return false;
 
-		this.code = input.value.replace(/\D/g, "");
-
-		if (this.apiError) {
-			this.apiError = null;
-		}
-
-		if (this.code.length === 6 && !this.isLoading) {
-			const form = input.closest("form");
-			if (form) {
-				form.requestSubmit();
-			}
-		}
-	}
-
-	onTurnstileSuccess(token: string) {
-		this.turnstileToken = token;
-	}
-
-	onTurnstileExpire() {
-		this.turnstileToken = "";
-	}
-
-	async sendCode(e: SubmitEvent) {
-		e.preventDefault();
-
-		this.touched.code = true;
-
-		if (!this.isCodeValid || this.isLoading) {
-			return;
-		}
-
-		if (!this.turnstileToken) {
-			this.apiError = normalizeApiError("CAPTCHA_REQUIRED");
-			return;
-		}
-
-		this.isLoading = true;
-		this.apiError = null;
+		this._isLoading = true;
+		this._apiError = null;
 
 		const bodyRequest: TwoFactorRequest = {
-			code: this.code
+			code: this.#code
 		};
 
 		const { data, error } = await customFetch<TwoFactorServerResponse>(
@@ -78,35 +42,37 @@ export class TwoFactorController {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"X-CF-Turnstile-Response": this.turnstileToken
+					"X-CF-Turnstile-Response": this._turnstileToken
 				},
 				body: JSON.stringify(bodyRequest)
 			},
 			TWO_FACTOR_ERRORS
 		);
 
-		this.isLoading = false;
+		this._isLoading = false;
+
 		if (error) {
 			if (error.code === "MISSING_COOKIE") {
 				await goto("/auth/login?error=MISSING_COOKIE", { invalidateAll: true });
+				return false;
 			}
 
-			this.apiError = error;
-			this.turnstileToken = "";
-			this.turnstileComponent?.reset();
-			return;
+			this._apiError = error;
+			this.resetTurnstile();
+			return false;
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
-			return;
+			this._apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
+			return false;
 		}
 
 		if (data.requires2FA) {
 			await goto(`/auth/login?error=AUTH_UNEXPECTED_ERROR`);
-			return;
+			return false;
 		}
 
 		await goto("/", { invalidateAll: true });
+		return true;
 	}
 }

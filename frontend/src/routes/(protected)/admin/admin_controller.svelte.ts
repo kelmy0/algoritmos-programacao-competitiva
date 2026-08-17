@@ -1,82 +1,61 @@
 import { invalidateAll } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
+import { BaseController } from "$lib/controllers/base_controller.svelte";
 import { ADMIN_PASSWORD_ERRORS } from "$lib/errors/admin/password";
-import type { ApiError } from "$lib/types/api";
 import { normalizeApiError } from "$lib/utils/errors";
 
-interface AdminPasswordResponse {
-	correct: boolean;
-}
+export class AdminController extends BaseController {
+	#password = $state("");
 
-export class AdminController {
-	password = $state("");
-	isLoading = $state(false);
-	apiError = $state<ApiError | null>(null);
-	showPassword = $state(false);
+	get password() {
+		return this.#password;
+	}
 
-	touched = $state({
-		password: false
-	});
+	set password(value: string) {
+		this.#password = value;
+		this.clearApiError();
+	}
 
 	get isPasswordValid() {
-		return this.password.length >= 8;
+		return this.#password.length >= 8;
 	}
 
-	onInput() {
-		this.apiError = null;
-	}
+	async sendPassword(): Promise<boolean> {
+		if (!this.isPasswordValid || this._isLoading) return false;
 
-	togglePassword() {
-		this.showPassword = !this.showPassword;
-	}
+		this._isLoading = true;
+		this._apiError = null;
 
-	async sendPassword(e: SubmitEvent) {
-		e.preventDefault();
-
-		this.touched.password = true;
-
-		if (!this.isPasswordValid) {
-			return;
-		}
-
-		this.isLoading = true;
-		this.apiError = null;
-
-		const { data, error } = await customFetch<AdminPasswordResponse>(
+		const { data, error } = await customFetch<{ correct: boolean }>(
 			window.fetch,
 			"/api/admin",
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ password: this.password })
+				body: JSON.stringify({ password: this.#password })
 			},
 			ADMIN_PASSWORD_ERRORS
 		);
 
+		this._isLoading = false;
+		this.#password = "";
+
 		if (error) {
-			this.apiError = error;
-			this.isLoading = false;
-			return;
+			this._apiError = error;
+			return false;
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
-			this.isLoading = false;
-			return;
+			this._apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
+			return false;
 		}
 
 		if (!data.correct) {
-			this.apiError = normalizeApiError("INCORRECT_ADMIN_PASSWORD", "", ADMIN_PASSWORD_ERRORS);
-			this.isLoading = false;
-			return;
+			this._apiError = normalizeApiError("INCORRECT_ADMIN_PASSWORD", "", ADMIN_PASSWORD_ERRORS);
+			return false;
 		}
 
-		try {
-			await invalidateAll();
-		} finally {
-			this.password = "";
-			this.touched.password = false;
-			this.isLoading = false;
-		}
+		await invalidateAll();
+		return true;
 	}
 }

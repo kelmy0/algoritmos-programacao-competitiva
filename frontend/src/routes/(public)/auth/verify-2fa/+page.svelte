@@ -6,6 +6,20 @@
 	import { TwoFactorController } from "./two_factor_verify.svelte";
 
 	const controller = new TwoFactorController();
+
+	let touched = $state(false);
+
+	async function handleSubmit(e?: SubmitEvent) {
+		e?.preventDefault();
+		touched = true;
+		await controller.sendCode();
+	}
+
+	function handleInput() {
+		if (controller.isCodeValid && !controller.isLoading && controller.turnstileToken) {
+			handleSubmit();
+		}
+	}
 </script>
 
 <svelte:head>
@@ -26,22 +40,25 @@
 		</div>
 
 		<!-- Form -->
-		<form onsubmit={(e) => controller.sendCode(e)} class="space-y-5 font-inter">
+		<form onsubmit={(e) => handleSubmit(e)} class="space-y-5 font-inter">
 			<CodeInput
 				bind:value={controller.code}
-				touched={controller.touched.code}
+				{touched}
 				error={!controller.isCodeValid || controller.apiError?.code === "2FA_INVALID_CODE"
 					? "O código deve conter exatamente 6 números."
 					: undefined}
 				disabled={controller.isLoading}
-				oninput={(e) => controller.onInput(e)}
-				onblur={() => (controller.touched.code = true)}
+				onblur={() => (touched = true)}
+				oninput={handleInput}
 			/>
 
 			<div class="flex justify-center">
 				<Turnstile
-					bind:this={controller.turnstileComponent}
-					onsuccess={(token) => controller.onTurnstileSuccess(token)}
+					bind:this={() => null, (v) => controller.setTurnstileComponent(v)}
+					onsuccess={(token) => {
+						controller.onTurnstileSuccess(token);
+						handleInput();
+					}}
 					onexpire={() => controller.onTurnstileExpire()}
 				/>
 			</div>

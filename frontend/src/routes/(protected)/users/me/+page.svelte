@@ -8,8 +8,16 @@
 	import Input from "$lib/components/ui/Input.svelte";
 	import CodeInput from "$lib/components/ui/CodeInput.svelte";
 
-	const controller = new MeController();
-	controller.is2FAEnabled = page.data.user?.is2FAEnabled || false;
+	const controller = new MeController(page.data.user?.is2FAEnabled ?? false);
+
+	let is2FAModalOpen = $state(false);
+	let isChangePasswordModalOpen = $state(false);
+	let showPassword = $state(false);
+
+	let touched = $state({
+		password: false,
+		code: false
+	});
 
 	const is2FAEnabled = $derived(page.data.user?.is2FAEnabled);
 	const modal2FAVariant = $derived(is2FAEnabled ? "danger" : "success");
@@ -32,6 +40,35 @@
 				? twoFactorLabels.generateCode
 				: twoFactorLabels.saveCode
 	);
+
+	const open2FAModal = () => (is2FAModalOpen = true);
+	const close2FAModal = () => (is2FAModalOpen = false);
+
+	const openChangePasswordModal = () => (isChangePasswordModalOpen = true);
+	const closeChangePasswordModal = () => (isChangePasswordModalOpen = false);
+
+	const togglePassword = () => (showPassword = !showPassword);
+
+	async function handleGenerate2FA(e: SubmitEvent) {
+		e.preventDefault();
+		await controller.generate2FA();
+	}
+
+	async function handleSave2FA(e: SubmitEvent) {
+		e.preventDefault();
+		const success = await controller.save2FA();
+		if (success) {
+			is2FAModalOpen = false;
+		}
+	}
+
+	async function handleDisable2FA(e: SubmitEvent) {
+		e.preventDefault();
+		const success = await controller.disable2FA();
+		if (success) {
+			is2FAModalOpen = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -242,8 +279,8 @@
 					variant="outline"
 					aria-haspopup="dialog"
 					disabled={controller.isLoading}
-					aria-expanded={controller.isChangePasswordModalOpen}
-					onclick={() => controller.openChangePasswordModal()}
+					aria-expanded={isChangePasswordModalOpen}
+					onclick={() => openChangePasswordModal()}
 				>
 					<svg
 						class="w-4 h-4 text-text-muted"
@@ -289,8 +326,8 @@
 					variant={page.data.user?.is2FAEnabled ? "danger-soft" : "success-soft"}
 					aria-haspopup="dialog"
 					disabled={controller.isLoading}
-					aria-expanded={controller.is2FAModalOpen}
-					onclick={() => controller.open2FAModal()}
+					aria-expanded={is2FAModalOpen}
+					onclick={() => open2FAModal()}
 				>
 					<svg
 						class="w-4 h-4"
@@ -313,23 +350,23 @@
 	</section>
 </div>
 
-{#if controller.is2FAModalOpen}
+{#if is2FAModalOpen}
 	<Modal
-		isOpen={controller.is2FAModalOpen}
+		isOpen={is2FAModalOpen}
 		title={modal2FATitle}
 		description={modal2FADescription}
 		variant={modal2FAVariant}
 		isLoading={controller.isLoading}
-		onClose={() => controller.close2FAModal()}
+		onClose={() => close2FAModal()}
 		{focusTrap}
 	>
 		{#if !is2FAEnabled}
 			{#if !controller.twoFactorSecret}
-				<form onsubmit={(e) => controller.generate2FA(e)} class="space-y-5">
+				<form onsubmit={(e) => handleGenerate2FA(e)} class="space-y-5">
 					<Input
 						id="password"
 						name="password"
-						type={controller.showPassword ? "text" : "password"}
+						type={showPassword ? "text" : "password"}
 						label="Senha"
 						placeholder="••••••••"
 						autocomplete="current-password"
@@ -337,24 +374,23 @@
 						required
 						disabled={controller.isLoading}
 						bind:value={controller.password}
-						touched={controller.touched.password}
-						error={(controller.touched.password && !controller.isPasswordValid) ||
+						touched={touched.password}
+						error={(touched.password && !controller.isPasswordValid) ||
 						controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
 							? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
 								? "Senha incorreta."
 								: "A senha deve conter no mínimo 8 caracteres."
 							: undefined}
-						oninput={() => controller.onInput()}
-						onblur={() => (controller.touched.password = true)}
+						onblur={() => (touched.password = true)}
 					>
 						{#snippet suffixIcon()}
 							<button
 								type="button"
-								onclick={() => controller.togglePassword()}
+								onclick={() => togglePassword()}
 								class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-								aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
+								aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
 							>
-								{#if controller.showPassword}
+								{#if showPassword}
 									<svg
 										class="h-5 w-5"
 										viewBox="0 0 24 24"
@@ -401,7 +437,7 @@
 							variant="dark"
 							size="md"
 							disabled={controller.isLoading}
-							onclick={() => controller.close2FAModal()}
+							onclick={() => close2FAModal()}
 							class="w-full sm:w-auto"
 						>
 							Cancelar
@@ -410,7 +446,7 @@
 							type="submit"
 							variant="success-soft"
 							size="md"
-							isLoading={controller.isLoading}
+							disabled={controller.isLoading}
 							class="w-full sm:w-auto"
 						>
 							<span>{controller.isLoading ? "Gerando..." : "Gerar chave"}</span>
@@ -418,7 +454,7 @@
 					</div>
 				</form>
 			{:else}
-				<form onsubmit={(e) => controller.save2FA(e)} class="space-y-5 font-inter">
+				<form onsubmit={(e) => handleSave2FA(e)} class="space-y-5 font-inter">
 					<div
 						transition:slide={{ duration: 250 }}
 						class="flex flex-col items-center gap-5 p-4 bg-app-bg/20 border border-app-border rounded-lg"
@@ -475,13 +511,12 @@
 
 					<CodeInput
 						bind:value={controller.code}
-						touched={controller.touched.code}
+						touched={touched.code}
 						error={!controller.isCodeValid || controller.apiError?.code === "2FA_INVALID_CODE"
 							? "O código deve conter exatamente 6 números."
 							: undefined}
 						disabled={controller.isLoading}
-						oninput={(e) => controller.on2FAInput(e)}
-						onblur={() => (controller.touched.code = true)}
+						onblur={() => (touched.code = true)}
 					/>
 
 					<div
@@ -492,7 +527,7 @@
 							variant="dark"
 							size="md"
 							disabled={controller.isLoading}
-							onclick={() => controller.close2FAModal()}
+							onclick={() => close2FAModal()}
 							class="w-full sm:w-auto"
 						>
 							Cancelar
@@ -501,7 +536,7 @@
 							type="submit"
 							variant="success-soft"
 							size="md"
-							isLoading={controller.isLoading}
+							disabled={controller.isLoading}
 							class="w-full sm:w-auto"
 						>
 							<span>{controller.isLoading ? "Salvando..." : "Salvar chave"}</span>
@@ -510,11 +545,11 @@
 				</form>
 			{/if}
 		{:else}
-			<form onsubmit={(e) => controller.disable2FA(e)} class="space-y-5 font-inter">
+			<form onsubmit={(e) => handleDisable2FA(e)} class="space-y-5 font-inter">
 				<Input
 					id="password"
 					name="password"
-					type={controller.showPassword ? "text" : "password"}
+					type={showPassword ? "text" : "password"}
 					label="Senha"
 					placeholder="••••••••"
 					autocomplete="current-password"
@@ -522,24 +557,23 @@
 					required
 					disabled={controller.isLoading}
 					bind:value={controller.password}
-					touched={controller.touched.password}
-					error={(controller.touched.password && !controller.isPasswordValid) ||
+					touched={touched.password}
+					error={(touched.password && !controller.isPasswordValid) ||
 					controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
 						? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
 							? "Senha incorreta."
 							: "A senha deve conter no mínimo 8 caracteres."
 						: undefined}
-					oninput={() => controller.onInput()}
-					onblur={() => (controller.touched.password = true)}
+					onblur={() => (touched.password = true)}
 				>
 					{#snippet suffixIcon()}
 						<button
 							type="button"
-							onclick={() => controller.togglePassword()}
+							onclick={() => togglePassword()}
 							class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-							aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
+							aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
 						>
-							{#if controller.showPassword}
+							{#if showPassword}
 								<svg
 									class="h-5 w-5"
 									viewBox="0 0 24 24"
@@ -584,7 +618,7 @@
 						variant="dark"
 						size="md"
 						disabled={controller.isLoading}
-						onclick={() => controller.close2FAModal()}
+						onclick={() => close2FAModal()}
 						class="w-full sm:w-auto"
 					>
 						Cancelar
@@ -593,7 +627,7 @@
 						type="submit"
 						variant="danger"
 						size="md"
-						isLoading={controller.isLoading}
+						disabled={controller.isLoading}
 						class="w-full sm:w-auto"
 					>
 						<span>{controller.isLoading ? "Desativando..." : "Desativar"}</span>
@@ -604,15 +638,15 @@
 	</Modal>
 {/if}
 
-{#if controller.isChangePasswordModalOpen}
+{#if isChangePasswordModalOpen}
 	<Modal
-		isOpen={controller.isChangePasswordModalOpen}
+		isOpen={isChangePasswordModalOpen}
 		title="Mudar senha?"
 		description="Para mudar sua senha digite sua senha antiga e a nova senha. Você será desconectado de
 						outros dispositivos!"
 		variant="warning"
 		isLoading={controller.isLoading}
-		onClose={() => controller.closeChangePasswordModal()}
+		onClose={() => closeChangePasswordModal()}
 		{focusTrap}
 	></Modal>
 {/if}

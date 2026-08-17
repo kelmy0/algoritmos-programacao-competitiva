@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
+	import { fade } from "svelte/transition";
 
 	interface Props {
 		title: string;

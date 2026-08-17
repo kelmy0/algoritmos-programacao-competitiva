@@ -1,177 +1,145 @@
 import { customFetch } from "$lib/api/client";
-import type { AlgorithmPayload } from "$lib/schemas/algorithm";
-import type { Algorithm } from "$lib/types/algorithm";
-import type { ApiError } from "$lib/types/api";
-import { normalizeApiError, scrollToAndFocus } from "$lib/utils/errors";
 import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
+import type { Algorithm } from "$lib/types/algorithm";
+import type { AlgorithmEditor } from "$lib/states/editor.svelte";
+import { normalizeApiError } from "$lib/utils/errors";
+import { BaseEditorController } from "$lib/controllers/base_editor_controller.svelte";
 
-export class EditAlgorithmController {
-	isLoading = $state(false);
-	isDeleting = $state(false);
-	apiError = $state<ApiError | null>(null);
-	isSuccess = $state(false);
-	link = $state("");
-	publicId = $state("");
-	slug = $state("");
-	isDeleteModalOpen = $state(false);
-	lastAction = $state<"save" | "delete" | "restore">("save");
+export type ActionType = "save" | "delete" | "restore";
 
-	alertDiv = $state<HTMLDivElement | null>(null);
+export class EditAlgorithmController extends BaseEditorController {
+	#lastAction = $state<ActionType>("save");
+	#publicId = $state("");
+	#slug = $state("");
 
-	touched = $state({
-		password: false
-	});
-
-	hasNameError = $derived(this.apiError?.code === "ALGORITHM_INVALID_NAME");
-	hasCategoryError = $derived(this.apiError?.code === "ALGORITHM_INVALID_CATEGORY");
-	hasContentError = $derived(this.apiError?.code === "ALGORITHM_INVALID_CONTENT");
-
-	onNameInput() {
-		this.clearApiError(["ALGORITHM_INVALID_NAME"]);
-	}
-
-	onCategoryInput() {
-		this.clearApiError(["ALGORITHM_INVALID_CATEGORY"]);
-	}
-
-	onContentInput() {
-		this.clearApiError(["ALGORITHM_INVALID_CONTENT"]);
-	}
-
-	openDeleteModal() {
-		this.isDeleteModalOpen = true;
-	}
-
-	closeDeleteModal() {
-		this.isDeleteModalOpen = false;
-	}
-
-	clearApiError(codes: string[]) {
-		if (this.apiError && codes.includes(this.apiError.code)) {
-			this.apiError = null;
+	constructor(getAlgorithm?: () => Algorithm | null) {
+		super();
+		if (getAlgorithm) {
+			$effect.pre(() => {
+				const algo = getAlgorithm();
+				if (algo) {
+					if (!this.#publicId) this.#publicId = algo.publicId;
+					if (!this.#slug) this.#slug = algo.slug;
+				}
+			});
 		}
 	}
 
-	async handleSubmit(content: AlgorithmPayload): Promise<boolean> {
-		if (this.isDeleting || this.isLoading) {
-			return false;
-		}
-		this.lastAction = "save";
+	get lastAction() {
+		return this.#lastAction;
+	}
 
-		if (!this.publicId) {
-			this.apiError = normalizeApiError("ALGORITHM_INVALID_PUBLIC_ID", "", ADMIN_ALGORITHMS_ERRORS);
-			scrollToAndFocus(this.alertDiv);
-			return false;
-		}
+	get publicId() {
+		return this.#publicId;
+	}
 
-		this.isLoading = true;
+	get slug() {
+		return this.#slug;
+	}
+
+	async save(editor: AlgorithmEditor): Promise<boolean> {
+		if (this._isLoading) return false;
+
+		const payload = editor.getPayload();
+		if (!payload) return false;
+
+		this.#lastAction = "save";
+		if (!this.#validateIdentifier()) return false;
+
+		this._isLoading = true;
+		this._apiError = null;
+
 		const { data, error } = await customFetch<{ algorithm: Algorithm }>(
 			window.fetch,
-			`/api/admin/algorithms/edit/${this.slug}-${this.publicId}`,
+			`/api/admin/algorithms/edit/${this.#slug}-${this.#publicId}`,
 			{
 				method: "PUT",
-				headers: {
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify(content)
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(payload)
 			},
 			ADMIN_ALGORITHMS_ERRORS
 		);
 
-		scrollToAndFocus(this.alertDiv);
-		this.isLoading = false;
+		this._isLoading = false;
 
 		if (error || !data) {
-			this.apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
-			this.isSuccess = false;
+			const finalError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
+			this._apiError = finalError;
+			this._isSuccess = false;
+
+			editor.setApiError(finalError);
 			return false;
 		}
 
-		this.isSuccess = true;
-		this.apiError = null;
-		this.slug = data.algorithm.slug;
-		this.publicId = data.algorithm.publicId;
-		this.link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
+		this._isSuccess = true;
+		this.#slug = data.algorithm.slug;
+		this._link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
+
 		return true;
 	}
 
-	async handleDelete(): Promise<boolean> {
-		if (this.isLoading || this.isDeleting) {
-			return false;
-		}
+	async delete(): Promise<boolean> {
+		if (this._isLoading) return false;
 
-		this.lastAction = "delete";
+		this.#lastAction = "delete";
+		if (!this.#validateIdentifier()) return false;
 
-		if (!this.publicId || !this.slug) {
-			this.apiError = normalizeApiError("ALGORITHM_INVALID_PUBLIC_ID", "", ADMIN_ALGORITHMS_ERRORS);
-			this.isDeleteModalOpen = false;
-			scrollToAndFocus(this.alertDiv);
-			return false;
-		}
-
-		this.isDeleting = true;
+		this._isLoading = true;
 
 		const { error, status } = await customFetch<null>(
 			window.fetch,
 			`/api/admin/algorithms/delete/${this.slug}-${this.publicId}`,
-			{
-				method: "DELETE"
-			},
+			{ method: "DELETE" },
 			ADMIN_ALGORITHMS_ERRORS
 		);
 
-		this.isDeleteModalOpen = false;
-		this.isDeleting = false;
-		scrollToAndFocus(this.alertDiv);
+		this._isLoading = false;
 
-		if (error || status !== 204) {
-			this.isSuccess = false;
-			this.apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
-			return false;
-		}
-
-		this.isSuccess = true;
-		this.apiError = null;
-		this.link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
-		return true;
+		return this.#handleActionResult(error, status === 204);
 	}
 
-	async handleRestore(): Promise<boolean> {
-		if (this.isLoading || this.isDeleting) {
-			return false;
-		}
+	async restore(): Promise<boolean> {
+		if (this._isLoading) return false;
 
-		this.lastAction = "restore";
+		this.#lastAction = "restore";
+		if (!this.#validateIdentifier()) return false;
 
-		if (!this.publicId || !this.slug) {
-			this.apiError = normalizeApiError("ALGORITHM_INVALID_PUBLIC_ID", "", ADMIN_ALGORITHMS_ERRORS);
-			scrollToAndFocus(this.alertDiv);
-			return false;
-		}
-
-		this.isLoading = true;
+		this._isLoading = true;
 
 		const { error, status } = await customFetch<null>(
 			window.fetch,
 			`/api/admin/algorithms/restore/${this.slug}-${this.publicId}`,
-			{
-				method: "PATCH"
-			},
+			{ method: "PATCH" },
 			ADMIN_ALGORITHMS_ERRORS
 		);
 
-		this.isLoading = false;
-		scrollToAndFocus(this.alertDiv);
+		this._isLoading = false;
 
-		if (error || status !== 204) {
-			this.isSuccess = false;
-			this.apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
+		return this.#handleActionResult(error, status === 204);
+	}
+
+	#validateIdentifier(): boolean {
+		if (!this.publicId || !this.slug) {
+			this._apiError = normalizeApiError(
+				"ALGORITHM_INVALID_PUBLIC_ID",
+				"",
+				ADMIN_ALGORITHMS_ERRORS
+			);
+			return false;
+		}
+		return true;
+	}
+
+	#handleActionResult(error: any, isSuccessStatus: boolean): boolean {
+		if (error || !isSuccessStatus) {
+			this._isSuccess = false;
+			this._apiError = error || normalizeApiError("INTERNAL_SERVER_ERROR");
 			return false;
 		}
 
-		this.isSuccess = true;
-		this.apiError = null;
-		this.link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
+		this._isSuccess = true;
+		this._apiError = null;
+		this._link = `/admin/algorithms/my-algorithms/${this.slug}-${this.publicId}`;
 		return true;
 	}
 }

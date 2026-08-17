@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { slide } from "svelte/transition";
+
 	export interface Requirement {
 		label: string;
 		met: boolean;
@@ -13,6 +15,7 @@
 </script>
 
 <div
+	transition:slide={{ duration: 200 }}
 	aria-live="polite"
 	class="p-3 bg-app-bg/30 border border-app-border/80 rounded-lg space-y-1.5 text-xs mt-2 transition-all"
 >

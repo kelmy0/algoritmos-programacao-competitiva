@@ -12,16 +12,17 @@
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
 	const controller = new AdminController();
+	let showPassword = $state(false);
+	let touched = $state(false);
 
 	let hasBeenAuthenticated = $state(false);
+	let showAuthOverlay = $derived(!data.hasAdminSecret);
 
 	$effect(() => {
 		if (data.hasAdminSecret) {
 			hasBeenAuthenticated = true;
 		}
 	});
-
-	let showAuthOverlay = $derived(!data.hasAdminSecret);
 
 	onMount(() => {
 		const keeper = createActivityKeeper({
@@ -34,6 +35,15 @@
 
 		return () => keeper.stop();
 	});
+
+	const togglePassword = () => (showPassword = !showPassword);
+
+	async function handleAdmin(e: SubmitEvent) {
+		e.preventDefault();
+		touched = true;
+		await controller.sendPassword();
+		touched = false;
+	}
 </script>
 
 {#if !hasBeenAuthenticated && showAuthOverlay}
@@ -87,12 +97,12 @@
 		</p>
 	</div>
 
-	<form onsubmit={(e) => controller.sendPassword(e)} class="space-y-5 font-inter">
+	<form onsubmit={(e) => handleAdmin(e)} class="space-y-5 font-inter">
 		<!-- Password -->
 		<Input
 			id="password"
 			name="password"
-			type={controller.showPassword ? "text" : "password"}
+			type={showPassword ? "text" : "password"}
 			label="Senha"
 			placeholder="••••••••"
 			autocomplete="current-password"
@@ -100,21 +110,20 @@
 			required
 			disabled={controller.isLoading}
 			bind:value={controller.password}
-			touched={controller.touched.password}
+			{touched}
 			error={!controller.isPasswordValid
 				? "A senha deve conter no mínimo 8 caracteres."
 				: undefined}
-			oninput={() => controller.onInput()}
-			onblur={() => (controller.touched.password = true)}
+			onblur={() => (touched = true)}
 		>
 			{#snippet suffixIcon()}
 				<button
 					type="button"
-					onclick={() => controller.togglePassword()}
+					onclick={() => togglePassword()}
 					class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-					aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
+					aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
 				>
-					{#if controller.showPassword}
+					{#if showPassword}
 						<svg
 							class="h-5 w-5"
 							viewBox="0 0 24 24"

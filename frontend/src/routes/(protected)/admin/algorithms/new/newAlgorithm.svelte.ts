@@ -1,82 +1,49 @@
 import { customFetch } from "$lib/api/client";
 import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
-import type { AlgorithmPayload } from "$lib/schemas/algorithm";
 import type { Algorithm } from "$lib/types/algorithm";
-import type { ApiError } from "$lib/types/api";
-import { normalizeApiError, scrollToAndFocus } from "$lib/utils/errors";
+import type { AlgorithmEditor } from "$lib/states/editor.svelte";
+import { normalizeApiError } from "$lib/utils/errors";
+import { BaseEditorController } from "$lib/controllers/base_editor_controller.svelte";
 
-export class NewAlgorithmController {
-	isLoading = $state(false);
-	apiError = $state<ApiError | null>(null);
-	isSuccess = $state(false);
-	link = $state("");
+export class NewAlgorithmController extends BaseEditorController {
+	async save(editor: AlgorithmEditor): Promise<boolean> {
+		if (this._isLoading) return false;
 
-	alertDiv = $state<HTMLDivElement | null>(null);
+		const payload = editor.getPayload();
+		if (!payload) return false;
 
-	touched = $state({
-		password: false
-	});
-
-	hasNameError = $derived(this.apiError?.code === "ALGORITHM_INVALID_NAME");
-	hasCategoryError = $derived(this.apiError?.code === "ALGORITHM_INVALID_CATEGORY");
-	hasContentError = $derived(this.apiError?.code === "ALGORITHM_INVALID_CONTENT");
-
-	onNameInput() {
-		this.clearApiError(["ALGORITHM_INVALID_NAME"]);
-	}
-
-	onCategoryInput() {
-		this.clearApiError(["ALGORITHM_INVALID_CATEGORY"]);
-	}
-
-	onContentInput() {
-		this.clearApiError(["ALGORITHM_INVALID_CONTENT"]);
-	}
-
-	clearApiError(codes: string[]) {
-		if (this.apiError && codes.includes(this.apiError.code)) {
-			this.apiError = null;
-		}
-	}
-
-	async submit(content: AlgorithmPayload) {
-		if (this.isLoading) {
-			return;
-		}
-
-		this.isLoading = true;
+		this._isLoading = true;
+		this._apiError = null;
 
 		const { data, error } = await customFetch<{ algorithm: Algorithm }>(
 			window.fetch,
 			"/api/admin/algorithms/new",
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify(content)
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(payload)
 			},
 			ADMIN_ALGORITHMS_ERRORS
 		);
 
+		this._isLoading = false;
+
 		if (error) {
-			this.apiError = error;
-			this.isSuccess = false;
-			await scrollToAndFocus(this.alertDiv);
-			this.isLoading = false;
-			return;
+			this._apiError = error;
+			this._isSuccess = false;
+
+			editor.setApiError(error);
+			return false;
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
-			return;
+			this._apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
+			return false;
 		}
 
-		this.isSuccess = true;
-		this.apiError = null;
-		this.link = `/admin/algorithms/my-algorithms/${data.algorithm.slug}-${data.algorithm.publicId}`;
-		scrollToAndFocus(this.alertDiv);
+		this._isSuccess = true;
+		this._link = `/admin/algorithms/my-algorithms/${data.algorithm.slug}-${data.algorithm.publicId}`;
 
-		this.isLoading = false;
+		return true;
 	}
 }

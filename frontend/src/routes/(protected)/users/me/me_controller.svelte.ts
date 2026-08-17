@@ -1,168 +1,148 @@
 import { goto, invalidateAll } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
+import { BaseController } from "$lib/controllers/base_controller.svelte";
 import { TWO_FACTOR_ERRORS } from "$lib/errors/users/me/two_factor";
-import type { ApiError } from "$lib/types/api";
 import { type TwoFactorGenerateResponse } from "$lib/types/users/me/two_factor";
 import { normalizeApiError } from "$lib/utils/errors";
 
-export class MeController {
-	apiError = $state<ApiError | null>(null);
-	isLoading = $state(false);
+export class MeController extends BaseController {
+	#is2FAEnabled = $state(false);
+	#twoFactorSecret = $state("");
+	#qrCodeUrl = $state("");
 
-	is2FAModalOpen = $state(false);
-	is2FAEnabled = $state(false);
-	twoFactorSecret = $state("");
-	qrCodeUrl = $state("");
+	#password = $state("");
+	#confirmPassword = $state("");
+	#code = $state("");
 
-	isChangePasswordModalOpen = $state(false);
+	constructor(is2FAEnabled: boolean = false) {
+		super();
+		this.#is2FAEnabled = is2FAEnabled;
+	}
 
-	password = $state("");
-	confirmPassword = $state("");
-	showPassword = $state(false);
+	get is2FAEnabled() {
+		return this.#is2FAEnabled;
+	}
 
-	code = $state("");
+	get twoFactorSecret() {
+		return this.#twoFactorSecret;
+	}
 
-	touched = $state({
-		password: false,
-		code: false
-	});
+	get qrCodeUrl() {
+		return this.#qrCodeUrl;
+	}
+
+	get password() {
+		return this.#password;
+	}
+
+	set password(val: string) {
+		this.#password = val;
+		this.clearApiError();
+	}
+
+	get confirmPassword() {
+		return this.#confirmPassword;
+	}
+
+	set confirmPassword(value: string) {
+		this.#confirmPassword = value;
+		this.clearApiError();
+	}
+
+	get code() {
+		return this.#code;
+	}
+
+	set code(value: string) {
+		this.#code = value.replace(/\D/g, "");
+		this.clearApiError();
+	}
 
 	get isPasswordValid() {
-		return this.password.length >= 8;
+		return this.#password.length >= 8;
 	}
 
 	get isCodeValid() {
-		return this.code.length === 6;
+		return this.#code.length === 6;
 	}
 
-	// MODALS
-	open2FAModal() {
-		this.is2FAModalOpen = true;
-	}
-
-	close2FAModal() {
-		this.is2FAModalOpen = false;
-	}
-
-	openChangePasswordModal() {
-		this.isChangePasswordModalOpen = true;
-	}
-
-	closeChangePasswordModal() {
-		this.isChangePasswordModalOpen = false;
-	}
-
-	onInput() {
-		if (this.apiError) {
-			this.apiError = null;
-		}
-	}
-
-	on2FAInput(e: Event) {
-		this.onInput();
-		const input = e.target as HTMLInputElement;
-
-		this.code = input.value.replace(/\D/g, "");
-	}
-
-	togglePassword() {
-		this.showPassword = !this.showPassword;
-	}
-
-	async generate2FA(e: SubmitEvent) {
-		e.preventDefault();
-		this.touched.password = true;
-
-		if (this.is2FAEnabled || !this.isPasswordValid) return;
-		this.isLoading = true;
-
-		const bodyrequest = { password: this.password };
+	async generate2FA(): Promise<boolean> {
+		if (this.#is2FAEnabled || !this.isPasswordValid || this._isLoading) return false;
+		this._isLoading = true;
 
 		const { data, error } = await customFetch<TwoFactorGenerateResponse>(
 			window.fetch,
 			"/api/users/me/2fa/generate",
-			{ method: "POST", body: JSON.stringify(bodyrequest) },
+			{ method: "POST", body: JSON.stringify({ password: this.#password }) },
 			TWO_FACTOR_ERRORS
 		);
 
-		this.isLoading = false;
+		this._isLoading = false;
 
 		if (error) {
-			this.apiError = error;
-			return;
+			this._apiError = error;
+			return false;
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
-			return;
+			this._apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
+			return false;
 		}
 
-		this.apiError = null;
-		this.twoFactorSecret = data.secret;
-		this.password = "";
-		this.touched.password = false;
-		this.qrCodeUrl = data.qrCode;
+		this._apiError = null;
+		this.#twoFactorSecret = data.secret;
+		this.#password = "";
+		this.#qrCodeUrl = data.qrCode;
+		return true;
 	}
 
-	async save2FA(e: SubmitEvent) {
-		e.preventDefault();
-		this.touched.code = true;
-
-		if (this.is2FAEnabled || !this.isCodeValid) return;
-		this.isLoading = true;
-
-		const bodyrequest = { code: this.code };
+	async save2FA(): Promise<boolean> {
+		if (this.#is2FAEnabled || !this.isCodeValid || this._isLoading) return false;
+		this._isLoading = true;
 
 		const { error } = await customFetch<null>(
 			window.fetch,
 			"/api/users/me/2fa/enable",
-			{ method: "POST", body: JSON.stringify(bodyrequest) },
+			{ method: "POST", body: JSON.stringify({ code: this.#code }) },
 			TWO_FACTOR_ERRORS
 		);
 
-		this.isLoading = false;
+		this._isLoading = false;
 
 		if (error) {
-			this.apiError = error;
-			return;
+			this._apiError = error;
+			return false;
 		}
 
-		this.apiError = null;
-		this.twoFactorSecret = "";
-		this.qrCodeUrl = "";
-		this.touched.code = false;
-		this.close2FAModal();
+		this._apiError = null;
+		this.#twoFactorSecret = "";
+		this.#qrCodeUrl = "";
 		await invalidateAll();
+		return true;
 	}
 
-	async disable2FA(e: SubmitEvent) {
-		e.preventDefault();
-		this.touched.password = true;
+	async disable2FA(): Promise<boolean> {
+		if (!this.#is2FAEnabled || !this.isPasswordValid || this._isLoading) return false;
 
-		if (!this.is2FAEnabled || !this.isPasswordValid) return;
-
-		this.isLoading = true;
-
-		const bodyrequest = { password: this.password };
+		this._isLoading = true;
 
 		const { error } = await customFetch<null>(
 			window.fetch,
 			"/api/users/me/2fa/disable",
-			{ method: "POST", body: JSON.stringify(bodyrequest) },
+			{ method: "POST", body: JSON.stringify({ password: this.#password }) },
 			TWO_FACTOR_ERRORS
 		);
 
-		this.isLoading = false;
+		this._isLoading = false;
 
 		if (error) {
-			this.apiError = error;
-			return;
+			this._apiError = error;
+			return false;
 		}
 
-		this.apiError = null;
-		this.password = "";
-		this.touched.password = false;
-		this.close2FAModal();
+		this._apiError = null;
+		this.#password = "";
 		await goto("/auth/login", { invalidateAll: true });
+		return true;
 	}
 }

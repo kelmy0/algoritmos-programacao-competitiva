@@ -1,21 +1,67 @@
 <script lang="ts">
 	import { SignUpController } from "./sign_up.svelte";
-	import { page } from "$app/state";
-	import { onMount } from "svelte";
 	import Turnstile from "$lib/components/turnstile.svelte";
 	import Input from "$lib/components/ui/Input.svelte";
 	import ValidationCard from "$lib/components/ui/ValidationCard.svelte";
 	import Alert from "$lib/components/ui/Alert.svelte";
 	import Button from "$lib/components/ui/Button.svelte";
+	import { scrollToAndFocus } from "$lib/utils/errors";
+	import { tick } from "svelte";
 
 	const controller = new SignUpController();
 
-	onMount(() => {
-		const error = page.url.searchParams.get("error");
+	let showPassword = $state(false);
+	let showConfirmPassword = $state(false);
 
-		if (error == "social_auth_failed") {
-		}
+	let nameInput = $state<HTMLInputElement | null>(null);
+	let usernameInput = $state<HTMLInputElement | null>(null);
+	let emailInput = $state<HTMLInputElement | null>(null);
+	let passwordInput = $state<HTMLInputElement | null>(null);
+	let confirmPasswordInput = $state<HTMLInputElement | null>(null);
+
+	let touched = $state({
+		name: false,
+		username: false,
+		email: false,
+		password: false,
+		confirmPassword: false
 	});
+
+	const togglePassword = () => (showPassword = !showPassword);
+	const toggleConfirmPassword = () => (showConfirmPassword = !showConfirmPassword);
+
+	async function focusFirstInvalidField() {
+		await tick();
+
+		if (!controller.isNameValid) {
+			scrollToAndFocus(nameInput);
+		} else if (!controller.isUsernameValid) {
+			scrollToAndFocus(usernameInput);
+		} else if (!controller.isEmailValid) {
+			scrollToAndFocus(emailInput);
+		} else if (!controller.isPasswordValid) {
+			scrollToAndFocus(passwordInput);
+		} else if (!controller.isPasswordsMatching) {
+			scrollToAndFocus(confirmPasswordInput);
+		}
+	}
+
+	async function handleSubmit(e: SubmitEvent) {
+		e.preventDefault();
+
+		touched = {
+			name: true,
+			username: true,
+			email: true,
+			password: true,
+			confirmPassword: true
+		};
+
+		const success = await controller.signUp();
+		if (!success) {
+			await focusFirstInvalidField();
+		}
+	}
 </script>
 
 <svelte:head>
@@ -40,7 +86,7 @@
 		</div>
 
 		<!-- Form -->
-		<form onsubmit={(e) => controller.signUp(e)} class="space-y-5 font-inter">
+		<form onsubmit={(e) => handleSubmit(e)} class="space-y-5 font-inter">
 			<!-- Name -->
 			<Input
 				id="name"
@@ -51,12 +97,14 @@
 				autocomplete="name"
 				required
 				bind:value={controller.name}
-				bind:inputRef={controller.nameInput}
-				touched={controller.touched.name}
+				bind:inputRef={nameInput}
+				touched={touched.name}
 				error={!controller.isNameValid ? "O nome precisa ter no mínimo 6 letras." : undefined}
 				disabled={controller.isLoading}
-				oninput={() => controller.onNameInput()}
-				onblur={() => controller.onNameBlur()}
+				onblur={() => {
+					controller.onNameBlur();
+					touched.name = true;
+				}}
 			/>
 
 			<!-- Username -->
@@ -69,14 +117,13 @@
 				autocomplete="username"
 				required
 				bind:value={controller.username}
-				bind:inputRef={controller.usernameInput}
-				touched={controller.touched.username}
+				bind:inputRef={usernameInput}
+				touched={touched.username}
 				error={!controller.isUsernameValid
 					? "Usuário inválido (mínimo 3 caracteres, apenas letras, números e _)."
 					: undefined}
 				disabled={controller.isLoading}
-				oninput={() => controller.onUsernameInput()}
-				onblur={() => controller.onUsernameBlur()}
+				onblur={() => (touched.username = true)}
 			/>
 
 			<!-- Email -->
@@ -89,41 +136,39 @@
 				autocomplete="email"
 				required
 				bind:value={controller.email}
-				bind:inputRef={controller.emailInput}
-				touched={controller.touched.email}
+				bind:inputRef={emailInput}
+				touched={touched.email}
 				error={!controller.isEmailValid ? "Digite um e-mail válido." : undefined}
 				disabled={controller.isLoading}
-				oninput={() => controller.onEmailInput()}
-				onblur={() => controller.onEmailBlur()}
+				onblur={() => (touched.email = true)}
 			/>
 
 			<!-- Password -->
 			<Input
 				id="password"
 				name="password"
-				type={controller.showPassword ? "text" : "password"}
+				type={showPassword ? "text" : "password"}
 				label="Senha"
 				placeholder="••••••••"
 				autocomplete="new-password"
 				required
 				bind:value={controller.password}
-				bind:inputRef={controller.passwordInput}
-				touched={controller.touched.password}
+				bind:inputRef={passwordInput}
+				touched={touched.password}
 				error={!controller.isPasswordValid
 					? "A senha não atende aos requisitos mínimos."
 					: undefined}
 				disabled={controller.isLoading}
-				oninput={() => controller.onPasswordInput()}
-				onblur={() => controller.onPasswordBlur()}
+				onblur={() => (touched.password = true)}
 			>
 				{#snippet suffixIcon()}
 					<button
 						type="button"
-						onclick={() => controller.togglePassword()}
+						onclick={() => togglePassword()}
 						class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-						aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
+						aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
 					>
-						{#if controller.showPassword}
+						{#if showPassword}
 							<svg
 								class="h-5 w-5"
 								viewBox="0 0 24 24"
@@ -179,35 +224,34 @@
 			<Input
 				id="confirmPassword"
 				name="confirmPassword"
-				type={controller.showConfirmPassword ? "text" : "password"}
+				type={showConfirmPassword ? "text" : "password"}
 				label="Confirmar senha"
 				placeholder="••••••••"
 				autocomplete="new-password"
 				required
 				bind:value={controller.confirmPassword}
-				bind:inputRef={controller.confirmPasswordInput}
-				touched={controller.touched.confirmPassword}
+				bind:inputRef={confirmPasswordInput}
+				touched={touched.confirmPassword}
 				error={controller.apiError?.code === "USER_PASSWORDS_DONT_MATCH"
 					? "As senhas não coincidem."
-					: controller.touched.confirmPassword &&
+					: touched.confirmPassword &&
 						  controller.confirmPassword.length > 0 &&
 						  !controller.isPasswordsMatching
 						? "As senhas não coincidem."
 						: undefined}
 				disabled={controller.isLoading}
-				oninput={() => controller.onPasswordInput()}
-				onblur={() => controller.onConfirmPasswordBlur()}
+				onblur={() => (touched.confirmPassword = true)}
 			>
 				{#snippet suffixIcon()}
 					<button
 						type="button"
-						onclick={() => controller.toggleConfirmPassword()}
+						onclick={() => toggleConfirmPassword()}
 						class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-						aria-label={controller.showConfirmPassword
+						aria-label={showConfirmPassword
 							? "Ocultar confirmação de senha"
 							: "Mostrar confirmação de senha"}
 					>
-						{#if controller.showConfirmPassword}
+						{#if showConfirmPassword}
 							<svg
 								class="h-5 w-5"
 								viewBox="0 0 24 24"
@@ -246,7 +290,7 @@
 
 			<div class="flex justify-center">
 				<Turnstile
-					bind:this={controller.turnstileComponent}
+					bind:this={() => null, (v) => controller.setTurnstileComponent(v)}
 					onsuccess={(token) => controller.onTurnstileSuccess(token)}
 					onexpire={() => controller.onTurnstileExpire()}
 				/>

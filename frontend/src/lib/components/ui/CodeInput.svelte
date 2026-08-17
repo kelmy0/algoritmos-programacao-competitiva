@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { slide } from "svelte/transition";
+
 	interface Props {
 		id?: string;
 		name?: string;
@@ -62,7 +64,12 @@
 	/>
 
 	{#if hasError}
-		<p id={`${id}-error`} role="alert" class="text-xs text-red-400">
+		<p
+			transition:slide={{ duration: 200 }}
+			id={`${id}-error`}
+			role="alert"
+			class="text-xs text-red-400"
+		>
 			{error}
 		</p>
 	{/if}

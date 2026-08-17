@@ -9,6 +9,22 @@
 	let { data } = $props();
 
 	const controller = new LoginController(untrack(() => data.initialError));
+	let showPassword = $state(false);
+
+	let touched = $state({
+		email: false,
+		password: false
+	});
+
+	const togglePassword = () => (showPassword = !showPassword);
+
+	async function handleLogin(e: SubmitEvent) {
+		e.preventDefault();
+		touched.email = true;
+		touched.password = true;
+
+		await controller.login();
+	}
 </script>
 
 <svelte:head>
@@ -30,7 +46,7 @@
 		</div>
 
 		<!-- Form -->
-		<form onsubmit={(e) => controller.login(e)} class="space-y-5 font-inter">
+		<form onsubmit={(e) => handleLogin(e)} class="space-y-5 font-inter">
 			<!-- Email -->
 			<Input
 				id="email"
@@ -42,17 +58,16 @@
 				required
 				disabled={controller.isLoading}
 				bind:value={controller.email}
-				touched={controller.touched.email}
+				touched={touched.email}
 				error={!controller.isEmailValid ? "Digite um endereço de e-mail válido." : undefined}
-				oninput={() => controller.onInput()}
-				onblur={() => (controller.touched.email = true)}
+				onblur={() => (touched.email = true)}
 			/>
 
 			<!-- Password -->
 			<Input
 				id="password"
 				name="password"
-				type={controller.showPassword ? "text" : "password"}
+				type={showPassword ? "text" : "password"}
 				label="Senha"
 				placeholder="••••••••"
 				autocomplete="current-password"
@@ -60,21 +75,20 @@
 				required
 				disabled={controller.isLoading}
 				bind:value={controller.password}
-				touched={controller.touched.password}
+				touched={touched.password}
 				error={!controller.isPasswordValid
 					? "A senha deve conter no mínimo 8 caracteres."
 					: undefined}
-				oninput={() => controller.onInput()}
-				onblur={() => (controller.touched.password = true)}
+				onblur={() => (touched.password = true)}
 			>
 				{#snippet suffixIcon()}
 					<button
 						type="button"
-						onclick={() => controller.togglePassword()}
+						onclick={() => togglePassword()}
 						class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-						aria-label={controller.showPassword ? "Ocultar senha" : "Mostrar senha"}
+						aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
 					>
-						{#if controller.showPassword}
+						{#if showPassword}
 							<svg
 								class="h-5 w-5"
 								viewBox="0 0 24 24"
@@ -113,7 +127,7 @@
 
 			<div class="flex justify-center">
 				<Turnstile
-					bind:this={controller.turnstileComponent}
+					bind:this={() => null, (v) => controller.setTurnstileComponent(v)}
 					onsuccess={(token) => controller.onTurnstileSuccess(token)}
 					onexpire={() => controller.onTurnstileExpire()}
 				/>

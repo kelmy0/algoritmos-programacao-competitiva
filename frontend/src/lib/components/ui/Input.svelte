@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { HTMLInputAttributes } from "svelte/elements";
 	import type { Snippet } from "svelte";
+	import { slide } from "svelte/transition";
 
 	interface Props extends HTMLInputAttributes {
 		label?: string;
@@ -82,7 +83,7 @@
 	</div>
 
 	{#if hasError}
-		<p id={errorId} role="alert" class="text-xs text-red-400">
+		<p transition:slide={{ duration: 200 }} id={errorId} role="alert" class="text-xs text-red-400">
 			{error}
 		</p>
 	{/if}

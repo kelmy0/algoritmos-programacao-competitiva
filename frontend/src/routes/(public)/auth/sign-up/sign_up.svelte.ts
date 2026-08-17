@@ -1,54 +1,99 @@
 import { goto } from "$app/navigation";
 import { customFetch } from "$lib/api/client";
+import { BaseAuthController } from "$lib/controllers/base_auth_controller.svelte";
 import { SIGN_UP_ERRORS } from "$lib/errors/auth/sign-up";
-import type { ApiError } from "$lib/types/api";
 import type { SignUpServerResponse } from "$lib/types/auth/sign-up";
-import { normalizeApiError, scrollToAndFocus } from "$lib/utils/errors";
+import { normalizeApiError } from "$lib/utils/errors";
 import { isValidEmail, sanitizeHumanName, sanitizeUsername } from "$lib/utils/sanitize";
-import { tick } from "svelte";
 
-export class SignUpController {
-	name = $state("");
-	username = $state("");
-	email = $state("");
-	password = $state("");
-	confirmPassword = $state("");
-	turnstileToken = $state("");
-	isLoading = $state(false);
-	apiError = $state<ApiError | null>(null);
-	showPassword = $state(false);
-	showConfirmPassword = $state(false);
+export class SignUpController extends BaseAuthController {
+	#name = $state("");
+	#username = $state("");
+	#email = $state("");
+	#password = $state("");
+	#confirmPassword = $state("");
 
-	nameInput = $state<HTMLInputElement | null>(null);
-	usernameInput = $state<HTMLInputElement | null>(null);
-	emailInput = $state<HTMLInputElement | null>(null);
-	passwordInput = $state<HTMLInputElement | null>(null);
-	confirmPasswordInput = $state<HTMLInputElement | null>(null);
+	get name() {
+		return this.#name;
+	}
 
-	turnstileComponent: { reset: () => void } | null = null;
+	set name(value: string) {
+		this.#name = value;
+		this.clearApiError("REGISTRATION_INVALID_NAME");
+	}
 
-	touched = $state({
-		name: false,
-		username: false,
-		email: false,
-		password: false,
-		confirmPassword: false
-	});
+	get username() {
+		return this.#username;
+	}
+
+	set username(value: string) {
+		this.#username = sanitizeUsername(value);
+		this.clearApiError("REGISTRATION_INVALID_USERNAME");
+	}
+
+	get email() {
+		return this.#email;
+	}
+
+	set email(value: string) {
+		this.#email = value;
+		this.clearApiError("REGISTRATION_INVALID_EMAIL");
+	}
+
+	get password() {
+		return this.#password;
+	}
+
+	set password(value: string) {
+		this.#password = value;
+		this.clearApiError(["USER_PASSWORDS_DONT_MATCH", "USER_PASSWORD_NOT_VALID"]);
+	}
+
+	get confirmPassword() {
+		return this.#confirmPassword;
+	}
+
+	set confirmPassword(value: string) {
+		this.#confirmPassword = value;
+		this.clearApiError("USER_PASSWORDS_DONT_MATCH");
+	}
+
+	get cleanName() {
+		return sanitizeHumanName(this.#name);
+	}
+	get isNameValid() {
+		return this.cleanName.length >= 6;
+	}
+
+	get cleanUsername() {
+		return sanitizeUsername(this.#username);
+	}
+	get isUsernameValid() {
+		return this.cleanUsername.length >= 6;
+	}
+
+	get isEmailValid() {
+		return isValidEmail(this.#email);
+	}
 
 	get hasMinLength() {
-		return this.password.length >= 8;
+		return this.#password.length >= 8;
 	}
+
 	get hasUppercase() {
-		return /[A-Z]/.test(this.password);
+		return /[A-Z]/.test(this.#password);
 	}
+
 	get hasLowercase() {
-		return /[a-z]/.test(this.password);
+		return /[a-z]/.test(this.#password);
 	}
+
 	get hasNumber() {
-		return /\d/.test(this.password);
+		return /\d/.test(this.#password);
 	}
+
 	get hasSpecialChar() {
-		return /[@$!%*?&]/.test(this.password);
+		return /[@$!%*?&]/.test(this.#password);
 	}
 
 	get isPasswordValid() {
@@ -62,151 +107,57 @@ export class SignUpController {
 	}
 
 	get isPasswordsMatching() {
-		return this.password === this.confirmPassword;
-	}
-
-	get cleanName() {
-		return sanitizeHumanName(this.name);
-	}
-	get isNameValid() {
-		return this.cleanName.length >= 6;
-	}
-
-	get cleanUsername() {
-		return sanitizeUsername(this.username);
-	}
-	get isUsernameValid() {
-		return this.cleanUsername.length >= 6;
-	}
-
-	get isEmailValid() {
-		return isValidEmail(this.email);
-	}
-
-	clearApiError(codes: string[]) {
-		if (this.apiError && codes.includes(this.apiError.code)) {
-			this.apiError = null;
-		}
-	}
-
-	onNameInput() {
-		this.clearApiError(["REGISTRATION_INVALID_NAME"]);
+		return this.#password === this.#confirmPassword;
 	}
 
 	onNameBlur() {
-		this.touched.name = true;
-		this.name = this.cleanName;
+		this.#name = this.cleanName;
 	}
 
-	onUsernameInput() {
-		this.username = sanitizeUsername(this.username);
-		this.clearApiError(["REGISTRATION_INVALID_USERNAME"]);
-	}
-
-	onUsernameBlur() {
-		this.touched.username = true;
-	}
-
-	onEmailInput() {
-		this.clearApiError(["REGISTRATION_INVALID_EMAIL"]);
-	}
-
-	onEmailBlur() {
-		this.touched.email = true;
-	}
-
-	onPasswordInput() {
-		this.clearApiError(["USER_PASSWORDS_DONT_MATCH", "USER_PASSWORD_NOT_VALID"]);
-	}
-
-	onPasswordBlur() {
-		this.touched.password = true;
-	}
-
-	onConfirmPasswordBlur() {
-		this.touched.confirmPassword = true;
-	}
-
-	togglePassword() {
-		this.showPassword = !this.showPassword;
-	}
-
-	toggleConfirmPassword() {
-		this.showConfirmPassword = !this.showConfirmPassword;
-	}
-
-	onTurnstileSuccess(token: string) {
-		this.turnstileToken = token;
-	}
-
-	onTurnstileExpire() {
-		this.turnstileToken = "";
-	}
-
-	async signUp(event: SubmitEvent) {
-		event.preventDefault();
-
-		this.touched = {
-			name: true,
-			username: true,
-			email: true,
-			password: true,
-			confirmPassword: true
-		};
-
-		if (this.isLoading) return;
+	async signUp(): Promise<boolean> {
+		if (this._isLoading || !this.validateTurnstile()) return false;
 
 		if (!this.isNameValid) {
-			this.apiError = {
+			this._apiError = {
 				code: "REGISTRATION_INVALID_NAME",
 				message: "O nome deve conter pelo menos 6 letras."
 			};
-			await this.focusFirstInvalidField();
-			return;
+			return false;
 		}
 
 		if (!this.isUsernameValid) {
-			this.apiError = {
+			this._apiError = {
 				code: "REGISTRATION_INVALID_USERNAME",
 				message: "Username deve ter pelo menos 6 caracteres válidos."
 			};
-			await this.focusFirstInvalidField();
-			return;
+			return false;
 		}
 
 		if (!this.isEmailValid) {
-			this.apiError = {
+			this._apiError = {
 				code: "REGISTRATION_INVALID_EMAIL",
 				message: "Digite um endereço de e-mail válido."
 			};
-			await this.focusFirstInvalidField();
-			return;
+			return false;
 		}
 
 		if (!this.isPasswordValid) {
-			this.apiError = {
+			this._apiError = {
 				code: "USER_PASSWORD_NOT_VALID",
 				message: SIGN_UP_ERRORS.USER_PASSWORD_NOT_VALID
 			};
-			await this.focusFirstInvalidField();
-			return;
+			return false;
 		}
 
 		if (!this.isPasswordsMatching) {
-			this.apiError = {
+			this._apiError = {
 				code: "USER_PASSWORDS_DONT_MATCH",
 				message: SIGN_UP_ERRORS.USER_PASSWORDS_DONT_MATCH
 			};
-			await this.focusFirstInvalidField();
-			return;
+			return false;
 		}
 
-		if (!this.turnstileToken) {
-			this.apiError = normalizeApiError("CAPTCHA_REQUIRED");
-			return;
-		}
-
-		this.isLoading = true;
+		this._isLoading = true;
 
 		const { data, error } = await customFetch<SignUpServerResponse>(
 			window.fetch,
@@ -215,64 +166,46 @@ export class SignUpController {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"X-CF-Turnstile-Response": this.turnstileToken
+					"X-CF-Turnstile-Response": this._turnstileToken
 				},
 				body: JSON.stringify({
-					name: this.name,
-					username: this.username,
-					email: this.email,
-					password: this.password,
-					confirmPassword: this.confirmPassword
+					name: this.#name,
+					username: this.#username,
+					email: this.#email,
+					password: this.#password,
+					confirmPassword: this.#confirmPassword
 				})
 			},
 			SIGN_UP_ERRORS
 		);
 
-		this.isLoading = false;
+		this._isLoading = false;
 
 		if (error) {
-			this.apiError = error;
-			this.turnstileToken = "";
-			this.turnstileComponent?.reset();
-			return;
+			this._apiError = error;
+			this.resetTurnstile();
+			return false;
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError(
-				"INTERNAL_SERVER_ERROR",
-				"Falha ao processar resposta do servidor.",
-				SIGN_UP_ERRORS
-			);
-			return;
+			this._apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
+			return false;
 		}
 
 		if (data.autoLogin) {
-			this.apiError = null;
+			this._apiError = null;
 			await goto("/", { invalidateAll: true });
-		} else if (data.success && !data.autoLogin) {
-			this.apiError = null;
-			goto("/login");
+		} else if (data.success) {
+			this._apiError = null;
+			await goto("/login");
 		} else {
-			this.apiError = {
+			this._apiError = {
 				code: "REGISTRATION_UNEXPECTED_ERROR",
 				message: SIGN_UP_ERRORS.REGISTRATION_UNEXPECTED_ERROR
 			};
+			return false;
 		}
-	}
 
-	private async focusFirstInvalidField() {
-		await tick();
-
-		if (!this.isNameValid) {
-			scrollToAndFocus(this.nameInput);
-		} else if (!this.isUsernameValid) {
-			scrollToAndFocus(this.usernameInput);
-		} else if (!this.isEmailValid) {
-			scrollToAndFocus(this.emailInput);
-		} else if (!this.isPasswordValid) {
-			scrollToAndFocus(this.passwordInput);
-		} else if (!this.isPasswordsMatching) {
-			scrollToAndFocus(this.confirmPasswordInput);
-		}
+		return true;
 	}
 }

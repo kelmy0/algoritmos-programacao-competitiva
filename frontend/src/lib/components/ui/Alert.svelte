@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
+	import { slide } from "svelte/transition";
 
 	type AlertVariant = "error" | "success" | "warning" | "info";
 
@@ -58,6 +59,7 @@
 </script>
 
 <div
+	transition:slide={{ duration: 200 }}
 	role={config.role}
 	aria-live={config.ariaLive}
 	class="p-4 border rounded-xl text-sm flex items-start gap-3 shadow-lg transition-all {config.containerClass} {isLoading

@@ -4,18 +4,19 @@
 	import Input from "$lib/components/ui/Input.svelte";
 	import MarkdownEditor from "$lib/components/ui/MarkdownEditor.svelte";
 	import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
-	import { AlgorithmEditor } from "$lib/utils/editor.svelte";
+	import { AlgorithmEditor } from "$lib/states/editor.svelte";
+	import { scrollToAndFocus } from "$lib/utils/errors";
 	import { NewAlgorithmController } from "./newAlgorithm.svelte";
 
-	const editor = new AlgorithmEditor();
+	const editor = new AlgorithmEditor(() => null);
 	const controller = new NewAlgorithmController();
+
+	let alertDiv = $state<HTMLDivElement | null>(null);
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
-		const payload = editor.getPayload();
-		if (payload) {
-			await controller.submit(payload);
-		}
+		await controller.save(editor);
+		await scrollToAndFocus(alertDiv);
 	}
 
 	const difficultyOptions: SelectOption[] = [
@@ -54,9 +55,8 @@
 				disabled={controller.isLoading}
 				bind:value={editor.name}
 				bind:inputRef={editor.nameInput}
-				touched={editor.hasNameError || controller.hasNameError}
+				touched={editor.hasNameError}
 				error="O nome precisa ter no mínimo 3 letras válidas."
-				oninput={() => editor.onNameInput()}
 				onblur={() => editor.onNameBlur()}
 			/>
 
@@ -69,9 +69,8 @@
 				disabled={controller.isLoading}
 				bind:value={editor.category}
 				bind:inputRef={editor.categoryInput}
-				touched={editor.hasCategoryError || controller.hasCategoryError}
+				touched={editor.hasCategoryError}
 				error="A categoria precisa ter no mínimo 3 letras válidas."
-				oninput={() => editor.onCategoryInput()}
 				onblur={() => editor.onCategoryBlur()}
 			/>
 
@@ -85,12 +84,11 @@
 				disabled={controller.isLoading}
 				touched={editor.hasDifficultyError}
 				error="A dificuldade precisa ser uma das 4 opções."
-				onchange={() => editor.onDifficultyInput()}
 				onblur={() => editor.onDifficultyBlur()}
 			/>
 		</fieldset>
 
-		<div class="invisible" bind:this={controller.alertDiv}></div>
+		<div class="invisible" bind:this={alertDiv}></div>
 		{#if controller.apiError}
 			<Alert
 				type="error"
@@ -115,26 +113,25 @@
 		<MarkdownEditor
 			bind:content={editor.content}
 			bind:contentInput={editor.contentInput}
-			hasError={editor.hasContentError || controller.hasContentError}
+			hasError={editor.hasContentError}
 			disabled={controller.isLoading}
 			previewPromise={editor.previewPromise}
 			insertSnippet={(before, after, placeholder) =>
 				editor.insertSnippet(before, after, placeholder)}
-			onContentInput={() => editor.onContentInput()}
 			onContentBlur={() => editor.onContentBlur()}
 		/>
 
 		<div
-			class="flex flex-col md:flex-row {editor.hasContentError || controller.hasContentError
+			class="flex flex-col md:flex-row {editor.hasContentError
 				? 'justify-between'
 				: 'justify-end'} items-stretch md:items-center gap-4 pt-4 border-t border-app-border/60"
 		>
-			{#if editor.hasContentError || controller.hasContentError}
+			{#if editor.hasContentError}
 				<p id="content-error" role="alert" class="text-xs text-amber-500 self-center">
 					O conteúdo precisa de no mínimo 10 letras.
 				</p>
 			{/if}
-			<Button isLoading={controller.isLoading} disabled={controller.isLoading}>
+			<Button type="submit" isLoading={controller.isLoading} disabled={controller.isLoading}>
 				{controller.isLoading ? "Salvando..." : "Salvar algoritmo"}
 			</Button>
 		</div>

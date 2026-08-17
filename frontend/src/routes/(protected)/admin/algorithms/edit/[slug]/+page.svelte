@@ -4,58 +4,45 @@
 	import Input from "$lib/components/ui/Input.svelte";
 	import MarkdownEditor from "$lib/components/ui/MarkdownEditor.svelte";
 	import Modal from "$lib/components/ui/Modal.svelte";
-	import type { SelectOption } from "$lib/components/ui/Select.svelte";
-	import Select from "$lib/components/ui/Select.svelte";
+	import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
 	import { focusTrap } from "$lib/utils/a11y";
-	import { AlgorithmEditor } from "$lib/utils/editor.svelte";
+	import { AlgorithmEditor } from "$lib/states/editor.svelte";
+	import { scrollToAndFocus } from "$lib/utils/errors";
 	import type { PageData } from "./$types";
-	import { EditAlgorithmController } from "./editAlgorithm.svelte";
+	import { type ActionType, EditAlgorithmController } from "./editAlgorithm.svelte";
 
 	let { data }: { data: PageData } = $props();
 
-	const editor = new AlgorithmEditor();
-	const controller = new EditAlgorithmController();
+	const editor = new AlgorithmEditor(() => data.algorithm);
+	const controller = new EditAlgorithmController(() => data.algorithm);
 
-	let isInitialized = $state(false);
+	let alertDiv = $state<HTMLDivElement | null>(null);
+
+	let isDeleteModalOpen = $state(false);
 	let localStatus = $state<string>();
 	let status = $derived(localStatus ?? data.algorithm?.status);
 
-	$effect(() => {
-		if (data.algorithm && !isInitialized) {
-			editor.load(data.algorithm);
-			controller.publicId = data.algorithm.publicId;
-			controller.slug = data.algorithm.slug;
-			isInitialized = true;
-		}
-	});
-
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
-		const payload = editor.getPayload();
-		if (payload) {
-			const success = await controller.handleSubmit(payload);
+		const success = await controller.save(editor);
+		isDeleteModalOpen = false;
 
-			if (success) {
-				localStatus = "pending";
-			}
-		}
+		if (success) localStatus = "pending";
+		await scrollToAndFocus(alertDiv);
 	}
 
 	async function handleDelete() {
-		const success = await controller.handleDelete();
-		if (success) {
-			localStatus = "deleted";
-		}
+		const success = await controller.delete();
+		if (success) localStatus = "deleted";
+		await scrollToAndFocus(alertDiv);
+		isDeleteModalOpen = false;
 	}
 
 	async function handleRestore() {
-		const success = await controller.handleRestore();
-		if (success) {
-			localStatus = "pending";
-		}
+		const success = await controller.restore();
+		if (success) localStatus = "pending";
+		await scrollToAndFocus(alertDiv);
 	}
-
-	type ActionType = "save" | "delete" | "restore";
 
 	const errorLabels: Record<ActionType, string> = {
 		save: "salvar",
@@ -63,16 +50,16 @@
 		restore: "restaurar"
 	};
 
-	const successLabels: Record<ActionType, string> = {
-		save: "salvo",
-		delete: "deletado",
-		restore: "restaurado"
-	};
-
 	const successText: Record<ActionType, string> = {
 		save: "Suas alterações foram enviadas e já estão em espera para aprovação.",
 		delete: "Algoritmo movido para a lixeira! Você tem até 7 dias para restaurá-lo.",
 		restore: "Algoritmo restaurado com sucesso! Ele já está em espera para aprovação."
+	};
+
+	const successLabels: Record<ActionType, string> = {
+		save: "salvo",
+		delete: "deletado",
+		restore: "restaurado"
 	};
 
 	const difficultyOptions: SelectOption[] = [
@@ -108,12 +95,11 @@
 				placeholder="Ex: Busca Binária"
 				required
 				autocomplete="off"
-				disabled={controller.isLoading || controller.isDeleting}
+				disabled={controller.isLoading}
 				bind:value={editor.name}
 				bind:inputRef={editor.nameInput}
-				touched={editor.hasNameError || controller.hasNameError}
+				touched={editor.hasNameError}
 				error="O nome precisa ter no mínimo 3 letras válidas."
-				oninput={() => editor.onNameInput()}
 				onblur={() => editor.onNameBlur()}
 			/>
 
@@ -123,12 +109,11 @@
 				placeholder="Ex: Grafos, Busca, DP"
 				required
 				autocomplete="off"
-				disabled={controller.isLoading || controller.isDeleting}
+				disabled={controller.isLoading}
 				bind:value={editor.category}
 				bind:inputRef={editor.categoryInput}
-				touched={editor.hasCategoryError || controller.hasCategoryError}
+				touched={editor.hasCategoryError}
 				error="A categoria precisa ter no mínimo 3 letras válidas."
-				oninput={() => editor.onCategoryInput()}
 				onblur={() => editor.onCategoryBlur()}
 			/>
 
@@ -139,22 +124,21 @@
 				options={difficultyOptions}
 				bind:value={editor.difficulty}
 				bind:selectRef={editor.difficultyInput}
-				disabled={controller.isLoading || controller.isDeleting}
+				disabled={controller.isLoading}
 				touched={editor.hasDifficultyError}
 				error="A dificuldade precisa ser uma das 4 opções."
-				onchange={() => editor.onDifficultyInput()}
 				onblur={() => editor.onDifficultyBlur()}
 			/>
 		</fieldset>
 
-		<div class="invisible" bind:this={controller.alertDiv}></div>
+		<div class="invisible" bind:this={alertDiv}></div>
 		{#if controller.apiError}
 			<Alert
 				type="error"
 				title="Erro ao {errorLabels[controller.lastAction] ?? controller.lastAction} algoritmo"
 				message={controller.apiError.message ||
 					"Ocorreu um erro ao processar sua solicitação. Tente novamente."}
-				isLoading={controller.isLoading || controller.isDeleting}
+				isLoading={controller.isLoading}
 			/>
 		{/if}
 
@@ -166,11 +150,7 @@
 			<Alert type={isDelete ? "warning" : "success"} title="Algoritmo {label} com sucesso!">
 				{text}
 				{#if controller.link}
-					<a
-						href={controller.link}
-						class="underline hover:opacity-80 transition-opacity"
-						onclick={() => (controller.isSuccess = false)}
-					>
+					<a href={controller.link} class="underline hover:opacity-80 transition-opacity">
 						Visualizar o algoritmo {label}
 					</a>.
 				{/if}
@@ -180,15 +160,14 @@
 		<MarkdownEditor
 			bind:content={editor.content}
 			bind:contentInput={editor.contentInput}
-			hasError={editor.hasContentError || controller.hasContentError}
-			disabled={controller.isLoading || controller.isDeleting}
+			hasError={editor.hasContentError}
+			disabled={controller.isLoading}
 			previewPromise={editor.previewPromise}
 			previewUrl={controller.slug
 				? `/admin/algorithms/my-algorithms/${controller.slug}-${controller.publicId}`
 				: undefined}
 			insertSnippet={(before, after, placeholder) =>
 				editor.insertSnippet(before, after, placeholder)}
-			onContentInput={() => editor.onContentInput()}
 			onContentBlur={() => editor.onContentBlur()}
 		/>
 
@@ -198,10 +177,10 @@
 			{#if status !== "deleted"}
 				<Button
 					variant="danger-soft"
-					onclick={() => controller.openDeleteModal()}
-					disabled={controller.isLoading || controller.isDeleting}
+					onclick={() => (isDeleteModalOpen = true)}
+					disabled={controller.isLoading}
 					aria-haspopup="dialog"
-					aria-expanded={controller.isDeleteModalOpen}
+					aria-expanded={isDeleteModalOpen}
 				>
 					<svg
 						class="w-4 h-4 shrink-0"
@@ -223,7 +202,7 @@
 				<Button
 					variant="success-soft"
 					onclick={() => handleRestore()}
-					disabled={controller.isLoading || controller.isDeleting}
+					disabled={controller.isLoading}
 				>
 					<svg
 						class="w-4 h-4 shrink-0"
@@ -244,12 +223,12 @@
 			{/if}
 
 			<div class="flex flex-col md:flex-row items-stretch md:items-center gap-4 justify-end">
-				{#if editor.hasContentError || controller.hasContentError}
+				{#if editor.hasContentError}
 					<p id="content-error" role="alert" class="text-xs text-amber-500 self-center">
 						O conteúdo precisa de no mínimo 10 letras.
 					</p>
 				{/if}
-				<Button isLoading={controller.isLoading} disabled={controller.isLoading}>
+				<Button type="submit" isLoading={controller.isLoading} disabled={controller.isLoading}>
 					{controller.isLoading ? "Salvando..." : "Salvar algoritmo"}
 				</Button>
 			</div>
@@ -257,21 +236,21 @@
 	</form>
 </div>
 
-{#if controller.isDeleteModalOpen}
+{#if isDeleteModalOpen}
 	<Modal
-		isOpen={controller.isDeleteModalOpen}
-		onClose={() => controller.closeDeleteModal()}
+		isOpen={isDeleteModalOpen}
+		onClose={() => (isDeleteModalOpen = false)}
 		title="Excluir Algoritmo?"
 		description="Tem certeza que deseja mover para lixeira este algoritmo? Você terá 7 dias para restaurá-lo."
 		variant="danger"
-		isLoading={controller.isDeleting || controller.isLoading}
+		isLoading={controller.isLoading}
 		{focusTrap}
 	>
 		{#snippet footer()}
 			<Button
 				variant="outline"
-				onclick={() => controller.closeDeleteModal()}
-				disabled={controller.isDeleting || controller.isLoading}
+				onclick={() => (isDeleteModalOpen = false)}
+				disabled={controller.isLoading}
 			>
 				Cancelar
 			</Button>
@@ -279,10 +258,10 @@
 			<Button
 				variant="danger"
 				onclick={handleDelete}
-				isLoading={controller.isDeleting}
+				isLoading={controller.isLoading}
 				disabled={controller.isLoading}
 			>
-				{controller.isDeleting ? "Excluindo..." : "Sim, Excluir"}
+				{controller.isLoading ? "Excluindo..." : "Sim, Excluir"}
 			</Button>
 		{/snippet}
 	</Modal>

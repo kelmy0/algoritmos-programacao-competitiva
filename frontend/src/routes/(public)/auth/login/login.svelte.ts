@@ -1,71 +1,53 @@
 import { goto } from "$app/navigation";
 import { page } from "$app/state";
 import { customFetch } from "$lib/api/client";
+import { BaseAuthController } from "$lib/controllers/base_auth_controller.svelte";
 import { AUTH_ERRORS } from "$lib/errors/auth/auth_errors";
 import type { ApiError } from "$lib/types/api";
 import type { LoginServerResponse } from "$lib/types/auth/login";
 import { normalizeApiError } from "$lib/utils/errors";
 import { isValidEmail } from "$lib/utils/sanitize";
 
-export class LoginController {
-	email = $state("");
-	password = $state("");
-	turnstileToken = $state("");
-	isLoading = $state(false);
-	apiError = $state<ApiError | null>(null);
-	showPassword = $state(false);
-
-	turnstileComponent: { reset: () => void } | null = null;
+export class LoginController extends BaseAuthController {
+	#email = $state("");
+	#password = $state("");
 
 	constructor(initialError: ApiError | null = null) {
-		this.apiError = initialError;
+		super(initialError);
 	}
 
-	touched = $state({
-		email: false,
-		password: false
-	});
+	get email() {
+		return this.#email;
+	}
+
+	set email(value: string) {
+		this.#email = value;
+		this.clearApiError();
+	}
+
+	get password() {
+		return this.#password;
+	}
+
+	set password(value: string) {
+		this.#password = value;
+		this.clearApiError();
+	}
 
 	get isEmailValid() {
-		return isValidEmail(this.email);
+		return isValidEmail(this.#email);
 	}
 
 	get isPasswordValid() {
-		return this.password.length >= 8;
+		return this.#password.length >= 8;
 	}
 
-	onInput() {
-		if (this.apiError) {
-			this.apiError = null;
-		}
-	}
+	async login(): Promise<boolean> {
+		if (!this.isEmailValid || !this.isPasswordValid || this._isLoading || !this.validateTurnstile())
+			return false;
 
-	togglePassword() {
-		this.showPassword = !this.showPassword;
-	}
-
-	onTurnstileSuccess(token: string) {
-		this.turnstileToken = token;
-	}
-
-	onTurnstileExpire() {
-		this.turnstileToken = "";
-	}
-
-	async login(event: SubmitEvent) {
-		event.preventDefault();
-		this.touched.email = true;
-		this.touched.password = true;
-
-		if (!this.isEmailValid || !this.isPasswordValid || this.isLoading) return;
-
-		if (!this.turnstileToken) {
-			this.apiError = normalizeApiError("CAPTCHA_REQUIRED");
-			return;
-		}
-
-		this.isLoading = true;
-		this.apiError = null;
+		this._isLoading = true;
+		this._apiError = null;
 
 		const { data, error } = await customFetch<LoginServerResponse>(
 			window.fetch,
@@ -74,36 +56,32 @@ export class LoginController {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"X-CF-Turnstile-Response": this.turnstileToken
+					"X-CF-Turnstile-Response": this._turnstileToken
 				},
 				body: JSON.stringify({
-					email: this.email,
-					password: this.password
+					email: this.#email,
+					password: this.#password
 				})
 			},
 			AUTH_ERRORS
 		);
 
-		this.isLoading = false;
+		this._isLoading = false;
+
 		if (error) {
-			this.apiError = error;
-			this.turnstileToken = "";
-			this.turnstileComponent?.reset();
-			return;
+			this._apiError = error;
+			this.resetTurnstile();
+			return false;
 		}
 
 		if (!data) {
-			this.apiError = normalizeApiError(
-				"INTERNAL_SERVER_ERROR",
-				"Falha ao processar resposta do servidor.",
-				AUTH_ERRORS
-			);
-			return;
+			this._apiError = normalizeApiError("INTERNAL_SERVER_ERROR");
+			return false;
 		}
 
 		if (data.requires2FA) {
 			await goto(`/auth/verify-2fa`);
-			return;
+			return true;
 		}
 
 		if (data.accessToken) {
@@ -125,5 +103,7 @@ export class LoginController {
 
 			await goto(targetUrl, { invalidateAll: true });
 		}
+
+		return true;
 	}
 }
