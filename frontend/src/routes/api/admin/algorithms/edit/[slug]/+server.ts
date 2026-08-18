@@ -9,6 +9,7 @@ import { authFlowLimiter, thousandQuerySize } from "$lib/server/middlewares";
 import { requirePermission, standardApiLimiter } from "$lib/server/middlewares";
 import { tenMbBodySize, useMiddlewares, requireAuth } from "$lib/server/middlewares";
 import { ADMIN_PASSWORD_ERRORS } from "$lib/errors/admin/password";
+import { svelteServerCache } from "$lib/server/cache";
 
 const myAlgorithm: RequestHandler = async (event) => {
 	const adminSecret = event.cookies.get("admin_secret");
@@ -19,6 +20,18 @@ const myAlgorithm: RequestHandler = async (event) => {
 	}
 
 	const { slug } = event.params;
+
+	const userId = event.locals.user?.id ?? event.locals.accessToken;
+	const cacheKey = `algorithm:admin:${userId}:${slug}`;
+
+	const cachedResponse = svelteServerCache.get<{ data: Algorithm }>(cacheKey);
+	if (cachedResponse) {
+		return json(cachedResponse.data, {
+			status: 200,
+			headers: cachedResponse.headers
+		});
+	}
+
 	const clientIp = event.getClientAddress();
 
 	const {
@@ -46,7 +59,13 @@ const myAlgorithm: RequestHandler = async (event) => {
 		return json({});
 	}
 
-	return json(data);
+	const responseHeaders: Record<string, string> = {
+		"cache-control": "private, no-cache, no-store, must-revalidate"
+	};
+
+	svelteServerCache.set(cacheKey, data, responseHeaders, 30);
+
+	return json(data, { status, headers: responseHeaders });
 };
 
 const editAlgorithm: RequestHandler = async (event) => {
@@ -89,6 +108,10 @@ const editAlgorithm: RequestHandler = async (event) => {
 	if (apiError) {
 		return json(apiError, { status });
 	}
+
+	const userId = event.locals.user?.id || event.locals.accessToken;
+	svelteServerCache.delete(`algorithm:admin:${userId}:${slug}`);
+	svelteServerCache.delete(`algorithm:detail:${slug}`);
 
 	return json({ algorithm: data?.data });
 };
