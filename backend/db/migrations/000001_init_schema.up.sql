@@ -68,7 +68,7 @@ CREATE TABLE algorithms (
     name VARCHAR(128) NOT NULL,
     category VARCHAR(64) NOT NULL,
     difficulty difficulty_level NOT NULL,
-    content TEXT NOT NULL,
+    content BYTEA NOT NULL,
     status status_text DEFAULT 'pending',
     author_id UUID,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,

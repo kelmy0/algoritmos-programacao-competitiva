@@ -34,20 +34,20 @@ type Algorithm struct {
 	Name       string     `db:"name"`
 	Category   string     `db:"category"`
 	Difficulty Difficulty `db:"difficulty"`
-	Content    string     `db:"content"`
+	Content    []byte     `db:"content"`
 	Status     Status     `db:"status"`
 	AuthorId   string     `db:"author_id"`
 	CreatedAt  time.Time  `db:"created_at"`
 	UpdatedAt  time.Time  `db:"updated_at"`
 }
 
-type NewAlgorithm struct {
+type PostAlgorithm struct {
 	PublicId   string     `db:"public_id"`
 	Slug       string     `db:"slug"`
 	Name       string     `db:"name"`
 	Category   string     `db:"category"`
 	Difficulty Difficulty `db:"difficulty,oneof=beginner intermediate advanced expert"`
-	Content    string     `db:"content"`
+	Content    []byte     `db:"content"`
 	AuthorId   string     `db:"author_id"`
 }
 
@@ -57,5 +57,5 @@ type PutAlgorithm struct {
 	Name       string     `db:"name"`
 	Category   string     `db:"category"`
 	Difficulty Difficulty `db:"difficulty,oneof=beginner intermediate advanced expert"`
-	Content    string     `db:"content"`
+	Content    []byte     `db:"content"`
 }

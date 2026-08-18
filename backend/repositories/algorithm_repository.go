@@ -164,14 +164,14 @@ func (r *AlgorithmRepository) ListModeration(ctx context.Context, limit, offset 
 	return list, nil
 }
 
-func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string) (*dto.AlgorithmDTO, error) {
+func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error) {
 	query := `
 		SELECT public_id, slug, name, category, difficulty, content, created_at, updated_at
 		FROM algorithms
 		WHERE public_id = $1 AND status = 'approved'
 	`
 
-	var algo dto.AlgorithmDTO
+	var algo models.Algorithm
 	err := r.db.QueryRow(ctx, query, publicId).Scan(
 		&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
 		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
@@ -187,14 +187,14 @@ func (r *AlgorithmRepository) GetByPublicID(ctx context.Context, publicId string
 	return &algo, nil
 }
 
-func (r *AlgorithmRepository) GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*dto.AlgorithmDTO, error) {
+func (r *AlgorithmRepository) GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*models.Algorithm, error) {
 	query := `
 		SELECT public_id, slug, name, category, difficulty, content, author_id, status, created_at, updated_at
 		FROM algorithms
 		WHERE public_id = $1 AND author_id = $2;
 	`
 
-	var algo dto.AlgorithmDTO
+	var algo models.Algorithm
 	err := r.db.QueryRow(ctx, query, algoId, userId).Scan(
 		&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
 		&algo.Difficulty, &algo.Content, &algo.AuthorId, &algo.Status, &algo.CreatedAt, &algo.UpdatedAt,
@@ -210,14 +210,14 @@ func (r *AlgorithmRepository) GetAdminAlgorithmById(ctx context.Context, algoId,
 	return &algo, nil
 }
 
-func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*dto.AlgorithmDTO, error) {
+func (r *AlgorithmRepository) PostAlgorithm(ctx context.Context, data models.PostAlgorithm) (*models.Algorithm, error) {
 	query := `
 		INSERT INTO algorithms (public_id, slug, name, category, difficulty, content, author_id) VALUES
 		($1, $2, $3, $4, $5, $6, $7)
 		RETURNING public_id, slug;
 	`
 
-	var algo dto.AlgorithmDTO
+	var algo models.Algorithm
 	err := r.db.QueryRow(ctx, query, data.PublicId, data.Slug,
 		data.Name, data.Category, data.Difficulty, data.Content, data.AuthorId,
 	).Scan(&algo.PublicId, &algo.Slug)
@@ -237,20 +237,20 @@ func (r *AlgorithmRepository) RestoreAlgorithm(ctx context.Context, publicId, us
 	return r.setStatus(ctx, publicId, userId, "pending")
 }
 
-func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*dto.AlgorithmDTO, error) {
+func (r *AlgorithmRepository) PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*models.Algorithm, error) {
 	query := `
 		UPDATE algorithms 
 		SET slug = $1, name = $2, category = $3, difficulty = $4, content = $5, status = 'pending'
 		WHERE public_id = $6 AND author_id = $7
-		RETURNING public_id, slug, name, category, difficulty, content, created_at, updated_at;
+		RETURNING public_id, slug, name, category, difficulty, created_at, updated_at;
 	`
 
-	var algo dto.AlgorithmDTO
+	var algo models.Algorithm
 	err := r.db.QueryRow(ctx, query, data.Slug, data.Name,
 		data.Category, data.Difficulty, data.Content, data.PublicId, userId,
 	).Scan(
 		&algo.PublicId, &algo.Slug, &algo.Name, &algo.Category,
-		&algo.Difficulty, &algo.Content, &algo.CreatedAt, &algo.UpdatedAt,
+		&algo.Difficulty, &algo.CreatedAt, &algo.UpdatedAt,
 	)
 
 	if err != nil {

@@ -16,12 +16,12 @@ type AlgorithmRepository interface {
 	List(ctx context.Context, limit, offset int) ([]dto.AlgorithmDTO, error)
 	ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]dto.AlgorithmDTO, error)
 	ListModeration(ctx context.Context, limit, offset int, status string) ([]dto.AlgorithmDTO, error)
-	GetByPublicID(ctx context.Context, publicId string) (*dto.AlgorithmDTO, error)
-	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*dto.AlgorithmDTO, error)
-	PostAlgorithm(ctx context.Context, data models.NewAlgorithm) (*dto.AlgorithmDTO, error)
+	GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error)
+	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*models.Algorithm, error)
+	PostAlgorithm(ctx context.Context, data models.PostAlgorithm) (*models.Algorithm, error)
 	DeleteAlgorithm(ctx context.Context, publicId, userId string) error
 	RestoreAlgorithm(ctx context.Context, publicId, userId string) error
-	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*dto.AlgorithmDTO, error)
+	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*models.Algorithm, error)
 	SitemapAlgorithms(ctx context.Context) ([]dto.SitemapItem, error)
 }
 
@@ -81,20 +81,39 @@ func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUse
 	return algorithms, page, nil
 }
 
-func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, algoId, userId string) (*dto.AlgorithmDTO, error) {
-	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, algoId, userId)
+func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, publicId, userId string) (*dto.AlgorithmDTO, error) {
+	rawAlgo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, userId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
 		}
-		slog.Error("error querying admin algorithm", "id", algoId, "userId", userId, "error", err)
+		slog.Error("error querying admin algorithm", "id", publicId, "userId", userId, "error", err)
 		return nil, models.ErrFailQueryingAlgorithm
 	}
+
+	textDescompressed, err := utils.DecompressText(rawAlgo.Content)
+	if err != nil {
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+
+	algo := &dto.AlgorithmDTO{
+		PublicId:   publicId,
+		Slug:       rawAlgo.Slug,
+		Name:       rawAlgo.Name,
+		Category:   rawAlgo.Category,
+		Difficulty: rawAlgo.Difficulty,
+		Content:    textDescompressed,
+		AuthorId:   rawAlgo.AuthorId,
+		Status:     rawAlgo.Status,
+		CreatedAt:  rawAlgo.CreatedAt,
+		UpdatedAt:  rawAlgo.UpdatedAt,
+	}
+
 	return algo, nil
 }
 
 func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (*dto.AlgorithmDTO, error) {
-	algo, err := s.AlgoRepo.GetByPublicID(ctx, publicId)
+	rawAlgo, err := s.AlgoRepo.GetByPublicID(ctx, publicId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
@@ -102,6 +121,23 @@ func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId 
 		slog.Error("database error querying algorithm by public id", "publicId", publicId, "error", err)
 		return nil, models.ErrFailQueryingAlgorithm
 	}
+
+	textDescompressed, err := utils.DecompressText(rawAlgo.Content)
+	if err != nil {
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+
+	algo := &dto.AlgorithmDTO{
+		PublicId:   publicId,
+		Slug:       rawAlgo.Slug,
+		Name:       rawAlgo.Name,
+		Category:   rawAlgo.Category,
+		Difficulty: rawAlgo.Difficulty,
+		Content:    textDescompressed,
+		CreatedAt:  rawAlgo.CreatedAt,
+		UpdatedAt:  rawAlgo.UpdatedAt,
+	}
+
 	return algo, nil
 }
 
@@ -122,7 +158,7 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 		return nil, models.ErrFailGeneratePublicId
 	}
 
-	algorithm := models.NewAlgorithm{
+	algorithm := models.PostAlgorithm{
 		PublicId:   publicId,
 		Name:       name,
 		Slug:       utils.Slug(name),
@@ -132,11 +168,17 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 		AuthorId:   user.Id,
 	}
 
-	res, err := s.AlgoRepo.PostAlgorithm(ctx, algorithm)
+	rawRes, err := s.AlgoRepo.PostAlgorithm(ctx, algorithm)
 	if err != nil {
 		slog.Error("repository failed to save algorithm", "slug", algorithm.Slug, "userId", userId, "error", err)
 		return nil, models.ErrFailPostingAlgorithm
 	}
+
+	res := &dto.AlgorithmDTO{
+		PublicId: rawRes.PublicId,
+		Slug:     rawRes.Slug,
+	}
+
 	return res, nil
 }
 
@@ -224,13 +266,24 @@ func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorit
 		Content:    content,
 	}
 
-	res, err := s.AlgoRepo.PutAlgorithm(ctx, algorithm, user.Id)
+	rawRes, err := s.AlgoRepo.PutAlgorithm(ctx, algorithm, user.Id)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
 		}
 		slog.Error("database error during update execution of algorithm", "publicId", algoId, "userId", userId, "error", err)
 		return nil, models.ErrFailQueryingAlgorithm
+	}
+
+	res := &dto.AlgorithmDTO{
+		PublicId:   rawRes.PublicId,
+		Slug:       rawRes.Slug,
+		Name:       rawRes.Name,
+		Category:   rawRes.Category,
+		Difficulty: rawRes.Difficulty,
+		Content:    data.Content,
+		CreatedAt:  rawRes.CreatedAt,
+		UpdatedAt:  rawRes.UpdatedAt,
 	}
 
 	return res, nil
@@ -288,21 +341,21 @@ func (s *AlgorithmService) ListModeration(ctx context.Context, page, limit int, 
 	return algorithms, page, nil
 }
 
-func validateAndSanitizeAlgorithmFields(name, category, content string) (string, string, string, error) {
+func validateAndSanitizeAlgorithmFields(name, category, content string) (string, string, []byte, error) {
 	nameSanitized := utils.SanitizeTitle(name)
 	categorySanitized := utils.SanitizeTitle(category)
-	contentSanitized := content
+	contentSanitized, _ := utils.CompressText(content)
 
 	if nameSanitized == "" || utf8.RuneCountInString(nameSanitized) < 3 {
-		return "", "", "", models.ErrInvalidAlgorithmName
+		return "", "", nil, models.ErrInvalidAlgorithmName
 	}
 
 	if categorySanitized == "" || utf8.RuneCountInString(categorySanitized) < 3 {
-		return "", "", "", models.ErrInvalidAlgorithmCategory
+		return "", "", nil, models.ErrInvalidAlgorithmCategory
 	}
 
-	if contentSanitized == "" || utf8.RuneCountInString(contentSanitized) < 10 {
-		return "", "", "", models.ErrInvalidAlgorithmContent
+	if contentSanitized == nil {
+		return "", "", nil, models.ErrInvalidAlgorithmContent
 	}
 
 	return nameSanitized, categorySanitized, contentSanitized, nil
@@ -345,7 +398,7 @@ func (s *AlgorithmService) getAndValidateAuthor(ctx context.Context, userId, act
 }
 
 func (s *AlgorithmService) validateOwnership(ctx context.Context, publicId, userId, action string) (*dto.AlgorithmDTO, error) {
-	algo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, userId)
+	rawAlgo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, userId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
 			return nil, models.ErrAlgorithmNotFound
@@ -354,8 +407,26 @@ func (s *AlgorithmService) validateOwnership(ctx context.Context, publicId, user
 		return nil, models.ErrFailQueryingAlgorithm
 	}
 
-	if algo.AuthorId != userId {
+	if rawAlgo.AuthorId != userId {
 		return nil, models.ErrAlgorithmAuthorMismatch
+	}
+
+	textDescompressed, err := utils.DecompressText(rawAlgo.Content)
+	if err != nil {
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+
+	algo := &dto.AlgorithmDTO{
+		PublicId:   publicId,
+		Slug:       rawAlgo.Slug,
+		Name:       rawAlgo.Name,
+		Category:   rawAlgo.Category,
+		Difficulty: rawAlgo.Difficulty,
+		Content:    textDescompressed,
+		AuthorId:   rawAlgo.AuthorId,
+		Status:     rawAlgo.Status,
+		CreatedAt:  rawAlgo.CreatedAt,
+		UpdatedAt:  rawAlgo.UpdatedAt,
 	}
 
 	return algo, nil
