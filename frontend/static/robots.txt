@@ -3,6 +3,7 @@ Allow: /
 
 Disallow: /auth/
 Disallow: /admin/
+Disallow: /users/
 Disallow: /api/
 
 Sitemap: https://algoritmos-programacao.com.br/sitemap.xml
