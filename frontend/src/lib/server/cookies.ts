@@ -36,3 +36,9 @@ export function deleteCookie(cookies: Cookies, name: string) {
 		path: DEFAULT_COOKIE_OPTIONS.path
 	});
 }
+
+export function syncServerCookie(cookies: Cookies, name: string, value: string) {
+	cookies.set(name, value, {
+		path: DEFAULT_COOKIE_OPTIONS.path
+	});
+}

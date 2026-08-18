@@ -17,7 +17,7 @@ import (
 )
 
 func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, googleConfig, githubConfig *oauth2.Config, redisClient *redis.Client) {
-	isProd := cfg.AppEnv == "production"
+	isProd := cfg.AppEnv != "development"
 	argonParams := &utils.ArgonParams{
 		Memory:      cfg.Memory,
 		Iterations:  cfg.Iterations,

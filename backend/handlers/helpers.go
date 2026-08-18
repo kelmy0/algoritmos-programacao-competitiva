@@ -58,7 +58,7 @@ func SetRefreshCookie(c *gin.Context, value, domain string, refreshDurationDays 
 		Domain:       domain,
 		Duration:     time.Duration(refreshDurationDays) * 24 * time.Hour,
 		IsProduction: isProduction,
-		Partitioned:  true,
+		Partitioned:  isProduction,
 	})
 
 	c.SetCookieData(cookie)
@@ -71,7 +71,7 @@ func SetAccessToken(c *gin.Context, value, domain string, isProduction bool) {
 		Domain:       domain,
 		Duration:     15 * time.Minute,
 		IsProduction: isProduction,
-		Partitioned:  true,
+		Partitioned:  isProduction,
 	})
 	c.SetCookieData(cookie)
 }

@@ -74,7 +74,7 @@ export class AuthService {
 		if (!expiresAt) return true;
 
 		const nowInMs = Date.now();
-		const BUFFER_MS = 60 * 1000;
+		const BUFFER_MS = 100 * 1000;
 
 		if (expiresAt - nowInMs <= BUFFER_MS) {
 			return await AuthService.silentRefresh(fetchImpl);

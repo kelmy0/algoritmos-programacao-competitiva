@@ -1,11 +1,17 @@
 import type { Handle } from "@sveltejs/kit";
 import { API_URL, JWT_ACCESS_PUBLIC_KEY } from "$env/static/private";
-import { setAuthCookie, deleteCookie } from "$lib/server/cookies";
+import { setAuthCookie, deleteCookie, setIdleCookie, syncServerCookie } from "$lib/server/cookies";
 import { customFetch } from "$lib/api/client";
 import type { AccessJwtPayload, RefreshResponse } from "$lib/types/jwt";
 import { validateJWT } from "$lib/utils/jwt";
 import { clearAllAuthCookies } from "$lib/utils/cookies";
 import { extractDeviceHeaders } from "$lib/utils/headers";
+
+let serverRefreshPromise: Promise<{
+	data: RefreshResponse | null;
+	headers: Headers | null;
+	error: unknown;
+}> | null = null;
 
 export const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
@@ -28,7 +34,7 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 			}
 
 			const nowInSeconds = Math.floor(Date.now() / 1000);
-			const BUFFER_SECONDS = 90;
+			const BUFFER_SECONDS = 60;
 
 			if (claims.exp && claims.exp - nowInSeconds > BUFFER_SECONDS) {
 				isTokenValid = true;
@@ -52,24 +58,28 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 
 	let rotatedCookies: string[] = [];
 
-	if (!isTokenValid && refreshToken) {
+	if (!isTokenValid && refreshToken && !serverRefreshPromise) {
 		const cookieHeader = event.request.headers.get("cookie") || "";
 		const clientIp = event.getClientAddress();
 		const deviceHeaders = extractDeviceHeaders(event.request);
 
-		const {
-			data,
-			error: apiError,
-			headers
-		} = await customFetch<RefreshResponse>(event.fetch, `${API_URL}/api/auth/refresh`, {
-			method: "POST",
-			headers: {
-				cookie: cookieHeader,
-				"X-Forwarded-For": clientIp,
-				"X-Real-Ip": clientIp,
-				...deviceHeaders
+		serverRefreshPromise = (async () => {
+			try {
+				return await customFetch<RefreshResponse>(event.fetch, `${API_URL}/api/auth/refresh`, {
+					method: "POST",
+					headers: {
+						cookie: cookieHeader,
+						"X-Forwarded-For": clientIp,
+						"X-Real-Ip": clientIp,
+						...deviceHeaders
+					}
+				});
+			} finally {
+				serverRefreshPromise = null;
 			}
-		});
+		})();
+
+		const { data, error: apiError, headers } = await serverRefreshPromise;
 
 		if (!apiError && data?.accessToken) {
 			const { claims, valid } = await validateJWT<AccessJwtPayload>(
@@ -93,6 +103,21 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 
 				if (headers) {
 					rotatedCookies = headers.getSetCookie();
+					for (const cookieString of rotatedCookies) {
+						const [nameValue] = cookieString.split(";");
+						const eqIdx = nameValue.indexOf("=");
+
+						if (eqIdx !== -1) {
+							const name = nameValue.substring(0, eqIdx).trim();
+							const value = nameValue.substring(eqIdx + 1).trim();
+
+							if (cookieString.includes("Max-Age=0") || !value) {
+								deleteCookie(event.cookies, name);
+							} else {
+								syncServerCookie(event.cookies, name, value);
+							}
+						}
+					}
 				}
 			} else {
 				clearAllAuthCookies(event.cookies);
