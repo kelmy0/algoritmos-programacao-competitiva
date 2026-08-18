@@ -4,8 +4,9 @@ import { sequence } from "@sveltejs/kit/hooks";
 import { handleAuth } from "$lib/server/hooks/auth.hook";
 import { handleAdminSession } from "$lib/server/hooks/admin.hook";
 import { handleGlobalRateLimit } from "$lib/server/hooks/rateLimit.hook";
+import { handleLogger } from "$lib/server/hooks/logger.hook";
 
-export const handle = sequence(handleGlobalRateLimit, handleAuth, handleAdminSession);
+export const handle = sequence(handleLogger, handleGlobalRateLimit, handleAuth, handleAdminSession);
 
 export const handleError: HandleServerError = ({ error, event, status }) => {
 	if (status === 404) {
