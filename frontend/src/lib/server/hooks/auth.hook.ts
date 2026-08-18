@@ -17,6 +17,9 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 	event.locals.accessToken = null;
 
+	const isRefreshRoute =
+		event.url.pathname === "/api/auth/refresh" && event.request.method === "POST";
+
 	const accessToken = event.cookies.get("access_token");
 	const refreshToken = event.cookies.get("refresh_token");
 
@@ -58,7 +61,7 @@ export const handleAuth: Handle = async ({ event, resolve }) => {
 
 	let rotatedCookies: string[] = [];
 
-	if (!isTokenValid && refreshToken && !serverRefreshPromise) {
+	if (!isTokenValid && refreshToken && !serverRefreshPromise && !isRefreshRoute) {
 		const cookieHeader = event.request.headers.get("cookie") || "";
 		const clientIp = event.getClientAddress();
 		const deviceHeaders = extractDeviceHeaders(event.request);
