@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/tests/seeds"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/db/seeds"
 
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
