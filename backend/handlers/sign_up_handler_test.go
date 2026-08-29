@@ -31,7 +31,7 @@ func TestSignUpHandler(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		body           interface{}
+		body           any
 		userAgent      string
 		setupService   func() *MockSignUpService
 		wantStatus     int
@@ -109,7 +109,7 @@ func TestSignUpHandler(t *testing.T) {
 		},
 		{
 			name:      "Success: User registered with User-Agent and Refresh Cookie set",
-			userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+			userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
 			body: dto.SignUpRequest{
 				Name:            "John Smith",
 				Username:        "johnsmith",
