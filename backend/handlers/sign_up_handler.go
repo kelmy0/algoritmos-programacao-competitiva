@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -8,14 +9,18 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
+type SignUpService interface {
+	SignUp(ctx context.Context, req dto.SignUpRequest) (*services.SignUpResult, error)
+}
+
 type SignUpHandler struct {
-	Service             *services.SignUpService
+	Service             SignUpService
 	RefreshDurationDays int
 	AppDomain           string
 	IsProduce           bool
 }
 
-func NewSignUpHandler(service *services.SignUpService, refreshDurationDays int, appDomain string, isProduce bool) *SignUpHandler {
+func NewSignUpHandler(service SignUpService, refreshDurationDays int, appDomain string, isProduce bool) *SignUpHandler {
 	return &SignUpHandler{
 		Service:             service,
 		RefreshDurationDays: refreshDurationDays,
@@ -42,6 +47,9 @@ func (h *SignUpHandler) SignUp(c *gin.Context) {
 		return
 	}
 
-	SetRefreshCookie(c, result.RefreshToken, h.AppDomain, h.RefreshDurationDays, h.IsProduce)
+	if result.RefreshToken != "" {
+		SetRefreshCookie(c, result.RefreshToken, h.AppDomain, h.RefreshDurationDays, h.IsProduce)
+	}
+
 	c.JSON(http.StatusOK, result.SignUpResponse)
 }

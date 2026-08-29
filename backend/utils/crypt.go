@@ -25,14 +25,6 @@ type ArgonParams struct {
 	KeyLength   uint32
 }
 
-var DefaultParams = ArgonParams{
-	Memory:      64 * 1024,
-	Iterations:  3,
-	Parallelism: 4,
-	SaltLength:  16,
-	KeyLength:   32,
-}
-
 func IsPasswordValid(password string) bool {
 	var (
 		hasMinLen  = len(password) >= 8
