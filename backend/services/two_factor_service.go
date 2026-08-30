@@ -237,10 +237,12 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 		)
 	}
 
+	hasPassword := user.PasswordHash != nil
+
 	_, accessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
 		s.JwtAccessPrivateKey, user.Role.IsEmployee, user.TwoFactorAuthentication,
-		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
+		hasPassword, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to generate access token",

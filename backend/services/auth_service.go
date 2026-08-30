@@ -133,7 +133,9 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
-	return s.issueSession(ctx, user, data.DeviceHash)
+	hasPassword := user.PasswordHash != nil
+
+	return s.issueSession(ctx, user, data.DeviceHash, hasPassword)
 }
 
 func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
@@ -211,7 +213,9 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 		}
 	}
 
-	return s.issueSession(ctx, user, data.DeviceHash)
+	hasPassword := user.PasswordHash != nil
+
+	return s.issueSession(ctx, user, data.DeviceHash, hasPassword)
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, deviceHash string) (*RefreshTokenResult, error) {
@@ -281,10 +285,12 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 		return nil, models.ErrUserNotEnabled
 	}
 
+	hasPassword := user.PasswordHash != nil
+
 	_, newAccessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
 		s.JwtAccessPrivateKey, user.Role.IsEmployee, user.TwoFactorAuthentication,
-		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
+		hasPassword, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to sign new access token during refresh",
@@ -551,7 +557,9 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
-	return s.issueSession(ctx, user, deviceHash)
+	hasPassword := user.PasswordHash != nil
+
+	return s.issueSession(ctx, user, deviceHash, hasPassword)
 }
 
 func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, provider, socialUserId, email string) error {
@@ -603,12 +611,12 @@ func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, prov
 	return nil
 }
 
-func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string) (*AuthResult, error) {
+func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string, hasPassword bool) (*AuthResult, error) {
 	// Access Token
 	_, accessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
 		s.JwtAccessPrivateKey, user.Role.IsEmployee, user.TwoFactorAuthentication,
-		time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
+		hasPassword, time.Now().Add(time.Duration(s.JwtAccessExpiration)*time.Minute),
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to generate access token",

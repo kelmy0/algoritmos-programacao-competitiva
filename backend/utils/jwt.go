@@ -17,20 +17,21 @@ type Claims struct {
 	FamilyId     string   `json:"familyId,omitempty"`
 	DeviceHash   string   `json:"dvh,omitempty"`
 	Is2FAEnabled bool     `json:"is2FAEnabled,omitempty"`
+	HasPassword  bool     `json:"hasPassword,omitempty"`
 	jwt.RegisteredClaims
 }
 
-func GenerateAccessToken(userId, name, username, email, issuer string, permissions []string, privateKey ed25519.PrivateKey, isEmployee, is2FAEnabled bool, expire_time time.Time) (tokenId string, tokenString string, err error) {
-	tokenId, _, tokenString, err = generateToken(userId, name, username, email, issuer, "", "", permissions, privateKey, isEmployee, is2FAEnabled, expire_time, false)
+func GenerateAccessToken(userId, name, username, email, issuer string, permissions []string, privateKey ed25519.PrivateKey, isEmployee, is2FAEnabled, hasPassword bool, expire_time time.Time) (tokenId string, tokenString string, err error) {
+	tokenId, _, tokenString, err = generateToken(userId, name, username, email, issuer, "", "", permissions, privateKey, isEmployee, is2FAEnabled, hasPassword, expire_time, false)
 	return tokenId, tokenString, err
 }
 
 func GenerateRefreshToken(userId, issuer, familyId, deviceHash string, privateKey ed25519.PrivateKey, expire_time time.Time) (tokenId string, finalFamilyId string, tokenString string, err error) {
-	return generateToken(userId, "", "", "", issuer, familyId, deviceHash, nil, privateKey, false, false, expire_time, true)
+	return generateToken(userId, "", "", "", issuer, familyId, deviceHash, nil, privateKey, false, false, false, expire_time, true)
 }
 
 func GeneratePreAuthToken(userId, issuer, deviceHash string, privateKey ed25519.PrivateKey, expireTime time.Time) (tokenId string, tokenString string, err error) {
-	tokenId, _, tokenString, err = generateToken(userId, "", "", "", issuer, "", deviceHash, nil, privateKey, false, true, expireTime, false)
+	tokenId, _, tokenString, err = generateToken(userId, "", "", "", issuer, "", deviceHash, nil, privateKey, false, true, false, expireTime, false)
 	return tokenId, tokenString, err
 }
 
@@ -46,7 +47,7 @@ func generateToken(
 	userId, name, username, email, issuer, familyId, deviceHash string,
 	permissions []string,
 	privateKey ed25519.PrivateKey,
-	isEmployee, is2FAEnabled bool,
+	isEmployee, is2FAEnabled, hasPassword bool,
 	expire_time time.Time,
 	isRefreshToken bool,
 ) (tokenId string, finalFamilyId string, tokenString string, err error) {
@@ -80,6 +81,7 @@ func generateToken(
 		FamilyId:     finalFamilyId,
 		DeviceHash:   deviceHash,
 		Is2FAEnabled: is2FAEnabled,
+		HasPassword:  hasPassword,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        tokenId,
 			Subject:   userId,
