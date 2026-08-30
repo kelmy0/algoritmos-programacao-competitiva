@@ -17,17 +17,22 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type SocialAuthService interface {
+	LinkSocialAccount(ctx context.Context, currentUserId, provider, socialUserId, email string) error
+	AuthWithSocialProvider(ctx context.Context, provider, socialUserId, email, name, deviceHash string) (services.AuthResult, error)
+}
+
 type AuthSocialHandler struct {
 	GoogleConfig        *oauth2.Config
 	GithubConfig        *oauth2.Config
-	Service             *services.AuthService
+	Service             SocialAuthService
 	AppDomain           string
 	IsProduce           bool
 	RefreshDurationDays int
 	FrontendUrl         string
 }
 
-func NewAuthSocialHandler(service *services.AuthService, googleConfig, githubConfig *oauth2.Config, appDomain, frontendUrl string, isProduce bool, refreshDurationDays int) *AuthSocialHandler {
+func NewAuthSocialHandler(service SocialAuthService, googleConfig, githubConfig *oauth2.Config, appDomain, frontendUrl string, isProduce bool, refreshDurationDays int) *AuthSocialHandler {
 	return &AuthSocialHandler{
 		Service:             service,
 		GithubConfig:        githubConfig,
@@ -103,8 +108,8 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 	}
 
 	if result.LoginResponse.Requires2FA {
-		frontendURL := fmt.Sprintf("%s/auth/callback?pre_token=%s", h.FrontendUrl, result.LoginResponse.PreAuthToken)
-		c.Redirect(http.StatusFound, frontendURL)
+		SetOAuthStateCookie(c, "pre_auth_token", result.LoginResponse.PreAuthToken, h.AppDomain, h.IsProduce)
+		c.Redirect(http.StatusFound, frontendUrl+"pre_auth_token=true")
 		return
 	}
 
@@ -116,8 +121,7 @@ func (h *AuthSocialHandler) GoogleCallback(c *gin.Context) {
 		SetAccessToken(c, result.LoginResponse.AccessToken, h.AppDomain, h.IsProduce)
 	}
 
-	frontendURL := fmt.Sprintf("%s/auth/callback?access_token=true", h.FrontendUrl)
-	c.Redirect(http.StatusFound, frontendURL)
+	c.Redirect(http.StatusFound, frontendUrl+"access_token=true")
 }
 
 func (h *AuthSocialHandler) GoogleLinkAccount(c *gin.Context) {
@@ -214,16 +218,21 @@ func (h *AuthSocialHandler) GithubCallback(c *gin.Context) {
 		return
 	}
 
+	if result.LoginResponse.Requires2FA {
+		SetOAuthStateCookie(c, "pre_auth_token", result.LoginResponse.PreAuthToken, h.AppDomain, h.IsProduce)
+		c.Redirect(http.StatusFound, frontendUrl+"pre_auth_token=true")
+		return
+	}
+
 	if result.RefreshToken != "" {
-		c.SetCookie("refresh_token", result.RefreshToken, 60*60*24*h.RefreshDurationDays, "/", h.AppDomain, h.IsProduce, true)
+		SetRefreshCookie(c, result.RefreshToken, h.AppDomain, h.RefreshDurationDays, h.IsProduce)
 	}
 
 	if result.LoginResponse.AccessToken != "" {
 		SetAccessToken(c, result.LoginResponse.AccessToken, h.AppDomain, h.IsProduce)
 	}
 
-	frontendURL := fmt.Sprintf("%s/auth/callback?access_token=true", h.FrontendUrl)
-	c.Redirect(http.StatusFound, frontendURL)
+	c.Redirect(http.StatusFound, frontendUrl+"access_token=true")
 }
 
 func (h *AuthSocialHandler) GithubLinkAccount(c *gin.Context) {

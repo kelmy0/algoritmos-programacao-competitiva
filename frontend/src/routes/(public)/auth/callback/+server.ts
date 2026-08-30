@@ -1,9 +1,9 @@
 import { redirect, type RequestHandler } from "@sveltejs/kit";
 import { standardApiLimiter, twoThousandUrlSize, useMiddlewares } from "$lib/server/middlewares";
 
-const callback: RequestHandler = async ({ url, cookies }) => {
+const callback: RequestHandler = async ({ url }) => {
 	const accessToken = url.searchParams.get("access_token") === "true";
-	const preToken = url.searchParams.get("pre_token");
+	const preToken = url.searchParams.get("pre_auth_token") === "true";
 	const error = url.searchParams.get("error");
 
 	if (error) {
@@ -11,7 +11,7 @@ const callback: RequestHandler = async ({ url, cookies }) => {
 	}
 
 	if (preToken) {
-		redirect(303, `/auth/verify-2fa?token=${encodeURIComponent(preToken)}`);
+		redirect(303, "/auth/verify-2fa");
 	}
 
 	if (accessToken) {

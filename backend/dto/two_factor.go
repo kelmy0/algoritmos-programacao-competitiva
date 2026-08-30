@@ -1,7 +1,15 @@
 package dto
 
+type twoFactorBase struct {
+	DeviceHash   string `json:"-"`
+	RefreshToken string `json:"-"`
+	UserId       string `json:"-"`
+}
+
 type TwoFactorGenerateRequest struct {
-	Password string `json:"password" binding:"required,min=8"`
+	Password string `json:"password" binding:"omitempty,min=8"`
+	UserId   string `json:"-"`
+	Email    string `json:"-"`
 }
 
 type TwoFactorGenerateResponse struct {
@@ -10,10 +18,8 @@ type TwoFactorGenerateResponse struct {
 }
 
 type TwoFactorEnableRequest struct {
-	Code         string `json:"code" binding:"required,len=6"`
-	DeviceHash   string `json:"-"`
-	RefreshToken string `json:"-"`
-	UserId       string `json:"-"`
+	twoFactorBase
+	Code string `json:"code" binding:"required,len=6"`
 }
 
 type TwoFactorEnableResponse struct {
@@ -21,8 +27,6 @@ type TwoFactorEnableResponse struct {
 }
 
 type TwoFactorDisableRequest struct {
-	TwoFactorGenerateRequest
-	DeviceHash   string `json:"-"`
-	RefreshToken string `json:"-"`
-	UserId       string `json:"-"`
+	twoFactorBase
+	Password string `json:"password" binding:"omitempty,min=8"`
 }

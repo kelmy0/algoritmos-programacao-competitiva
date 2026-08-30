@@ -1,7 +1,7 @@
 import z from "zod";
 
 const sanitizedPassword = (minLen: number, errorCode: string) =>
-	z.string().pipe(z.string().min(minLen, errorCode));
+	z.union([z.literal(""), z.string().min(minLen, errorCode)]);
 
 const sanitized2FACode = (len: number, errorCode: string) =>
 	z

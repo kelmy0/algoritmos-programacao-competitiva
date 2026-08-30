@@ -21,6 +21,7 @@ declare global {
 				permissions: string[];
 				isEmployee: boolean;
 				is2FAEnabled: boolean;
+				hasPassword: boolean;
 			} | null;
 			accessToken: string | null;
 		}
@@ -33,6 +34,7 @@ declare global {
 				permissions: string[];
 				isEmployee: boolean;
 				is2FAEnabled: boolean;
+				hasPassword: boolean;
 			} | null;
 			accessToken?: string | null;
 		}

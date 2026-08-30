@@ -1,21 +1,32 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
+type AuthService interface {
+	Auth(ctx context.Context, data dto.AuthRequest) (services.AuthResult, error)
+	VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (services.AuthResult, error)
+	RefreshToken(ctx context.Context, refreshTokenString, deviceHash string) (services.RefreshTokenResult, error)
+	Logout(ctx context.Context, userId, refreshTokenString, accessJti string, accessExpiresAt time.Time) error
+	LogoutOtherDevices(ctx context.Context, userId, refreshTokenString, accessJti, deviceHash string) error
+	LogoutAllDevices(ctx context.Context, userId, refreshTokenString, deviceHash string) error
+}
+
 type AuthHandler struct {
-	service             *services.AuthService
+	service             AuthService
 	isProduce           bool
 	appDomain           string
 	refreshDurationDays int
 }
 
-func NewAuthHandler(service *services.AuthService, isProduce bool, appDomain string, refreshDurationDays int) *AuthHandler {
+func NewAuthHandler(service AuthService, isProduce bool, appDomain string, refreshDurationDays int) *AuthHandler {
 	return &AuthHandler{service: service, isProduce: isProduce, appDomain: appDomain, refreshDurationDays: refreshDurationDays}
 }
 

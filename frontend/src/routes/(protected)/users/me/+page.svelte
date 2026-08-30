@@ -8,7 +8,10 @@
 	import Input from "$lib/components/ui/Input.svelte";
 	import CodeInput from "$lib/components/ui/CodeInput.svelte";
 
-	const controller = new MeController(page.data.user?.is2FAEnabled ?? false);
+	const controller = new MeController(
+		page.data.user?.is2FAEnabled ?? false,
+		page.data.user?.hasPassword ?? true
+	);
 
 	let is2FAModalOpen = $state(false);
 	let isChangePasswordModalOpen = $state(false);
@@ -28,14 +31,15 @@
 	);
 
 	const twoFactorLabels: Record<string, string> = {
-		generateCode:
-			"Você precisará de um aplicativo autenticador. Insira sua senha e clique em gerar chave.",
+		generateCode: `Você precisará de um aplicativo autenticador. 
+		${page.data.user?.hasPassword ? "Insira sua senha e clique" : "Clique"} em gerar chave.`,
 		saveCode: "Salve a chave em seu aplicativo autenticador e insira o código gerado nele."
 	};
 
 	const modal2FADescription = $derived(
 		is2FAEnabled
-			? "Desativar a autenticação em dois fatores deixará sua conta vulnerável! Caso realmente queira desativar, insira sua senha novamente."
+			? `Desativar a autenticação em dois fatores deixará sua conta vulnerável! Caso deseje continuar
+			${page.data.user?.hasPassword ? "insira sua senha novamente e " : ""} clique em desativar.`
 			: !controller.twoFactorSecret
 				? twoFactorLabels.generateCode
 				: twoFactorLabels.saveCode
@@ -363,72 +367,73 @@
 		{#if !is2FAEnabled}
 			{#if !controller.twoFactorSecret}
 				<form onsubmit={(e) => handleGenerate2FA(e)} class="space-y-5">
-					<Input
-						id="password"
-						name="password"
-						type={showPassword ? "text" : "password"}
-						label="Senha"
-						placeholder="••••••••"
-						autocomplete="current-password"
-						minlength={8}
-						required
-						disabled={controller.isLoading}
-						bind:value={controller.password}
-						touched={touched.password}
-						error={(touched.password && !controller.isPasswordValid) ||
-						controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
-							? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
-								? "Senha incorreta."
-								: "A senha deve conter no mínimo 8 caracteres."
-							: undefined}
-						onblur={() => (touched.password = true)}
-					>
-						{#snippet suffixIcon()}
-							<button
-								type="button"
-								onclick={() => togglePassword()}
-								class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-								aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-							>
-								{#if showPassword}
-									<svg
-										class="h-5 w-5"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										aria-hidden="true"
-									>
-										<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-										<circle cx="12" cy="12" r="3" />
-									</svg>
-								{:else}
-									<svg
-										class="h-5 w-5"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										aria-hidden="true"
-									>
-										<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-										<path
-											d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
-										/>
-										<path
-											d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"
-										/>
-										<line x1="2" x2="22" y1="2" y2="22" />
-									</svg>
-								{/if}
-							</button>
-						{/snippet}
-					</Input>
-
+					{#if page.data.user?.hasPassword}
+						<Input
+							id="password"
+							name="password"
+							type={showPassword ? "text" : "password"}
+							label="Senha"
+							placeholder="••••••••"
+							autocomplete="current-password"
+							minlength={8}
+							required
+							disabled={controller.isLoading}
+							bind:value={controller.password}
+							touched={touched.password}
+							error={(touched.password && !controller.isPasswordValid) ||
+							controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+								? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+									? "Senha incorreta."
+									: "A senha deve conter no mínimo 8 caracteres."
+								: undefined}
+							onblur={() => (touched.password = true)}
+						>
+							{#snippet suffixIcon()}
+								<button
+									type="button"
+									onclick={() => togglePassword()}
+									class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+									aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+								>
+									{#if showPassword}
+										<svg
+											class="h-5 w-5"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-hidden="true"
+										>
+											<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+											<circle cx="12" cy="12" r="3" />
+										</svg>
+									{:else}
+										<svg
+											class="h-5 w-5"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-hidden="true"
+										>
+											<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+											<path
+												d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+											/>
+											<path
+												d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"
+											/>
+											<line x1="2" x2="22" y1="2" y2="22" />
+										</svg>
+									{/if}
+								</button>
+							{/snippet}
+						</Input>
+					{/if}
 					<div
 						class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-app-border"
 					>
@@ -546,69 +551,73 @@
 			{/if}
 		{:else}
 			<form onsubmit={(e) => handleDisable2FA(e)} class="space-y-5 font-inter">
-				<Input
-					id="password"
-					name="password"
-					type={showPassword ? "text" : "password"}
-					label="Senha"
-					placeholder="••••••••"
-					autocomplete="current-password"
-					minlength={8}
-					required
-					disabled={controller.isLoading}
-					bind:value={controller.password}
-					touched={touched.password}
-					error={(touched.password && !controller.isPasswordValid) ||
-					controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
-						? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
-							? "Senha incorreta."
-							: "A senha deve conter no mínimo 8 caracteres."
-						: undefined}
-					onblur={() => (touched.password = true)}
-				>
-					{#snippet suffixIcon()}
-						<button
-							type="button"
-							onclick={() => togglePassword()}
-							class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
-							aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-						>
-							{#if showPassword}
-								<svg
-									class="h-5 w-5"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-								>
-									<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-									<circle cx="12" cy="12" r="3" />
-								</svg>
-							{:else}
-								<svg
-									class="h-5 w-5"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-								>
-									<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-									<path
-										d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
-									/>
-									<path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-									<line x1="2" x2="22" y1="2" y2="22" />
-								</svg>
-							{/if}
-						</button>
-					{/snippet}
-				</Input>
+				{#if page.data.user?.hasPassword}
+					<Input
+						id="password"
+						name="password"
+						type={showPassword ? "text" : "password"}
+						label="Senha"
+						placeholder="••••••••"
+						autocomplete="current-password"
+						minlength={8}
+						required
+						disabled={controller.isLoading}
+						bind:value={controller.password}
+						touched={touched.password}
+						error={(touched.password && !controller.isPasswordValid) ||
+						controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+							? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+								? "Senha incorreta."
+								: "A senha deve conter no mínimo 8 caracteres."
+							: undefined}
+						onblur={() => (touched.password = true)}
+					>
+						{#snippet suffixIcon()}
+							<button
+								type="button"
+								onclick={() => togglePassword()}
+								class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+								aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+							>
+								{#if showPassword}
+									<svg
+										class="h-5 w-5"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+										<circle cx="12" cy="12" r="3" />
+									</svg>
+								{:else}
+									<svg
+										class="h-5 w-5"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+										<path
+											d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+										/>
+										<path
+											d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"
+										/>
+										<line x1="2" x2="22" y1="2" y2="22" />
+									</svg>
+								{/if}
+							</button>
+						{/snippet}
+					</Input>
+				{/if}
 
 				<div
 					class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-app-border"

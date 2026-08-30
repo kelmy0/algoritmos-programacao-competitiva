@@ -23,6 +23,7 @@ export interface AccessJwtPayload extends BaseCustomJwtPayload {
 	permissions: string[];
 	isEmployee: boolean;
 	is2FAEnabled: boolean;
+	hasPassword?: boolean;
 }
 
 export interface RefreshJwtPayload extends BaseCustomJwtPayload {

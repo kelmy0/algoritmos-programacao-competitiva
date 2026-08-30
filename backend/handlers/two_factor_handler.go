@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -8,15 +9,22 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
+type TwoFactorService interface {
+	Generate2FA(ctx context.Context, data dto.TwoFactorGenerateRequest) (dto.TwoFactorGenerateResponse, error)
+	Enable2FA(ctx context.Context, data dto.TwoFactorEnableRequest) (services.Enable2FAResult, error)
+	Disable2FA(ctx context.Context, data dto.TwoFactorDisableRequest) error
+}
+
 type TwoFactorHandler struct {
-	service             *services.TwoFactorService
+	service             TwoFactorService
 	isProduction        bool
 	appDomain           string
 	refreshDurationDays int
 }
 
-func NewTwoFactorHandler(service *services.TwoFactorService, isProduction bool, appDomain string, refreshDuration int) *TwoFactorHandler {
-	return &TwoFactorHandler{service: service,
+func NewTwoFactorHandler(service TwoFactorService, isProduction bool, appDomain string, refreshDuration int) *TwoFactorHandler {
+	return &TwoFactorHandler{
+		service:             service,
 		isProduction:        isProduction,
 		appDomain:           appDomain,
 		refreshDurationDays: refreshDuration,
@@ -39,7 +47,10 @@ func (h *TwoFactorHandler) Generate2FA(c *gin.Context) {
 		return
 	}
 
-	response, err := h.service.Generate2FA(c.Request.Context(), id, email, requestBody.Password)
+	requestBody.Email = email
+	requestBody.UserId = id
+
+	response, err := h.service.Generate2FA(c.Request.Context(), requestBody)
 	if err != nil {
 		HandleAPIError(c, err)
 		return

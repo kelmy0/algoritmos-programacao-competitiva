@@ -20,7 +20,7 @@ type TwoFactorUserRepository interface {
 	Save2FASecret(ctx context.Context, userId, secret string) error
 	Enable2FA(ctx context.Context, userId string) error
 	Disable2FA(ctx context.Context, userId string) error
-	GetAuthData(ctx context.Context, userId string) (*repositories.UserAuthData, error)
+	GetAuthData(ctx context.Context, userId string) (repositories.UserAuthData, error)
 	GetUserByIdForAuth(ctx context.Context, id string) (*models.User, error)
 }
 
@@ -69,85 +69,87 @@ func NewTwoFactorService(userRepo TwoFactorUserRepository, authRepo TwoFactorAut
 	}
 }
 
-func (s *TwoFactorService) Generate2FA(ctx context.Context, userId, email, password string) (*dto.TwoFactorGenerateResponse, error) {
-	twoFactorData, err := s.UserRepo.GetAuthData(ctx, userId)
+func (s *TwoFactorService) Generate2FA(ctx context.Context, data dto.TwoFactorGenerateRequest) (dto.TwoFactorGenerateResponse, error) {
+	twoFactorData, err := s.UserRepo.GetAuthData(ctx, data.UserId)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			return nil, models.ErrUserNotFound
+			return dto.TwoFactorGenerateResponse{}, models.ErrUserNotFound
 		}
 
 		slog.ErrorContext(ctx, "database query error",
 			"op", "Generate2FA",
-			"user_id", userId,
+			"user_id", data.UserId,
 			"error", err,
 		)
-		return nil, models.ErrFailQueryUser
+		return dto.TwoFactorGenerateResponse{}, models.ErrFailQueryUser
 	}
 
 	if twoFactorData.IsEnabled {
-		return nil, models.Err2FAAlreadyEnabled
+		return dto.TwoFactorGenerateResponse{}, models.Err2FAAlreadyEnabled
 	}
 
-	isValid, err := utils.VerifyPassword(password, twoFactorData.PasswordHash)
-	if err != nil {
-		slog.ErrorContext(ctx, "Argon2 verification system error",
-			"op", "Disable2FA",
-			"user_id", userId,
-			"error", err,
-		)
-		return nil, models.ErrPasswordVerificationFailed
-	}
+	if twoFactorData.PasswordHash != "" {
+		isValid, err := utils.VerifyPassword(data.Password, twoFactorData.PasswordHash)
+		if err != nil {
+			slog.ErrorContext(ctx, "Argon2 verification system error",
+				"op", "Disable2FA",
+				"user_id", data.UserId,
+				"error", err,
+			)
+			return dto.TwoFactorGenerateResponse{}, models.ErrPasswordVerificationFailed
+		}
 
-	if !isValid {
-		return nil, models.ErrIncorrectPassword
+		if !isValid {
+			return dto.TwoFactorGenerateResponse{}, models.ErrIncorrectPassword
+		}
 	}
 
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      s.AppName,
-		AccountName: email,
+		AccountName: data.Email,
 		SecretSize:  32,
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to generate TOTP key",
 			"op", "Generate2FA",
-			"user_id", userId,
+			"user_id", data.UserId,
 			"error", err,
 		)
-		return nil, models.ErrGeneratingToken
+		return dto.TwoFactorGenerateResponse{}, models.ErrGeneratingToken
 	}
 
 	encryptedSecret, err := utils.Encrypt(key.Secret(), s.EncryptSecret)
 	if err != nil {
 		slog.ErrorContext(ctx, "AES encryption failed for secret",
 			"op", "Generate2FA",
-			"user_id", userId,
+			"user_id", data.UserId,
 			"error", err,
 		)
-		return nil, models.ErrCryptTokenFailed
+		return dto.TwoFactorGenerateResponse{}, models.ErrCryptTokenFailed
 	}
 
-	err = s.UserRepo.Save2FASecret(ctx, userId, encryptedSecret)
+	err = s.UserRepo.Save2FASecret(ctx, data.UserId, encryptedSecret)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to save encrypted 2FA secret to DB",
 			"op", "Generate2FA",
-			"user_id", userId,
+			"user_id", data.UserId,
 			"error", err,
 		)
-		return nil, models.Err2FASaveFailed
+		return dto.TwoFactorGenerateResponse{}, models.Err2FASaveFailed
 	}
 
-	return &dto.TwoFactorGenerateResponse{
+	return dto.TwoFactorGenerateResponse{
 		Secret: key.Secret(),
 		QRCode: key.URL(),
 	}, nil
 }
 
-func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnableRequest) (*Enable2FAResult, error) {
+func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnableRequest) (Enable2FAResult, error) {
 	claims, err := utils.ValidateRefreshToken(data.RefreshToken, s.JwtRefreshPublicKey, s.AppDomain)
 
 	if err != nil {
 		slog.WarnContext(ctx, "refresh token JWT validation failed", slog.Any("error", err))
-		return nil, models.ErrInvalidOrExpiredRefresh
+		return Enable2FAResult{}, models.ErrInvalidOrExpiredRefresh
 	}
 
 	if claims.Subject != data.UserId {
@@ -155,7 +157,7 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			slog.String("token_subject", claims.Subject),
 			slog.String("user_id_param", data.UserId),
 		)
-		return nil, models.ErrTokenMetadataMisMatch
+		return Enable2FAResult{}, models.ErrTokenMetadataMisMatch
 	}
 
 	if claims.DeviceHash != data.DeviceHash {
@@ -167,13 +169,13 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			slog.String("dvh", data.DeviceHash),
 		)
 		_ = s.AuthRepo.RevokeFamily(ctx, claims.FamilyId)
-		return nil, models.ErrInvalidOrExpiredRefresh
+		return Enable2FAResult{}, models.ErrInvalidOrExpiredRefresh
 	}
 
 	user, err := s.UserRepo.GetUserByIdForAuth(ctx, data.UserId)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			return nil, models.ErrUserNotFound
+			return Enable2FAResult{}, models.ErrUserNotFound
 		}
 
 		slog.ErrorContext(ctx, "database query error",
@@ -181,15 +183,15 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			"user_id", user.Id,
 			"error", err,
 		)
-		return nil, models.Err2FAGetDataFailed
+		return Enable2FAResult{}, models.Err2FAGetDataFailed
 	}
 
 	if user.TwoFactorAuthentication {
-		return nil, models.Err2FAAlreadyEnabled
+		return Enable2FAResult{}, models.Err2FAAlreadyEnabled
 	}
 
 	if user.TwoFactorSecret == nil {
-		return nil, models.Err2FANotInitiated
+		return Enable2FAResult{}, models.Err2FANotInitiated
 	}
 
 	decryptedSecret, err := utils.Decrypt(*user.TwoFactorSecret, s.EncryptSecret)
@@ -198,12 +200,12 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			"user_id", user.Id,
 			"error", err,
 		)
-		return nil, models.ErrDecryptTokenFailed
+		return Enable2FAResult{}, models.ErrDecryptTokenFailed
 	}
 
 	isValid := totp.Validate(data.Code, decryptedSecret)
 	if !isValid {
-		return nil, models.Err2FAInvalid
+		return Enable2FAResult{}, models.Err2FAInvalid
 	}
 
 	if err = s.UserRepo.Enable2FA(ctx, user.Id); err != nil {
@@ -212,7 +214,7 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			"user_id", user.Id,
 			"error", err,
 		)
-		return nil, models.Err2FAUpdateFailed
+		return Enable2FAResult{}, models.Err2FAUpdateFailed
 	}
 	user.TwoFactorAuthentication = true
 
@@ -222,7 +224,7 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrUnexpectedLogout
+		return Enable2FAResult{}, models.ErrUnexpectedLogout
 	}
 
 	nowTimestamp := time.Now().Unix()
@@ -249,7 +251,7 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return Enable2FAResult{}, models.ErrGeneratingToken
 	}
 
 	refreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
@@ -261,7 +263,7 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return Enable2FAResult{}, models.ErrGeneratingToken
 	}
 
 	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, user.Id, familyId, refreshExpiresAt)
@@ -270,10 +272,10 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return Enable2FAResult{}, models.ErrGeneratingToken
 	}
 
-	return &Enable2FAResult{
+	return Enable2FAResult{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
@@ -313,19 +315,20 @@ func (s *TwoFactorService) Disable2FA(ctx context.Context, data dto.TwoFactorDis
 	if !twoFactorData.IsEnabled {
 		return models.Err2FAAlreadyDisabled
 	}
+	if twoFactorData.PasswordHash != "" {
+		isValid, err := utils.VerifyPassword(data.Password, twoFactorData.PasswordHash)
+		if err != nil {
+			slog.ErrorContext(ctx, "Argon2 verification system error",
+				"op", "Disable2FA",
+				"user_id", data.UserId,
+				"error", err,
+			)
+			return models.ErrPasswordVerificationFailed
+		}
 
-	isValid, err := utils.VerifyPassword(data.Password, twoFactorData.PasswordHash)
-	if err != nil {
-		slog.ErrorContext(ctx, "Argon2 verification system error",
-			"op", "Disable2FA",
-			"user_id", data.UserId,
-			"error", err,
-		)
-		return models.ErrPasswordVerificationFailed
-	}
-
-	if !isValid {
-		return models.ErrIncorrectPassword
+		if !isValid {
+			return models.ErrIncorrectPassword
+		}
 	}
 
 	err = s.UserRepo.Disable2FA(ctx, data.UserId)

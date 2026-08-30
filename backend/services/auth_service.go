@@ -48,7 +48,7 @@ type AuthService struct {
 }
 
 type AuthResult struct {
-	LoginResponse *dto.LoginResponse
+	LoginResponse dto.LoginResponse
 	RefreshToken  string
 }
 
@@ -73,18 +73,18 @@ func NewAuthService(authRepo AuthRepository, userRepo AuthUserRepository, redisC
 	}
 }
 
-func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResult, error) {
+func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (AuthResult, error) {
 	maskedEmail := utils.MaskEmail(data.Email)
 	user, err := s.UserRepo.GetUserByEmailForAuth(ctx, data.Email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			return nil, models.ErrInvalidEmailOrPassword
+			return AuthResult{}, models.ErrInvalidEmailOrPassword
 		}
 		slog.ErrorContext(ctx, "database query error fetching user by email during auth",
 			slog.String("email", maskedEmail),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrInvalidEmailOrPassword
+		return AuthResult{}, models.ErrInvalidEmailOrPassword
 	}
 
 	if !user.Enable {
@@ -92,7 +92,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 			slog.String("user_id", user.Id),
 			slog.String("email", maskedEmail),
 		)
-		return nil, models.ErrInvalidEmailOrPassword
+		return AuthResult{}, models.ErrInvalidEmailOrPassword
 	}
 
 	if user.PasswordHash == nil {
@@ -100,7 +100,7 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 			slog.String("user_id", user.Id),
 			slog.String("email", maskedEmail),
 		)
-		return nil, models.ErrInvalidEmailOrPassword
+		return AuthResult{}, models.ErrInvalidEmailOrPassword
 	}
 
 	isValid, err := utils.VerifyPassword(data.Password, *user.PasswordHash)
@@ -109,10 +109,10 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrPasswordVerificationFailed
+		return AuthResult{}, models.ErrPasswordVerificationFailed
 	}
 	if !isValid {
-		return nil, models.ErrInvalidEmailOrPassword
+		return AuthResult{}, models.ErrInvalidEmailOrPassword
 	}
 
 	if user.TwoFactorAuthentication {
@@ -122,15 +122,15 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 				slog.String("user_id", user.Id),
 				slog.Any("error", err),
 			)
-			return nil, models.ErrUnexpectedLogin
+			return AuthResult{}, models.ErrUnexpectedLogin
 		}
 
-		response := &dto.LoginResponse{
+		response := dto.LoginResponse{
 			Requires2FA:  true,
 			PreAuthToken: preAuthToken,
 		}
 
-		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
+		return AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
 	hasPassword := user.PasswordHash != nil
@@ -138,17 +138,17 @@ func (s *AuthService) Auth(ctx context.Context, data dto.AuthRequest) (*AuthResu
 	return s.issueSession(ctx, user, data.DeviceHash, hasPassword)
 }
 
-func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (*AuthResult, error) {
+func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequest) (AuthResult, error) {
 	claims, err := utils.ValidateAccessToken(data.PreAuthToken, s.JwtAccessPublicKey, s.AppDomain)
 	if err != nil {
 		slog.WarnContext(ctx, "pre-auth token validation failed during 2FA", slog.Any("error", err))
-		return nil, models.ErrSessionExpired
+		return AuthResult{}, models.ErrSessionExpired
 	}
 
 	userId := claims.Subject
 	if userId == "" {
 		slog.WarnContext(ctx, "pre-auth token claims missing Subject field")
-		return nil, models.ErrSessionData
+		return AuthResult{}, models.ErrSessionData
 	}
 
 	if claims.DeviceHash != data.DeviceHash {
@@ -159,37 +159,37 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 			slog.String("dvh", data.DeviceHash),
 		)
 
-		return nil, models.ErrSessionExpired
+		return AuthResult{}, models.ErrSessionExpired
 	}
 
 	if claims.ID != "" {
 		blacklisted, _ := s.RedisClient.Exists(ctx, "blacklist:jti:"+claims.ID).Result()
 		if blacklisted > 0 {
 			slog.WarnContext(ctx, "attempted re-use of pre-auth token", slog.String("jti", claims.ID))
-			return nil, models.ErrSessionExpired
+			return AuthResult{}, models.ErrSessionExpired
 		}
 	}
 
 	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			return nil, models.ErrUserNotFound
+			return AuthResult{}, models.ErrUserNotFound
 		}
 		slog.ErrorContext(ctx, "database error querying user during 2FA",
 			slog.String("user_id", userId),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrFailQueryUser
+		return AuthResult{}, models.ErrFailQueryUser
 	}
 
 	if !user.Enable {
 		slog.WarnContext(ctx, "disabled user attempted 2FA login", slog.String("user_id", user.Id))
-		return nil, models.ErrUserNotEnabled
+		return AuthResult{}, models.ErrUserNotEnabled
 	}
 
 	if user.TwoFactorSecret == nil || *user.TwoFactorSecret == "" {
 		slog.WarnContext(ctx, "user attempted 2FA verification without secret configured", slog.String("user_id", user.Id))
-		return nil, models.Err2FANotInitiated
+		return AuthResult{}, models.Err2FANotInitiated
 	}
 
 	decryptedSecret, err := utils.Decrypt(*user.TwoFactorSecret, s.EncryptSecret)
@@ -198,12 +198,12 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrUnexpectedLogin
+		return AuthResult{}, models.ErrUnexpectedLogin
 	}
 
 	isValid := totp.Validate(data.Code, decryptedSecret)
 	if !isValid {
-		return nil, models.Err2FAInvalid
+		return AuthResult{}, models.Err2FAInvalid
 	}
 
 	if claims.ID != "" && claims.ExpiresAt != nil {
@@ -218,11 +218,11 @@ func (s *AuthService) VerifyLogin2FA(ctx context.Context, data dto.Verify2FARequ
 	return s.issueSession(ctx, user, data.DeviceHash, hasPassword)
 }
 
-func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, deviceHash string) (*RefreshTokenResult, error) {
+func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, deviceHash string) (RefreshTokenResult, error) {
 	claims, err := utils.ValidateRefreshToken(refreshTokenString, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		slog.WarnContext(ctx, "refresh token JWT validation failed", slog.Any("error", err))
-		return nil, models.ErrInvalidOrExpiredRefresh
+		return RefreshTokenResult{}, models.ErrInvalidOrExpiredRefresh
 	}
 
 	if claims.DeviceHash != deviceHash {
@@ -234,7 +234,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 			slog.String("dvh", deviceHash),
 		)
 		_ = s.AuthRepo.RevokeFamily(ctx, claims.FamilyId)
-		return nil, models.ErrInvalidOrExpiredRefresh
+		return RefreshTokenResult{}, models.ErrInvalidOrExpiredRefresh
 	}
 
 	dbToken, err := s.AuthRepo.GetRefreshTokenById(ctx, claims.ID)
@@ -243,11 +243,11 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 			slog.String("token_id", claims.ID),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrInvalidOrExpiredRefresh
+		return RefreshTokenResult{}, models.ErrInvalidOrExpiredRefresh
 	}
 
 	if dbToken == nil {
-		return nil, models.ErrInvalidOrExpiredRefresh
+		return RefreshTokenResult{}, models.ErrInvalidOrExpiredRefresh
 	}
 
 	if dbToken.IsRevoked {
@@ -257,7 +257,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 			slog.String("token_id", dbToken.Id),
 		)
 		_ = s.AuthRepo.RevokeFamily(ctx, dbToken.FamilyId)
-		return nil, models.ErrInvalidOrExpiredRefresh
+		return RefreshTokenResult{}, models.ErrInvalidOrExpiredRefresh
 	}
 
 	if dbToken.UserId != claims.Subject {
@@ -265,24 +265,24 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 			slog.String("db_user_id", dbToken.UserId),
 			slog.String("token_subject", claims.Subject),
 		)
-		return nil, models.ErrTokenMetadataMisMatch
+		return RefreshTokenResult{}, models.ErrTokenMetadataMisMatch
 	}
 
 	user, err := s.UserRepo.GetUserByIdForAuth(ctx, claims.Subject)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			return nil, models.ErrUserNotFound
+			return RefreshTokenResult{}, models.ErrUserNotFound
 		}
 		slog.ErrorContext(ctx, "error retrieving user during session refresh",
 			slog.String("user_id", claims.Subject),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrUserNotFound
+		return RefreshTokenResult{}, models.ErrUserNotFound
 	}
 
 	if !user.Enable {
 		slog.WarnContext(ctx, "disabled user attempted token refresh", slog.String("user_id", user.Id))
-		return nil, models.ErrUserNotEnabled
+		return RefreshTokenResult{}, models.ErrUserNotEnabled
 	}
 
 	hasPassword := user.PasswordHash != nil
@@ -297,7 +297,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return RefreshTokenResult{}, models.ErrGeneratingToken
 	}
 
 	newRefreshExpiresAt := time.Now().AddDate(0, 0, s.JwtRefreshExpiration)
@@ -309,7 +309,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return RefreshTokenResult{}, models.ErrGeneratingToken
 	}
 
 	err = s.AuthRepo.RotateRefreshToken(ctx, dbToken.Id, newTokenId, user.Id, dbToken.FamilyId, newRefreshExpiresAt)
@@ -319,10 +319,10 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenString, devi
 			slog.String("old_token_id", dbToken.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return RefreshTokenResult{}, models.ErrGeneratingToken
 	}
 
-	return &RefreshTokenResult{
+	return RefreshTokenResult{
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken,
 	}, nil
@@ -471,7 +471,7 @@ func (s *AuthService) LogoutAllDevices(ctx context.Context, userId, refreshToken
 	return nil
 }
 
-func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, socialUserId, email, name, deviceHash string) (*AuthResult, error) {
+func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, socialUserId, email, name, deviceHash string) (AuthResult, error) {
 	maskedEmail := utils.MaskEmail(email)
 	user, err := s.UserRepo.GetUserBySocialID(ctx, provider, socialUserId)
 	if err != nil {
@@ -495,7 +495,7 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 						case errors.Is(err, models.ErrEmailAlreadyUsed),
 							errors.Is(err, models.ErrUsernameAlreadyUsed),
 							errors.Is(err, models.ErrUserAlreadyExists):
-							return nil, err
+							return AuthResult{}, err
 
 						default:
 							slog.ErrorContext(ctx, "failed to register social user",
@@ -503,7 +503,7 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 								slog.String("provider", provider),
 								slog.Any("error", err),
 							)
-							return nil, models.ErrRegisterSocialUser
+							return AuthResult{}, models.ErrRegisterSocialUser
 						}
 					}
 				} else {
@@ -511,21 +511,21 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 						slog.String("email", maskedEmail),
 						slog.Any("error", err),
 					)
-					return nil, models.ErrFailQueryUser
+					return AuthResult{}, models.ErrFailQueryUser
 				}
 			} else {
 				slog.WarnContext(ctx, "social login blocked: email already exists with a different auth strategy",
 					slog.String("email", maskedEmail),
 					slog.String("attempted_provider", provider),
 				)
-				return nil, models.ErrUserAlreadyExists
+				return AuthResult{}, models.ErrUserAlreadyExists
 			}
 		} else {
 			slog.ErrorContext(ctx, "database error fetching user by social ID",
 				slog.String("provider", provider),
 				slog.Any("error", err),
 			)
-			return nil, models.ErrFailQueryUser
+			return AuthResult{}, models.ErrFailQueryUser
 		}
 	}
 
@@ -534,7 +534,7 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 			slog.String("user_id", user.Id),
 			slog.String("provider", provider),
 		)
-		return nil, models.ErrUserNotEnabled
+		return AuthResult{}, models.ErrUserNotEnabled
 	}
 
 	if user.TwoFactorAuthentication {
@@ -546,15 +546,15 @@ func (s *AuthService) AuthWithSocialProvider(ctx context.Context, provider, soci
 				slog.String("user_id", user.Id),
 				slog.Any("error", err),
 			)
-			return nil, models.ErrUnexpectedLogin
+			return AuthResult{}, models.ErrUnexpectedLogin
 		}
 
-		response := &dto.LoginResponse{
+		response := dto.LoginResponse{
 			Requires2FA:  true,
 			PreAuthToken: preAuthToken,
 		}
 
-		return &AuthResult{LoginResponse: response, RefreshToken: ""}, nil
+		return AuthResult{LoginResponse: response, RefreshToken: ""}, nil
 	}
 
 	hasPassword := user.PasswordHash != nil
@@ -611,7 +611,7 @@ func (s *AuthService) LinkSocialAccount(ctx context.Context, currentUserId, prov
 	return nil
 }
 
-func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string, hasPassword bool) (*AuthResult, error) {
+func (s *AuthService) issueSession(ctx context.Context, user *models.User, deviceHash string, hasPassword bool) (AuthResult, error) {
 	// Access Token
 	_, accessToken, err := utils.GenerateAccessToken(
 		user.Id, user.Name, user.Username, user.Email, s.AppDomain, user.Permissions,
@@ -623,7 +623,7 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User, devic
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return AuthResult{}, models.ErrGeneratingToken
 	}
 
 	// Refresh Token
@@ -636,7 +636,7 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User, devic
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return AuthResult{}, models.ErrGeneratingToken
 	}
 
 	err = s.AuthRepo.SaveRefreshToken(ctx, idToken, user.Id, familyId, refreshExpiresAt)
@@ -645,13 +645,13 @@ func (s *AuthService) issueSession(ctx context.Context, user *models.User, devic
 			slog.String("user_id", user.Id),
 			slog.Any("error", err),
 		)
-		return nil, models.ErrGeneratingToken
+		return AuthResult{}, models.ErrGeneratingToken
 	}
 
-	response := &dto.LoginResponse{
+	response := dto.LoginResponse{
 		AccessToken: accessToken,
 		Requires2FA: false,
 	}
 
-	return &AuthResult{LoginResponse: response, RefreshToken: refreshToken}, nil
+	return AuthResult{LoginResponse: response, RefreshToken: refreshToken}, nil
 }

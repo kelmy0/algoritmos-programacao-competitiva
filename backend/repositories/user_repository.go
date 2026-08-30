@@ -70,9 +70,9 @@ func (r *UserRepository) getForAuth(ctx context.Context, value, field string) (*
 	return &user, nil
 }
 
-func (r *UserRepository) GetAuthData(ctx context.Context, userId string) (*UserAuthData, error) {
+func (r *UserRepository) GetAuthData(ctx context.Context, userId string) (UserAuthData, error) {
 	query := `
-        SELECT two_factor_authentication, COALESCE(two_factor_secret, ''), password_hash
+        SELECT two_factor_authentication, COALESCE(two_factor_secret, ''), COALESCE(password_hash, '')
         FROM users
         WHERE id = $1;`
 
@@ -80,12 +80,12 @@ func (r *UserRepository) GetAuthData(ctx context.Context, userId string) (*UserA
 	err := r.db.QueryRow(ctx, query, userId).Scan(&data.IsEnabled, &data.Secret, &data.PasswordHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, models.ErrUserNotFound
+			return UserAuthData{}, models.ErrUserNotFound
 		}
-		return nil, fmt.Errorf("failed to get auth data for user (%s): %w", userId, err)
+		return UserAuthData{}, fmt.Errorf("failed to get auth data for user (%s): %w", userId, err)
 	}
 
-	return &data, nil
+	return data, nil
 }
 
 func (r *UserRepository) Save2FASecret(ctx context.Context, userId, secret string) error {

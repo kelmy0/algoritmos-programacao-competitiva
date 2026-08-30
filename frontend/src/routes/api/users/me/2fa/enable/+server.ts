@@ -49,7 +49,7 @@ const enable2FA: RequestHandler = async (event) => {
 	);
 
 	if (error || !data?.accessToken) {
-		if (status === 401 || status === 403) {
+		if ((status === 401 && error?.code !== "2FA_INVALID_CODE") || status === 403) {
 			clearAllAuthCookies(event.cookies);
 		}
 		return json(error || normalizeApiError("INTERNAL_SERVER_ERROR"), { status: status || 500 });

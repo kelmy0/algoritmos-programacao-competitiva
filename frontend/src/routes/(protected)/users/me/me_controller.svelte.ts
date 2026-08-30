@@ -7,6 +7,7 @@ import { normalizeApiError } from "$lib/utils/errors";
 
 export class MeController extends BaseController {
 	#is2FAEnabled = $state(false);
+	#hasPassword = $state(true);
 	#twoFactorSecret = $state("");
 	#qrCodeUrl = $state("");
 
@@ -14,9 +15,10 @@ export class MeController extends BaseController {
 	#confirmPassword = $state("");
 	#code = $state("");
 
-	constructor(is2FAEnabled: boolean = false) {
+	constructor(is2FAEnabled: boolean = false, hasPassword: boolean = true) {
 		super();
 		this.#is2FAEnabled = is2FAEnabled;
+		this.#hasPassword = hasPassword;
 	}
 
 	get is2FAEnabled() {
@@ -59,7 +61,7 @@ export class MeController extends BaseController {
 	}
 
 	get isPasswordValid() {
-		return this.#password.length >= 8;
+		return this.#password.length >= 8 || (!this.#hasPassword && this.#password.length === 0);
 	}
 
 	get isCodeValid() {
