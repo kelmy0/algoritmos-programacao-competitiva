@@ -36,7 +36,7 @@ type SignUpService struct {
 }
 
 type SignUpResult struct {
-	SignUpResponse *dto.SignUpResponse
+	SignUpResponse dto.SignUpResponse
 	RefreshToken   string
 }
 
@@ -53,13 +53,13 @@ func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthReposito
 	}
 }
 
-func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*SignUpResult, error) {
+func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (result SignUpResult, err error) {
 	if data.Password != data.ConfirmPassword {
-		return nil, models.ErrPasswordsDontMatch
+		return result, models.ErrPasswordsDontMatch
 	}
 
 	if !utils.IsPasswordValid(data.Password) {
-		return nil, models.ErrPasswordIsNotValid
+		return result, models.ErrPasswordIsNotValid
 	}
 
 	sanitizedName := utils.SanitizeHumanName(data.Name)
@@ -67,35 +67,35 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 	sanitizedEmail := strings.ToLower(strings.TrimSpace(data.Email))
 
 	if sanitizedName == "" || utf8.RuneCountInString(sanitizedName) < 6 {
-		return nil, models.ErrInvalidRegistrationName
+		return result, models.ErrInvalidRegistrationName
 	}
 
 	if sanitizedUsername == "" || utf8.RuneCountInString(sanitizedUsername) < 6 {
-		return nil, models.ErrInvalidRegistrationUsername
+		return result, models.ErrInvalidRegistrationUsername
 	}
 
-	_, err := mail.ParseAddress(sanitizedEmail)
+	_, err = mail.ParseAddress(sanitizedEmail)
 	if err != nil || !strings.Contains(sanitizedEmail, "@") || strings.LastIndex(sanitizedEmail, ".") < strings.LastIndex(sanitizedEmail, "@") {
-		return nil, models.ErrInvalidEmailFormat
+		return result, models.ErrInvalidEmailFormat
 	}
 
 	emailTaken, usernameTaken, err := s.UserRepo.CheckAvailability(ctx, sanitizedEmail, sanitizedUsername)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to verify user availability during sign up", slog.Any("error", err))
-		return nil, models.ErrFailQueryUser
+		return result, models.ErrFailQueryUser
 	}
 
 	if emailTaken {
-		return nil, models.ErrEmailAlreadyUsed
+		return result, models.ErrEmailAlreadyUsed
 	}
 	if usernameTaken {
-		return nil, models.ErrUsernameAlreadyUsed
+		return result, models.ErrUsernameAlreadyUsed
 	}
 
 	passwordHash, err := utils.HashPassword(data.Password, s.ArgonParams)
 	if err != nil {
 		slog.ErrorContext(ctx, "Argon2 hashing failed for new user registration", slog.Any("error", err))
-		return nil, models.ErrCryptTokenFailed
+		return result, models.ErrCryptTokenFailed
 	}
 
 	dataUser := models.NewUser{
@@ -111,14 +111,14 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 		case errors.Is(err, models.ErrEmailAlreadyUsed),
 			errors.Is(err, models.ErrUsernameAlreadyUsed),
 			errors.Is(err, models.ErrUserAlreadyExists):
-			return nil, err
+			return result, err
 
 		default:
 			slog.ErrorContext(ctx, "failed to register user",
 				slog.String("email", utils.MaskEmail(dataUser.Email)),
 				slog.Any("error", err),
 			)
-			return nil, models.ErrUserRegistrationFailed
+			return result, models.ErrUserRegistrationFailed
 		}
 	}
 
@@ -146,20 +146,20 @@ func (s *SignUpService) SignUp(ctx context.Context, data dto.SignUpRequest) (*Si
 			slog.Any("save_err", errSave),
 		)
 
-		response := &dto.SignUpResponse{
+		response := dto.SignUpResponse{
 			AccessToken: "",
 			Success:     true,
 			AutoLogin:   false,
 		}
 
-		return &SignUpResult{SignUpResponse: response, RefreshToken: ""}, nil
+		return SignUpResult{SignUpResponse: response, RefreshToken: ""}, nil
 	}
 
-	response := &dto.SignUpResponse{
+	response := dto.SignUpResponse{
 		AccessToken: accessToken,
 		Success:     true,
 		AutoLogin:   true,
 	}
 
-	return &SignUpResult{SignUpResponse: response, RefreshToken: refreshToken}, nil
+	return SignUpResult{SignUpResponse: response, RefreshToken: refreshToken}, nil
 }

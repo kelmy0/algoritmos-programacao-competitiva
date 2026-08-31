@@ -16,14 +16,14 @@ import (
 )
 
 type MockSignUpService struct {
-	SignUpFunc func(ctx context.Context, req dto.SignUpRequest) (*services.SignUpResult, error)
+	SignUpFunc func(ctx context.Context, req dto.SignUpRequest) (services.SignUpResult, error)
 }
 
-func (m *MockSignUpService) SignUp(ctx context.Context, req dto.SignUpRequest) (*services.SignUpResult, error) {
+func (m *MockSignUpService) SignUp(ctx context.Context, req dto.SignUpRequest) (services.SignUpResult, error) {
 	if m.SignUpFunc != nil {
 		return m.SignUpFunc(ctx, req)
 	}
-	return &services.SignUpResult{}, nil
+	return services.SignUpResult{}, nil
 }
 
 func TestSignUpHandler(t *testing.T) {
@@ -57,8 +57,8 @@ func TestSignUpHandler(t *testing.T) {
 			},
 			setupService: func() *MockSignUpService {
 				return &MockSignUpService{
-					SignUpFunc: func(ctx context.Context, req dto.SignUpRequest) (*services.SignUpResult, error) {
-						return nil, models.ErrEmailAlreadyUsed
+					SignUpFunc: func(ctx context.Context, req dto.SignUpRequest) (services.SignUpResult, error) {
+						return services.SignUpResult{}, models.ErrEmailAlreadyUsed
 					},
 				}
 			},
@@ -75,8 +75,8 @@ func TestSignUpHandler(t *testing.T) {
 			},
 			setupService: func() *MockSignUpService {
 				return &MockSignUpService{
-					SignUpFunc: func(ctx context.Context, req dto.SignUpRequest) (*services.SignUpResult, error) {
-						return nil, errors.New("database connection timeout")
+					SignUpFunc: func(ctx context.Context, req dto.SignUpRequest) (services.SignUpResult, error) {
+						return services.SignUpResult{}, errors.New("database connection timeout")
 					},
 				}
 			},
@@ -93,10 +93,10 @@ func TestSignUpHandler(t *testing.T) {
 			},
 			setupService: func() *MockSignUpService {
 				return &MockSignUpService{
-					SignUpFunc: func(ctx context.Context, req dto.SignUpRequest) (*services.SignUpResult, error) {
-						return &services.SignUpResult{
+					SignUpFunc: func(ctx context.Context, req dto.SignUpRequest) (services.SignUpResult, error) {
+						return services.SignUpResult{
 							RefreshToken: "",
-							SignUpResponse: &dto.SignUpResponse{
+							SignUpResponse: dto.SignUpResponse{
 								AutoLogin: false,
 							},
 						}, nil
@@ -119,10 +119,10 @@ func TestSignUpHandler(t *testing.T) {
 			},
 			setupService: func() *MockSignUpService {
 				return &MockSignUpService{
-					SignUpFunc: func(ctx context.Context, req dto.SignUpRequest) (*services.SignUpResult, error) {
-						return &services.SignUpResult{
+					SignUpFunc: func(ctx context.Context, req dto.SignUpRequest) (services.SignUpResult, error) {
+						return services.SignUpResult{
 							RefreshToken: "mocked-refresh-token",
-							SignUpResponse: &dto.SignUpResponse{
+							SignUpResponse: dto.SignUpResponse{
 								AutoLogin: true,
 							},
 						}, nil

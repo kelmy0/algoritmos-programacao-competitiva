@@ -10,7 +10,7 @@ import (
 )
 
 type SignUpService interface {
-	SignUp(ctx context.Context, req dto.SignUpRequest) (*services.SignUpResult, error)
+	SignUp(ctx context.Context, data dto.SignUpRequest) (result services.SignUpResult, err error)
 }
 
 type SignUpHandler struct {
