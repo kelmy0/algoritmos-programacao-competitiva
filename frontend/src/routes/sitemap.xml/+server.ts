@@ -9,10 +9,6 @@ interface SitemapItem {
 	updatedAt: string;
 }
 
-interface ApiResponse {
-	data: SitemapItem[];
-}
-
 const sitemap: RequestHandler = async (event) => {
 	const siteUrl = "https://algoritmos-programacao.com.br";
 
@@ -20,7 +16,7 @@ const sitemap: RequestHandler = async (event) => {
 
 	let dynamicItems: SitemapItem[] = [];
 
-	const { data, error, status } = await customFetch<ApiResponse>(
+	const { data, error, status } = await customFetch<SitemapItem[]>(
 		event.fetch,
 		`${API_URL}/api/sitemap/algorithms`,
 		{
@@ -32,8 +28,8 @@ const sitemap: RequestHandler = async (event) => {
 
 	if (error) {
 		console.error("Error in Go API response when fetching sitemap:", status, error);
-	} else if (data && data.data) {
-		dynamicItems = data.data;
+	} else if (data) {
+		dynamicItems = data;
 	}
 
 	const body = `<?xml version="1.0" encoding="UTF-8" ?>

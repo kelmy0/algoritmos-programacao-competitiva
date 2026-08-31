@@ -27,7 +27,7 @@ const getAlgorithmBySlug: RequestHandler = async (event) => {
 		error: ApiError,
 		status,
 		headers
-	} = await customFetch<{ data: Algorithm }>(
+	} = await customFetch<Algorithm>(
 		event.fetch,
 		`${API_URL}/api/algorithms/${slug}`,
 		{
@@ -42,11 +42,11 @@ const getAlgorithmBySlug: RequestHandler = async (event) => {
 		return json(ApiError, { status });
 	}
 
-	if (!responseBody || !responseBody.data) {
+	if (!responseBody || !responseBody) {
 		return json(normalizeApiError("ALGORITHM_NOT_FOUND"), { status: 404 });
 	}
 
-	const algorithmData = responseBody.data;
+	const algorithmData = responseBody;
 	const contentHtml = await renderMarkdown(algorithmData.content || "");
 
 	const payload: AlgorithmDetailResponse = {

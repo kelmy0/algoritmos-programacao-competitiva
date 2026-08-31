@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -8,14 +9,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
-type AlgorithmHandler struct {
-	Service *services.AlgorithmService
+type AlgorithmService interface {
+	List(ctx context.Context, page, limit int) (data []dto.ListAlgorithmDTO, currentPage int, hasMore bool, err error)
+	ListAdmin(ctx context.Context, page, limit int, idUser, status string) (data []dto.ListAlgorithmDTO, currentPage int, hasMore bool, err error)
+	ListModeration(ctx context.Context, page, limit int, userId, status string) (data []dto.ListAlgorithmDTO, currentPage int, hasMore bool, err error)
+	GetAlgorithmByPublicID(ctx context.Context, publicId string) (algo *dto.AlgorithmDTO, err error)
+	GetAdminAlgorithm(ctx context.Context, publicId, userId string) (algo *dto.AlgorithmDTO, err error)
+	PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, userId string) (algo dto.PostAlgorithmResponse, err error)
+	DeleteAlgorithm(ctx context.Context, algoId, userId string) error
+	RestoreAlgorithm(ctx context.Context, algoId, userId string) error
+	PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest, publicId, userId string) (algo dto.PutAlgorithmResponse, err error)
+	SitemapAlgorithms(ctx context.Context) (data []dto.SitemapItem, err error)
 }
 
-func NewAlgorithmHandler(service *services.AlgorithmService) *AlgorithmHandler {
+type AlgorithmHandler struct {
+	Service AlgorithmService
+}
+
+func NewAlgorithmHandler(service AlgorithmService) *AlgorithmHandler {
 	return &AlgorithmHandler{Service: service}
 }
 
@@ -48,9 +61,7 @@ func (h *AlgorithmHandler) GetAlgorithm(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.AlgorithmResponse{
-		Data: algorithm,
-	})
+	c.JSON(http.StatusOK, algorithm)
 }
 
 func (h *AlgorithmHandler) ListAdminAlgorithms(c *gin.Context) {
@@ -62,7 +73,7 @@ func (h *AlgorithmHandler) ListAdminAlgorithms(c *gin.Context) {
 	status := c.DefaultQuery("status", "")
 	page, limit := parsePaginationQuery(c, 10)
 
-	algorithms, finalPage, err := h.Service.ListAdmin(c.Request.Context(), page, limit, userID, status)
+	algorithms, finalPage, hasMore, err := h.Service.ListAdmin(c.Request.Context(), page, limit, userID, status)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -71,6 +82,7 @@ func (h *AlgorithmHandler) ListAdminAlgorithms(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.ListAlgorithmsResponse{
 		Page:       finalPage,
 		Limit:      limit,
+		HasMore:    hasMore,
 		Algorithms: algorithms,
 	})
 }
@@ -92,9 +104,7 @@ func (h *AlgorithmHandler) GetAdminAlgorithm(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.AlgorithmResponse{
-		Data: algorithm,
-	})
+	c.JSON(http.StatusOK, algorithm)
 }
 
 func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
@@ -108,15 +118,13 @@ func (h *AlgorithmHandler) PostAlgorithm(c *gin.Context) {
 		return
 	}
 
-	algorithm, err := h.Service.PostAlgorithm(c.Request.Context(), requestBody, userID)
+	algo, err := h.Service.PostAlgorithm(c.Request.Context(), requestBody, userID)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto.AlgorithmResponse{
-		Data: algorithm,
-	})
+	c.JSON(http.StatusCreated, algo)
 }
 
 func (h *AlgorithmHandler) DeleteAlgorithm(c *gin.Context) {
@@ -175,27 +183,23 @@ func (h *AlgorithmHandler) PutAlgorithm(c *gin.Context) {
 		return
 	}
 
-	algorithm, err := h.Service.PutAlgorithm(c.Request.Context(), requestBody, publicId, userID)
+	algo, err := h.Service.PutAlgorithm(c.Request.Context(), requestBody, publicId, userID)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.AlgorithmResponse{
-		Data: algorithm,
-	})
+	c.JSON(http.StatusOK, algo)
 }
 
 func (h *AlgorithmHandler) SitemapAlgorithms(c *gin.Context) {
-	algorithms, err := h.Service.SitemapAlgorithms(c.Request.Context())
+	algo, err := h.Service.SitemapAlgorithms(c.Request.Context())
 	if err != nil {
 		HandleAPIError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto.SitemapResponse{
-		Data: algorithms,
-	})
+	c.JSON(http.StatusCreated, algo)
 }
 
 func (h *AlgorithmHandler) ListModerationAlgorithms(c *gin.Context) {
@@ -207,7 +211,7 @@ func (h *AlgorithmHandler) ListModerationAlgorithms(c *gin.Context) {
 	status := c.DefaultQuery("status", "")
 	page, limit := parsePaginationQuery(c, 10)
 
-	algorithms, finalPage, err := h.Service.ListModeration(c.Request.Context(), page, limit, userID, status)
+	algorithms, finalPage, hasMore, err := h.Service.ListModeration(c.Request.Context(), page, limit, userID, status)
 	if err != nil {
 		HandleAPIError(c, err)
 		return
@@ -216,6 +220,7 @@ func (h *AlgorithmHandler) ListModerationAlgorithms(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.ListAlgorithmsResponse{
 		Page:       finalPage,
 		Limit:      limit,
+		HasMore:    hasMore,
 		Algorithms: algorithms,
 	})
 }

@@ -29,3 +29,10 @@ export type AlgorithmDetailResponse = {
 		contentHtml: string;
 	};
 };
+
+export interface NewAlgorithmResponse {
+	publicId: string;
+	slug: string;
+}
+
+export interface EditAlgorithmResponse extends NewAlgorithmResponse {}

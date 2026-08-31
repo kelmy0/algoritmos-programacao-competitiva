@@ -11,7 +11,7 @@ export const load: PageLoad = async (event) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<{ data: Algorithm }>(event.fetch, `/api/admin/algorithms/edit/${slug}`);
+	} = await customFetch<Algorithm>(event.fetch, `/api/admin/algorithms/edit/${slug}`);
 
 	if (status === 401 || apiError?.code === "MISSING_ADMIN_COOKIE") {
 		return { algorithm: null };
@@ -21,9 +21,9 @@ export const load: PageLoad = async (event) => {
 		error(status, apiError);
 	}
 
-	if (!data || !data.data) {
+	if (!data || !data) {
 		error(500, normalizeApiError("INTERNAL_SERVER_ERROR"));
 	}
 
-	return { algorithm: data.data };
+	return { algorithm: data };
 };

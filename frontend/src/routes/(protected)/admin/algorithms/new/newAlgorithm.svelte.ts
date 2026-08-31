@@ -1,6 +1,6 @@
 import { customFetch } from "$lib/api/client";
 import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
-import type { Algorithm } from "$lib/types/algorithm";
+import type { NewAlgorithmResponse } from "$lib/types/algorithm";
 import type { AlgorithmEditor } from "$lib/states/editor.svelte";
 import { normalizeApiError } from "$lib/utils/errors";
 import { BaseEditorController } from "$lib/controllers/base_editor_controller.svelte";
@@ -15,7 +15,7 @@ export class NewAlgorithmController extends BaseEditorController {
 		this._isLoading = true;
 		this._apiError = null;
 
-		const { data, error } = await customFetch<{ algorithm: Algorithm }>(
+		const { data, error } = await customFetch<NewAlgorithmResponse>(
 			window.fetch,
 			"/api/admin/algorithms/new",
 			{
@@ -42,7 +42,7 @@ export class NewAlgorithmController extends BaseEditorController {
 		}
 
 		this._isSuccess = true;
-		this._link = `/admin/algorithms/my-algorithms/${data.algorithm.slug}-${data.algorithm.publicId}`;
+		this._link = `/admin/algorithms/my-algorithms/${data.slug}-${data.publicId}`;
 
 		return true;
 	}

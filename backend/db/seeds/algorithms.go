@@ -135,7 +135,7 @@ int main() {
 			continue
 		}
 
-		slog.Info("✅ Algorithm seeded successfully", "name", res.Name, "slug", res.Slug)
+		slog.Info("✅ Algorithm seeded successfully", "slug", res.Slug)
 	}
 
 	slog.Info("🎉 Seed process completed!")

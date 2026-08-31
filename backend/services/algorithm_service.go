@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
@@ -13,15 +14,15 @@ import (
 )
 
 type AlgorithmRepository interface {
-	List(ctx context.Context, limit, offset int) ([]dto.AlgorithmDTO, error)
-	ListAdmin(ctx context.Context, limit, offset int, userId, status string) ([]dto.AlgorithmDTO, error)
-	ListModeration(ctx context.Context, limit, offset int, status string) ([]dto.AlgorithmDTO, error)
-	GetByPublicID(ctx context.Context, publicId string) (*models.Algorithm, error)
-	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (*models.Algorithm, error)
-	PostAlgorithm(ctx context.Context, data models.PostAlgorithm) (*models.Algorithm, error)
+	List(ctx context.Context, limit, offset int) (list []dto.ListAlgorithmDTO, err error)
+	ListAdmin(ctx context.Context, limit, offset int, userId, status string) (list []dto.ListAlgorithmDTO, err error)
+	ListModeration(ctx context.Context, limit, offset int, status string) (list []dto.ListAlgorithmDTO, err error)
+	GetByPublicID(ctx context.Context, publicId string) (algo *models.Algorithm, err error)
+	GetAdminAlgorithmById(ctx context.Context, algoId, userId string) (algo *models.Algorithm, err error)
+	PostAlgorithm(ctx context.Context, data models.PostAlgorithm) (algo dto.PostAlgorithmResponse, err error)
 	DeleteAlgorithm(ctx context.Context, publicId, userId string) error
 	RestoreAlgorithm(ctx context.Context, publicId, userId string) error
-	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (*models.Algorithm, error)
+	PutAlgorithm(ctx context.Context, data models.PutAlgorithm, userId string) (algo dto.PutAlgorithmResponse, err error)
 	SitemapAlgorithms(ctx context.Context) ([]dto.SitemapItem, error)
 }
 
@@ -38,50 +39,132 @@ func NewAlgorithmService(algoRepo AlgorithmRepository, userRepo AlgorithmUserRep
 	return &AlgorithmService{AlgoRepo: algoRepo, UserRepo: userRepo}
 }
 
-func (s *AlgorithmService) List(ctx context.Context, page, limit int) ([]dto.AlgorithmDTO, int, bool, error) {
-	page, limit, offset := normalizePagination(page, limit, 10)
-
-	data, err := s.AlgoRepo.List(ctx, limit+1, offset)
+func (s *AlgorithmService) List(ctx context.Context, page, limit int) (data []dto.ListAlgorithmDTO, currentPage int, hasMore bool, err error) {
+	currentPage, limit, offset := normalizePagination(page, limit)
+	algorithms, err := s.AlgoRepo.List(ctx, limit+1, offset)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmsNotFound) {
-			return nil, page, false, models.ErrAlgorithmsNotFound
+			return nil, currentPage, false, models.ErrAlgorithmsNotFound
 		}
 
-		slog.Error("failed to query algorithms", "page", page, "limit", limit, "offset", offset, "error", err)
-		return nil, page, false, models.ErrFailQueryingAlgorithm
+		slog.Error("failed to query algorithms", "page", currentPage, "limit", limit, "offset", offset, "error", err)
+		return nil, currentPage, false, models.ErrFailQueryingAlgorithm
 	}
 
-	hasMore := false
-	if len(data) > limit {
+	if len(algorithms) > limit {
 		hasMore = true
-		data = data[:limit]
+		data = algorithms[:limit]
+	} else {
+		data = algorithms
 	}
 
-	return data, page, hasMore, nil
+	return data, currentPage, hasMore, nil
 }
 
-func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser, status string) ([]dto.AlgorithmDTO, int, error) {
-	page, limit, offset := normalizePagination(page, limit, 1)
+func (s *AlgorithmService) ListAdmin(ctx context.Context, page, limit int, idUser, status string) (data []dto.ListAlgorithmDTO, currentPage int, hasMore bool, err error) {
+	currentPage, limit, offset := normalizePagination(page, limit)
 
 	if !slices.Contains(models.AllStatuses, models.Status(status)) && status != "" {
 		slog.Warn("invalid algorithm status provided, defaulting to approved", "providedStatus", status, "userId", idUser)
 		status = "approved"
 	}
 
-	algorithms, err := s.AlgoRepo.ListAdmin(ctx, limit, offset, idUser, status)
+	algorithms, err := s.AlgoRepo.ListAdmin(ctx, limit+1, offset, idUser, status)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmsNotFound) {
-			return nil, page, models.ErrAlgorithmsNotFound
+			return nil, currentPage, false, models.ErrAlgorithmsNotFound
 		}
 
-		slog.Error("failed to query admin algorithms", "id", idUser, "page", page, "limit", limit, "offset", offset, "error", err)
-		return nil, page, models.ErrFailQueryingAlgorithm
+		slog.Error("failed to query admin algorithms", "id", idUser, "page", currentPage, "limit", limit, "offset", offset, "error", err)
+		return nil, currentPage, false, models.ErrFailQueryingAlgorithm
 	}
 
-	return algorithms, page, nil
+	if len(algorithms) > limit {
+		hasMore = true
+		data = algorithms[:limit]
+	} else {
+		data = algorithms
+	}
+
+	return data, currentPage, hasMore, nil
 }
 
-func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, publicId, userId string) (*dto.AlgorithmDTO, error) {
+func (s *AlgorithmService) ListModeration(ctx context.Context, page, limit int, userId, status string) (data []dto.ListAlgorithmDTO, currentPage int, hasMore bool, err error) {
+	currentPage, limit, offset := normalizePagination(page, limit)
+
+	if (!slices.Contains(models.AllStatuses, models.Status(status)) && status != "") || status == "deleted" {
+		slog.Warn("invalid algorithm status provided, defaulting to approved", "providedStatus", status, "userId", userId)
+		status = "approved"
+	}
+
+	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return nil, currentPage, false, models.ErrUserNotFound
+		}
+		slog.Error("database error querying user ID during list moderation", "userId", userId, "error", err)
+		return nil, currentPage, false, models.ErrFailQueryUser
+	}
+
+	if !user.Enable {
+		return nil, currentPage, false, models.ErrUserNotEnabled
+	}
+
+	if !slices.Contains(user.Permissions, "moderate:algorithms") {
+		return nil, currentPage, false, models.ErrAlgorithmNoModeratePermission
+	}
+
+	algorithms, err := s.AlgoRepo.ListModeration(ctx, limit+1, offset, status)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmsNotFound) {
+			return nil, currentPage, false, models.ErrAlgorithmsNotFound
+		}
+
+		slog.Error("failed to query moderation algorithms", "id", userId, "page", currentPage, "limit", limit, "offset", offset, "error", err)
+		return nil, currentPage, false, models.ErrFailQueryingAlgorithm
+	}
+
+	if len(algorithms) > limit {
+		hasMore = true
+		data = algorithms[:limit]
+	} else {
+		data = algorithms
+	}
+
+	return data, currentPage, hasMore, nil
+}
+
+func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (algo *dto.AlgorithmDTO, err error) {
+	rawAlgo, err := s.AlgoRepo.GetByPublicID(ctx, publicId)
+	if err != nil {
+		if errors.Is(err, models.ErrAlgorithmNotFound) {
+			return nil, models.ErrAlgorithmNotFound
+		}
+		slog.Error("database error querying algorithm by public id", "publicId", publicId, "error", err)
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+
+	textDescompressed, err := utils.DecompressText(rawAlgo.Content)
+	if err != nil {
+		slog.Error("failed to decompress algorithm content", "publicId", publicId, "error", err)
+		return nil, models.ErrFailQueryingAlgorithm
+	}
+
+	algo = &dto.AlgorithmDTO{
+		PublicId:   rawAlgo.PublicId,
+		Slug:       rawAlgo.Slug,
+		Name:       rawAlgo.Name,
+		Category:   rawAlgo.Category,
+		Difficulty: rawAlgo.Difficulty,
+		Content:    textDescompressed,
+		CreatedAt:  rawAlgo.CreatedAt,
+		UpdatedAt:  rawAlgo.UpdatedAt,
+	}
+
+	return algo, nil
+}
+
+func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, publicId, userId string) (algo *dto.AlgorithmDTO, err error) {
 	rawAlgo, err := s.AlgoRepo.GetAdminAlgorithmById(ctx, publicId, userId)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
@@ -93,11 +176,12 @@ func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, publicId, user
 
 	textDescompressed, err := utils.DecompressText(rawAlgo.Content)
 	if err != nil {
+		slog.Error("failed to decompress algorithm content", "publicId", publicId, "userId", userId, "error", err)
 		return nil, models.ErrFailQueryingAlgorithm
 	}
 
-	algo := &dto.AlgorithmDTO{
-		PublicId:   publicId,
+	algo = &dto.AlgorithmDTO{
+		PublicId:   rawAlgo.PublicId,
 		Slug:       rawAlgo.Slug,
 		Name:       rawAlgo.Name,
 		Category:   rawAlgo.Category,
@@ -112,50 +196,21 @@ func (s *AlgorithmService) GetAdminAlgorithm(ctx context.Context, publicId, user
 	return algo, nil
 }
 
-func (s *AlgorithmService) GetAlgorithmByPublicID(ctx context.Context, publicId string) (*dto.AlgorithmDTO, error) {
-	rawAlgo, err := s.AlgoRepo.GetByPublicID(ctx, publicId)
-	if err != nil {
-		if errors.Is(err, models.ErrAlgorithmNotFound) {
-			return nil, models.ErrAlgorithmNotFound
-		}
-		slog.Error("database error querying algorithm by public id", "publicId", publicId, "error", err)
-		return nil, models.ErrFailQueryingAlgorithm
-	}
-
-	textDescompressed, err := utils.DecompressText(rawAlgo.Content)
-	if err != nil {
-		return nil, models.ErrFailQueryingAlgorithm
-	}
-
-	algo := &dto.AlgorithmDTO{
-		PublicId:   publicId,
-		Slug:       rawAlgo.Slug,
-		Name:       rawAlgo.Name,
-		Category:   rawAlgo.Category,
-		Difficulty: rawAlgo.Difficulty,
-		Content:    textDescompressed,
-		CreatedAt:  rawAlgo.CreatedAt,
-		UpdatedAt:  rawAlgo.UpdatedAt,
-	}
-
-	return algo, nil
-}
-
-func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, userId string) (*dto.AlgorithmDTO, error) {
+func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgorithmRequest, userId string) (algo dto.PostAlgorithmResponse, err error) {
 	user, err := s.getAndValidateAuthor(ctx, userId, "post algorithm")
 	if err != nil {
-		return nil, err
+		return algo, err
 	}
 
-	name, category, content, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
+	name, category, compressedContent, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
 	if err != nil {
-		return nil, err
+		return algo, err
 	}
 
 	publicId, err := utils.GeneratePublicID()
 	if err != nil {
 		slog.Error("failed to generate secure public ID", "userId", userId, "error", err)
-		return nil, models.ErrFailGeneratePublicId
+		return algo, models.ErrFailGeneratePublicId
 	}
 
 	algorithm := models.PostAlgorithm{
@@ -164,22 +219,17 @@ func (s *AlgorithmService) PostAlgorithm(ctx context.Context, data dto.PostAlgor
 		Slug:       utils.Slug(name),
 		Category:   category,
 		Difficulty: data.Difficulty,
-		Content:    content,
+		Content:    compressedContent,
 		AuthorId:   user.Id,
 	}
 
-	rawRes, err := s.AlgoRepo.PostAlgorithm(ctx, algorithm)
+	algo, err = s.AlgoRepo.PostAlgorithm(ctx, algorithm)
 	if err != nil {
 		slog.Error("repository failed to save algorithm", "slug", algorithm.Slug, "userId", userId, "error", err)
-		return nil, models.ErrFailPostingAlgorithm
+		return algo, models.ErrFailPostingAlgorithm
 	}
 
-	res := &dto.AlgorithmDTO{
-		PublicId: rawRes.PublicId,
-		Slug:     rawRes.Slug,
-	}
-
-	return res, nil
+	return algo, nil
 }
 
 func (s *AlgorithmService) DeleteAlgorithm(ctx context.Context, algoId, userId string) error {
@@ -240,21 +290,21 @@ func (s *AlgorithmService) RestoreAlgorithm(ctx context.Context, algoId, userId 
 	return nil
 }
 
-func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest, publicId, userId string) (*dto.AlgorithmDTO, error) {
+func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorithmRequest, publicId, userId string) (algo dto.PutAlgorithmResponse, err error) {
 	user, err := s.getAndValidateAuthor(ctx, userId, "update algorithm")
 	if err != nil {
-		return nil, err
+		return algo, err
 	}
 
-	name, category, content, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
+	name, category, compressedContent, err := validateAndSanitizeAlgorithmFields(data.Name, data.Category, data.Content)
 	if err != nil {
-		return nil, err
+		return algo, err
 	}
 
 	algoId := utils.SanitizeTitle(publicId)
 
 	if _, err := s.validateOwnership(ctx, algoId, user.Id, "update"); err != nil {
-		return nil, err
+		return algo, err
 	}
 
 	algorithm := models.PutAlgorithm{
@@ -263,88 +313,34 @@ func (s *AlgorithmService) PutAlgorithm(ctx context.Context, data dto.PutAlgorit
 		Slug:       utils.Slug(name),
 		Category:   category,
 		Difficulty: data.Difficulty,
-		Content:    content,
+		Content:    compressedContent,
 	}
 
-	rawRes, err := s.AlgoRepo.PutAlgorithm(ctx, algorithm, user.Id)
+	algo, err = s.AlgoRepo.PutAlgorithm(ctx, algorithm, user.Id)
 	if err != nil {
 		if errors.Is(err, models.ErrAlgorithmNotFound) {
-			return nil, models.ErrAlgorithmNotFound
+			return algo, models.ErrAlgorithmNotFound
 		}
 		slog.Error("database error during update execution of algorithm", "publicId", algoId, "userId", userId, "error", err)
-		return nil, models.ErrFailQueryingAlgorithm
+		return algo, models.ErrFailQueryingAlgorithm
 	}
 
-	res := &dto.AlgorithmDTO{
-		PublicId:   rawRes.PublicId,
-		Slug:       rawRes.Slug,
-		Name:       rawRes.Name,
-		Category:   rawRes.Category,
-		Difficulty: rawRes.Difficulty,
-		Content:    data.Content,
-		CreatedAt:  rawRes.CreatedAt,
-		UpdatedAt:  rawRes.UpdatedAt,
-	}
-
-	return res, nil
+	return algo, nil
 }
 
-func (s *AlgorithmService) SitemapAlgorithms(ctx context.Context) ([]dto.SitemapItem, error) {
-	algorithms, err := s.AlgoRepo.SitemapAlgorithms(ctx)
+func (s *AlgorithmService) SitemapAlgorithms(ctx context.Context) (data []dto.SitemapItem, err error) {
+	data, err = s.AlgoRepo.SitemapAlgorithms(ctx)
 	if err != nil {
-		return nil, models.ErrSitemapAlgorithms
+		slog.Error("failed to generate algorithms sitemap", "error", err)
+		return data, models.ErrSitemapAlgorithms
 	}
 
-	return algorithms, nil
-}
-
-func (s *AlgorithmService) ListModeration(ctx context.Context, page, limit int, userId, status string) ([]dto.AlgorithmDTO, int, error) {
-	if !slices.Contains(models.AllStatuses, models.Status(status)) && status != "" || status == "deleted" {
-		slog.Warn("invalid algorithm status provided, defaulting to approved", "providedStatus", status, "userId", userId)
-		status = "approved"
-	}
-
-	user, err := s.UserRepo.GetUserByIdForAuth(ctx, userId)
-	if err != nil {
-		if errors.Is(err, models.ErrUserNotFound) {
-			return nil, page, models.ErrUserNotFound
-		}
-		slog.Error("database error querying user ID during list moderation", "userId", userId, "error", err)
-		return nil, page, models.ErrFailQueryUser
-	}
-
-	if !user.Enable {
-		return nil, page, models.ErrUserNotEnabled
-	}
-
-	if !slices.Contains(user.Permissions, "moderate:algorithms") {
-		return nil, page, models.ErrAlgorithmNoCreatePermission
-	}
-
-	page, limit, offset := normalizePagination(page, limit, 1)
-
-	if !slices.Contains(models.AllStatuses, models.Status(status)) && status != "" {
-		slog.Warn("invalid algorithm status provided, defaulting to approved", "providedStatus", status, "userId", userId)
-		status = "approved"
-	}
-
-	algorithms, err := s.AlgoRepo.ListModeration(ctx, limit, offset, status)
-	if err != nil {
-		if errors.Is(err, models.ErrAlgorithmsNotFound) {
-			return nil, page, models.ErrAlgorithmsNotFound
-		}
-
-		slog.Error("failed to query moderation algorithms", "id", userId, "page", page, "limit", limit, "offset", offset, "error", err)
-		return nil, page, models.ErrFailQueryingAlgorithm
-	}
-
-	return algorithms, page, nil
+	return data, nil
 }
 
 func validateAndSanitizeAlgorithmFields(name, category, content string) (string, string, []byte, error) {
 	nameSanitized := utils.SanitizeTitle(name)
 	categorySanitized := utils.SanitizeTitle(category)
-	contentSanitized, _ := utils.CompressText(content)
 
 	if nameSanitized == "" || utf8.RuneCountInString(nameSanitized) < 3 {
 		return "", "", nil, models.ErrInvalidAlgorithmName
@@ -354,26 +350,26 @@ func validateAndSanitizeAlgorithmFields(name, category, content string) (string,
 		return "", "", nil, models.ErrInvalidAlgorithmCategory
 	}
 
-	if contentSanitized == nil {
+	trimmedContent := strings.TrimSpace(content)
+	if trimmedContent == "" {
 		return "", "", nil, models.ErrInvalidAlgorithmContent
 	}
 
-	return nameSanitized, categorySanitized, contentSanitized, nil
+	compressed, err := utils.CompressText(trimmedContent)
+	if err != nil {
+		slog.Error("failed to compress algorithm content", "error", err)
+		return "", "", nil, models.ErrInvalidAlgorithmContent
+	}
+
+	return nameSanitized, categorySanitized, compressed, nil
 }
 
-func normalizePagination(page, limit, defaultLimit int) (int, int, int) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = defaultLimit
-	}
-	if limit > 50 {
-		limit = 50
-	}
+func normalizePagination(page, limit int) (cPage int, cLimit int, offset int) {
+	cPage = max(1, page)
+	cLimit = max(1, min(100, limit))
 
-	offset := (page - 1) * limit
-	return page, limit, offset
+	offset = (page - 1) * limit
+	return cPage, cLimit, offset
 }
 
 func (s *AlgorithmService) getAndValidateAuthor(ctx context.Context, userId, action string) (*models.User, error) {

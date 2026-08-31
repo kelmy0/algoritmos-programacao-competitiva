@@ -3,7 +3,7 @@ import { json, type RequestHandler } from "@sveltejs/kit";
 import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
 import { normalizeApiError } from "$lib/utils/errors";
 import { API_URL } from "$env/static/private";
-import type { Algorithm } from "$lib/types/algorithm";
+import type { NewAlgorithmResponse } from "$lib/types/algorithm";
 import { customFetch } from "$lib/api/client";
 import { authFlowLimiter, fiveHundredQuerySize, requireAuth } from "$lib/server/middlewares";
 import { requirePermission, tenMbBodySize, useMiddlewares } from "$lib/server/middlewares";
@@ -36,7 +36,7 @@ const createAlgorithm: RequestHandler = async (event) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<{ data: Algorithm }>(
+	} = await customFetch<NewAlgorithmResponse>(
 		event.fetch,
 		`${API_URL}/api/admin/algorithms`,
 		{
@@ -56,7 +56,7 @@ const createAlgorithm: RequestHandler = async (event) => {
 		return json(apiError, { status });
 	}
 
-	return json({ algorithm: data?.data });
+	return json(data);
 };
 
 export const POST = useMiddlewares(

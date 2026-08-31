@@ -12,7 +12,7 @@ export const load: PageLoad = async ({ fetch: svelteFetch, params }) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<{ data: Algorithm }>(svelteFetch, `/api/admin/algorithms/edit/${slug}`);
+	} = await customFetch<Algorithm>(svelteFetch, `/api/admin/algorithms/edit/${slug}`);
 
 	if (status === 401 || apiError?.code === "MISSING_ADMIN_COOKIE") {
 		return { algorithm: null };
@@ -22,11 +22,11 @@ export const load: PageLoad = async ({ fetch: svelteFetch, params }) => {
 		error(status, apiError);
 	}
 
-	if (!data || !data.data) {
+	if (!data || !data) {
 		error(500, normalizeApiError("INTERNAL_SERVER_ERROR"));
 	}
 
-	const algorithmData = data.data;
+	const algorithmData = data;
 	const contentHtml = await renderMarkdown(algorithmData.content || "");
 
 	return {

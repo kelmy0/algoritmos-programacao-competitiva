@@ -2,7 +2,7 @@ import { normalizeApiError } from "$lib/utils/errors";
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { customFetch } from "$lib/api/client";
 import { API_URL } from "$env/static/private";
-import type { Algorithm } from "$lib/types/algorithm";
+import type { Algorithm, EditAlgorithmResponse } from "$lib/types/algorithm";
 import { ADMIN_ALGORITHMS_ERRORS } from "$lib/errors/admin/algorithms";
 import { algorithmSchema } from "$lib/schemas/algorithm";
 import { authFlowLimiter, thousandQuerySize } from "$lib/server/middlewares";
@@ -24,7 +24,7 @@ const myAlgorithm: RequestHandler = async (event) => {
 	const userId = event.locals.user?.id ?? event.locals.accessToken;
 	const cacheKey = `algorithm:admin:${userId}:${slug}`;
 
-	const cachedResponse = svelteServerCache.get<{ data: Algorithm }>(cacheKey);
+	const cachedResponse = svelteServerCache.get<Algorithm>(cacheKey);
 	if (cachedResponse) {
 		return json(cachedResponse.data, {
 			status: 200,
@@ -38,24 +38,20 @@ const myAlgorithm: RequestHandler = async (event) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<{ data: Algorithm }>(
-		event.fetch,
-		`${API_URL}/api/admin/algorithms/${slug}`,
-		{
-			method: "GET",
-			headers: {
-				"X-Forwarded-For": clientIp,
-				"X-Admin-Secret": adminSecret,
-				Authorization: `Bearer ${event.locals.accessToken}`
-			}
+	} = await customFetch<Algorithm>(event.fetch, `${API_URL}/api/admin/algorithms/${slug}`, {
+		method: "GET",
+		headers: {
+			"X-Forwarded-For": clientIp,
+			"X-Admin-Secret": adminSecret,
+			Authorization: `Bearer ${event.locals.accessToken}`
 		}
-	);
+	});
 
 	if (apiError) {
 		return json(apiError, { status });
 	}
 
-	if (!data?.data) {
+	if (!data) {
 		return json({});
 	}
 
@@ -90,7 +86,7 @@ const editAlgorithm: RequestHandler = async (event) => {
 		data,
 		error: apiError,
 		status
-	} = await customFetch<{ data: Algorithm }>(
+	} = await customFetch<EditAlgorithmResponse>(
 		event.fetch,
 		`${API_URL}/api/admin/algorithms/${slug}`,
 		{
@@ -113,7 +109,7 @@ const editAlgorithm: RequestHandler = async (event) => {
 	svelteServerCache.delete(`algorithm:admin:${userId}:${slug}`);
 	svelteServerCache.delete(`algorithm:detail:${slug}`);
 
-	return json({ algorithm: data?.data });
+	return json(data);
 };
 
 export const GET = useMiddlewares(

@@ -5,7 +5,21 @@ import (
 	"compress/flate"
 	"fmt"
 	"io"
+	"sync"
 )
+
+var flateReaderPool = sync.Pool{
+	New: func() any {
+		return flate.NewReader(bytes.NewReader(nil))
+	},
+}
+
+var flateWriterPool = sync.Pool{
+	New: func() any {
+		w, _ := flate.NewWriter(io.Discard, flate.DefaultCompression)
+		return w
+	},
+}
 
 func CompressText(text string) ([]byte, error) {
 	if text == "" {
@@ -13,18 +27,23 @@ func CompressText(text string) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	writer, err := flate.NewWriter(&buf, flate.DefaultCompression)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create compression writer: %w", err)
-	}
+	buf.Grow(len(text))
 
-	if _, err := writer.Write([]byte(text)); err != nil {
-		_ = writer.Close()
+	fw := flateWriterPool.Get().(*flate.Writer)
+
+	fw.Reset(&buf)
+
+	defer func() {
+		_ = fw.Close()
+		flateWriterPool.Put(fw)
+	}()
+
+	if _, err := io.WriteString(fw, text); err != nil {
 		return nil, fmt.Errorf("failed to write data to compressor: %w", err)
 	}
 
-	if err := writer.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close compression writer: %w", err)
+	if err := fw.Close(); err != nil {
+		return nil, fmt.Errorf("failed to flush compressor data: %w", err)
 	}
 
 	return buf.Bytes(), nil
@@ -35,13 +54,18 @@ func DecompressText(compressed []byte) (string, error) {
 		return "", nil
 	}
 
-	reader := flate.NewReader(bytes.NewReader(compressed))
-	defer reader.Close()
+	fr := flateReaderPool.Get().(flate.Resetter)
+	if err := fr.Reset(bytes.NewReader(compressed), nil); err != nil {
+		return "", fmt.Errorf("failed to reset flate reader: %w", err)
+	}
 
-	decompressed, err := io.ReadAll(reader)
-	if err != nil {
+	defer flateReaderPool.Put(fr)
+
+	buf := bytes.NewBuffer(make([]byte, 0, len(compressed)*4))
+
+	if _, err := io.Copy(buf, fr.(io.Reader)); err != nil {
 		return "", fmt.Errorf("failed to decompress data: %w", err)
 	}
 
-	return string(decompressed), nil
+	return buf.String(), nil
 }

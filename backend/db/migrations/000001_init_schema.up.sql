@@ -76,16 +76,20 @@ CREATE TABLE algorithms (
     CONSTRAINT fk_author_id FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE INDEX idx_algorithms_author_id ON algorithms(author_id);
-CREATE INDEX idx_algorithms_status ON algorithms(status);
-CREATE INDEX idx_algorithms_author_status_updated ON algorithms (author_id, status, updated_at DESC);
-CREATE INDEX idx_algorithms_status_updated ON algorithms (status, updated_at DESC);
+CREATE INDEX idx_algorithms_approved_list ON algorithms (updated_at DESC) 
+INCLUDE (public_id, slug, name, category, difficulty) 
+WHERE status = 'approved';
+
+CREATE INDEX idx_algorithms_author_status_updated ON algorithms (author_id, status, updated_at DESC)
+INCLUDE (public_id, slug, name, category, difficulty);
+
+CREATE INDEX idx_algorithms_moderation ON algorithms (updated_at DESC, status) 
+WHERE status != 'deleted';
 
 CREATE TRIGGER trigger_algorithms_updated_at
 BEFORE UPDATE ON algorithms
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at();
-
 --------------------------------------
 
 CREATE TABLE refresh_tokens (

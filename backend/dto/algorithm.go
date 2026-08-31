@@ -6,6 +6,15 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
 )
 
+type ListAlgorithmDTO struct {
+	PublicId   string            `json:"publicId"`
+	Slug       string            `json:"slug"`
+	Name       string            `json:"name"`
+	Category   string            `json:"category"`
+	Difficulty models.Difficulty `json:"difficulty"`
+	Status     models.Status     `json:"status"`
+}
+
 type AlgorithmDTO struct {
 	PublicId   string            `json:"publicId"`
 	Slug       string            `json:"slug"`
@@ -13,21 +22,17 @@ type AlgorithmDTO struct {
 	Category   string            `json:"category"`
 	Difficulty models.Difficulty `json:"difficulty"`
 	Content    string            `json:"content"`
-	Status     models.Status     `json:"status"`
 	AuthorId   string            `json:"authorId"`
+	Status     models.Status     `json:"status"`
 	CreatedAt  time.Time         `json:"createdAt"`
 	UpdatedAt  time.Time         `json:"updatedAt"`
 }
 
 type ListAlgorithmsResponse struct {
-	Page       int            `json:"page"`
-	Limit      int            `json:"limit"`
-	HasMore    bool           `json:"hasMore"`
-	Algorithms []AlgorithmDTO `json:"algorithms"`
-}
-
-type AlgorithmResponse struct {
-	Data *AlgorithmDTO `json:"data"`
+	Page       int                `json:"page"`
+	Limit      int                `json:"limit"`
+	HasMore    bool               `json:"hasMore"`
+	Algorithms []ListAlgorithmDTO `json:"algorithms"`
 }
 
 type PostAlgorithmRequest struct {
@@ -37,6 +42,11 @@ type PostAlgorithmRequest struct {
 	Content    string            `json:"content" binding:"required,min=10"`
 }
 
+type PostAlgorithmResponse struct {
+	PublicId string `json:"publicId"`
+	Slug     string `json:"slug"`
+}
+
 type PutAlgorithmRequest struct {
 	Name       string            `json:"name" binding:"required,min=3"`
 	Category   string            `json:"category" binding:"required,min=3"`
@@ -44,11 +54,9 @@ type PutAlgorithmRequest struct {
 	Content    string            `json:"content" binding:"required,min=10"`
 }
 
+type PutAlgorithmResponse = PostAlgorithmResponse
+
 type SitemapItem struct {
 	Slug      string    `json:"slug"`
 	UpdatedAt time.Time `json:"updatedAt"`
-}
-
-type SitemapResponse struct {
-	Data []SitemapItem `json:"data"`
 }
