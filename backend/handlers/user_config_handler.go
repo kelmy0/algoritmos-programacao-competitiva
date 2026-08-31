@@ -1,20 +1,28 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/dto"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/models"
-	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
 )
 
-type UserConfigHandler struct {
-	service *services.UserConfigService
+type UserConfigService interface {
+	ChangePassword(ctx context.Context, userIdContext, refreshTokenString string, data dto.ChangePasswordRequest) error
+	DefinePassword(ctx context.Context, userIdContext, refreshTokenString string, data dto.DefinePasswordRequest) error
+	ForgotPassword(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, data dto.ResetPasswordRequest) error
+	GetMyCredentials(ctx context.Context, id string) (*dto.GetMyCredentialsResponse, error)
 }
 
-func NewUserConfigHandler(service *services.UserConfigService) *UserConfigHandler {
+type UserConfigHandler struct {
+	service UserConfigService
+}
+
+func NewUserConfigHandler(service UserConfigService) *UserConfigHandler {
 	return &UserConfigHandler{service: service}
 }
 
