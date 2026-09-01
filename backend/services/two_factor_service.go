@@ -25,6 +25,7 @@ type TwoFactorUserRepository interface {
 }
 
 type TwoFactorAuthRepository interface {
+	GetRefreshTokenById(ctx context.Context, id string) (*models.RefreshToken, error)
 	DeleteAllUserRefreshTokens(ctx context.Context, userId string) error
 	RevokeFamily(ctx context.Context, familyId string) error
 	SaveRefreshToken(ctx context.Context, tokenId, userId, familyId string, expiresAt time.Time) error
@@ -172,6 +173,11 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 		return Enable2FAResult{}, models.ErrInvalidOrExpiredRefresh
 	}
 
+	dbToken, err := s.AuthRepo.GetRefreshTokenById(ctx, claims.ID)
+	if err != nil || dbToken == nil || dbToken.IsRevoked {
+		return Enable2FAResult{}, models.ErrInvalidOrExpiredRefresh
+	}
+
 	user, err := s.UserRepo.GetUserByIdForAuth(ctx, data.UserId)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
@@ -179,9 +185,9 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 		}
 
 		slog.ErrorContext(ctx, "database query error",
-			"op", "Enable2FA",
-			"user_id", user.Id,
-			"error", err,
+			slog.String("op", "Enable2FA"),
+			slog.String("user_id", data.UserId),
+			slog.Any("error", err),
 		)
 		return Enable2FAResult{}, models.Err2FAGetDataFailed
 	}
@@ -197,8 +203,8 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 	decryptedSecret, err := utils.Decrypt(*user.TwoFactorSecret, s.EncryptSecret)
 	if err != nil {
 		slog.ErrorContext(ctx, "AES decryption of 2FA secret failed",
-			"user_id", user.Id,
-			"error", err,
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
 		)
 		return Enable2FAResult{}, models.ErrDecryptTokenFailed
 	}
@@ -210,9 +216,9 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 
 	if err = s.UserRepo.Enable2FA(ctx, user.Id); err != nil {
 		slog.ErrorContext(ctx, "failed to update 2FA status to enabled in DB",
-			"op", "Enable2FA",
-			"user_id", user.Id,
-			"error", err,
+			slog.String("op", "Enable2FA"),
+			slog.String("user_id", user.Id),
+			slog.Any("error", err),
 		)
 		return Enable2FAResult{}, models.Err2FAUpdateFailed
 	}
@@ -227,7 +233,7 @@ func (s *TwoFactorService) Enable2FA(ctx context.Context, data dto.TwoFactorEnab
 		return Enable2FAResult{}, models.ErrUnexpectedLogout
 	}
 
-	nowTimestamp := time.Now().Unix()
+	nowTimestamp := time.Now().Add(-1 * time.Second).Unix()
 	redisTTL := time.Duration(s.JwtAccessExpiration) * time.Minute
 
 	redisValue := fmt.Sprintf("%d", nowTimestamp)
@@ -285,29 +291,42 @@ func (s *TwoFactorService) Disable2FA(ctx context.Context, data dto.TwoFactorDis
 	claims, err := utils.ValidateRefreshToken(data.RefreshToken, s.JwtRefreshPublicKey, s.AppDomain)
 	if err != nil {
 		slog.WarnContext(ctx, "refresh token validation failed during 2FA disable",
-			"op", "Disable2FA",
-			"user_id", data.UserId,
-			"error", err,
+			slog.String("op", "Disable2FA"),
+			slog.String("user_id", data.UserId),
+			slog.Any("error", err),
 		)
 		return models.ErrInvalidOrExpiredRefresh
 	}
 
+	if claims.Subject != data.UserId {
+		slog.WarnContext(ctx, "security mismatch during 2fa disable",
+			slog.String("token_subject", claims.Subject),
+			slog.String("user_id_param", data.UserId),
+		)
+		return models.ErrTokenMetadataMisMatch
+	}
+
 	if claims.DeviceHash != data.DeviceHash {
 		slog.WarnContext(ctx, "[SECURITY ALERT] Device hash mismatch during 2FA disable! Revoking family",
-			"op", "Disable2FA",
-			"user_id", data.UserId,
-			"family_id", claims.FamilyId,
+			slog.String("op", "Disable2FA"),
+			slog.String("user_id", data.UserId),
+			slog.String("family_id", claims.FamilyId),
 		)
 		_ = s.AuthRepo.RevokeFamily(ctx, claims.FamilyId)
+		return models.ErrInvalidOrExpiredRefresh
+	}
+
+	dbToken, err := s.AuthRepo.GetRefreshTokenById(ctx, claims.ID)
+	if err != nil || dbToken == nil || dbToken.IsRevoked {
 		return models.ErrInvalidOrExpiredRefresh
 	}
 
 	twoFactorData, err := s.UserRepo.GetAuthData(ctx, data.UserId)
 	if err != nil {
 		slog.ErrorContext(ctx, "database query error",
-			"op", "Disable2FA",
-			"user_id", data.UserId,
-			"error", err,
+			slog.String("op", "Disable2FA"),
+			slog.String("user_id", data.UserId),
+			slog.Any("error", err),
 		)
 		return models.Err2FAGetDataFailed
 	}
@@ -315,13 +334,14 @@ func (s *TwoFactorService) Disable2FA(ctx context.Context, data dto.TwoFactorDis
 	if !twoFactorData.IsEnabled {
 		return models.Err2FAAlreadyDisabled
 	}
+
 	if twoFactorData.PasswordHash != "" {
 		isValid, err := utils.VerifyPassword(data.Password, twoFactorData.PasswordHash)
 		if err != nil {
 			slog.ErrorContext(ctx, "Argon2 verification system error",
-				"op", "Disable2FA",
-				"user_id", data.UserId,
-				"error", err,
+				slog.String("op", "Disable2FA"),
+				slog.String("user_id", data.UserId),
+				slog.Any("error", err),
 			)
 			return models.ErrPasswordVerificationFailed
 		}
@@ -334,28 +354,29 @@ func (s *TwoFactorService) Disable2FA(ctx context.Context, data dto.TwoFactorDis
 	err = s.UserRepo.Disable2FA(ctx, data.UserId)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to update 2FA status to disabled in DB",
-			"op", "Disable2FA",
-			"user_id", data.UserId,
-			"error", err,
+			slog.String("op", "Disable2FA"),
+			slog.String("user_id", data.UserId),
+			slog.Any("error", err),
 		)
 		return models.Err2FAUpdateFailed
 	}
 
 	if err = s.AuthRepo.DeleteAllUserRefreshTokens(ctx, data.UserId); err != nil {
 		slog.WarnContext(ctx, "failed to revoke refresh tokens",
-			"op", "Disable2FA",
-			"user_id", data.UserId,
-			"error", err,
+			slog.String("op", "Disable2FA"),
+			slog.String("user_id", data.UserId),
+			slog.Any("error", err),
 		)
 	}
 
-	nowTimestamp := time.Now().Unix()
+	nowTimestamp := time.Now().Add(-1 * time.Second).Unix()
 	redisTTL := time.Duration(s.JwtAccessExpiration) * time.Minute
+
 	if err = s.RedisClient.Set(ctx, "logout_all:"+data.UserId, fmt.Sprintf("%d", nowTimestamp), redisTTL).Err(); err != nil {
 		slog.ErrorContext(ctx, "failed to set logout_all in redis",
-			"op", "Disable2FA",
-			"user_id", data.UserId,
-			"error", err,
+			slog.String("op", "Disable2FA"),
+			slog.String("user_id", data.UserId),
+			slog.Any("error", err),
 		)
 	}
 

@@ -57,9 +57,21 @@ func AuthMiddleware(publicKey ed25519.PublicKey, issuer string, redisClient *red
 
 		ctx := c.Request.Context()
 
+		pipe := redisClient.Pipeline()
+
+		var blacklistedCmd *redis.IntCmd
 		if claims.ID != "" {
-			blacklisted, err := redisClient.Exists(ctx, "blacklist:jti:"+claims.ID).Result()
-			if err != nil {
+			blacklistedCmd = pipe.Exists(ctx, "blacklist:jti:"+claims.ID)
+		}
+
+		logoutAllCmd := pipe.Get(ctx, "logout_all:"+claims.Subject)
+		logoutOtherCmd := pipe.Get(ctx, "logout_other:"+claims.Subject)
+
+		_, _ = pipe.Exec(ctx)
+
+		if blacklistedCmd != nil {
+			blacklisted, err := blacklistedCmd.Result()
+			if err != nil && err != redis.Nil {
 				c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
 					dto.CodeInternalError,
 					"Failed to verify token revocation status.",
@@ -78,10 +90,8 @@ func AuthMiddleware(publicKey ed25519.PublicKey, issuer string, redisClient *red
 			}
 		}
 
-		logoutAllKey := "logout_all:" + claims.Subject
-		val, err := redisClient.Get(ctx, logoutAllKey).Result()
-
-		if err != nil && err != redis.Nil {
+		valAll, errAll := logoutAllCmd.Result()
+		if errAll != nil && errAll != redis.Nil {
 			c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
 				dto.CodeInternalError,
 				"Failed to verify session status.",
@@ -90,10 +100,10 @@ func AuthMiddleware(publicKey ed25519.PublicKey, issuer string, redisClient *red
 			return
 		}
 
-		if err == nil && val != "" {
-			logoutTimestamp, _ := strconv.ParseInt(val, 10, 64)
+		if errAll == nil && valAll != "" {
+			logoutTimestamp, _ := strconv.ParseInt(valAll, 10, 64)
 
-			if claims.IssuedAt.Time.Unix() <= logoutTimestamp {
+			if claims.IssuedAt.Time.Unix() < logoutTimestamp {
 				c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
 					dto.CodeTokenNolongerValid,
 					"Session expired due to logout on all devices.",
@@ -103,10 +113,8 @@ func AuthMiddleware(publicKey ed25519.PublicKey, issuer string, redisClient *red
 			}
 		}
 
-		logoutOtherKey := "logout_other:" + claims.Subject
-		val, err = redisClient.Get(ctx, logoutOtherKey).Result()
-
-		if err != nil && err != redis.Nil {
+		valOther, errOther := logoutOtherCmd.Result()
+		if errOther != nil && errOther != redis.Nil {
 			c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
 				dto.CodeInternalError,
 				"Failed to verify session status.",
@@ -115,8 +123,8 @@ func AuthMiddleware(publicKey ed25519.PublicKey, issuer string, redisClient *red
 			return
 		}
 
-		if err == nil && val != "" {
-			parts := strings.Split(val, ":")
+		if errOther == nil && valOther != "" {
+			parts := strings.Split(valOther, ":")
 			logoutTimestamp, _ := strconv.ParseInt(parts[0], 10, 64)
 
 			allowedAccessJti := ""
@@ -124,7 +132,7 @@ func AuthMiddleware(publicKey ed25519.PublicKey, issuer string, redisClient *red
 				allowedAccessJti = parts[1]
 			}
 
-			if claims.IssuedAt.Time.Unix() <= logoutTimestamp && claims.ID != allowedAccessJti {
+			if claims.IssuedAt.Time.Unix() < logoutTimestamp && claims.ID != allowedAccessJti {
 				c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
 					dto.CodeTokenNolongerValid,
 					"Session expired due to logout on other devices.",
