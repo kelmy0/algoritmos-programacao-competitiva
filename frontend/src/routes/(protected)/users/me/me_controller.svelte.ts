@@ -6,23 +6,32 @@ import { type TwoFactorGenerateResponse } from "$lib/types/users/me/two_factor";
 import { normalizeApiError } from "$lib/utils/errors";
 
 export class MeController extends BaseController {
-	#is2FAEnabled = $state(false);
-	#hasPassword = $state(true);
+	#getIs2FAEnabled: () => boolean;
+	#getHasPassword: () => boolean;
+
 	#twoFactorSecret = $state("");
 	#qrCodeUrl = $state("");
 
 	#password = $state("");
+	#newPassword = $state("");
 	#confirmPassword = $state("");
 	#code = $state("");
 
-	constructor(is2FAEnabled: boolean = false, hasPassword: boolean = true) {
+	constructor(
+		getIs2FAEnabled: () => boolean = () => false,
+		getHasPassword: () => boolean = () => true
+	) {
 		super();
-		this.#is2FAEnabled = is2FAEnabled;
-		this.#hasPassword = hasPassword;
+		this.#getIs2FAEnabled = getIs2FAEnabled;
+		this.#getHasPassword = getHasPassword;
 	}
 
 	get is2FAEnabled() {
-		return this.#is2FAEnabled;
+		return this.#getIs2FAEnabled();
+	}
+
+	get hasPassword() {
+		return this.#getHasPassword();
 	}
 
 	get twoFactorSecret() {
@@ -39,6 +48,15 @@ export class MeController extends BaseController {
 
 	set password(val: string) {
 		this.#password = val;
+		this.clearApiError();
+	}
+
+	get newPassword() {
+		return this.#newPassword;
+	}
+
+	set newPassword(val: string) {
+		this.#newPassword = val;
 		this.clearApiError();
 	}
 
@@ -60,8 +78,42 @@ export class MeController extends BaseController {
 		this.clearApiError();
 	}
 
+	get hasMinLength() {
+		return this.#newPassword.length >= 8;
+	}
+
+	get hasUppercase() {
+		return /[A-Z]/.test(this.#newPassword);
+	}
+
+	get hasLowercase() {
+		return /[a-z]/.test(this.#newPassword);
+	}
+
+	get hasNumber() {
+		return /\d/.test(this.#newPassword);
+	}
+
+	get hasSpecialChar() {
+		return /[@$!%*?&]/.test(this.#newPassword);
+	}
+
+	get isNewPasswordValid() {
+		return (
+			this.hasMinLength &&
+			this.hasUppercase &&
+			this.hasLowercase &&
+			this.hasNumber &&
+			this.hasSpecialChar
+		);
+	}
+
 	get isPasswordValid() {
-		return this.#password.length >= 8 || (!this.#hasPassword && this.#password.length === 0);
+		return this.#password.length >= 8 || (!this.hasPassword && this.#password.length === 0);
+	}
+
+	get isPasswordsMatching() {
+		return this.#newPassword === this.#confirmPassword;
 	}
 
 	get isCodeValid() {
@@ -69,7 +121,7 @@ export class MeController extends BaseController {
 	}
 
 	async generate2FA(): Promise<boolean> {
-		if (this.#is2FAEnabled || !this.isPasswordValid || this._isLoading) return false;
+		if (this.is2FAEnabled || !this.isPasswordValid || this._isLoading) return false;
 		this._isLoading = true;
 
 		const { data, error } = await customFetch<TwoFactorGenerateResponse>(
@@ -99,7 +151,7 @@ export class MeController extends BaseController {
 	}
 
 	async save2FA(): Promise<boolean> {
-		if (this.#is2FAEnabled || !this.isCodeValid || this._isLoading) return false;
+		if (this.is2FAEnabled || !this.isCodeValid || this._isLoading) return false;
 		this._isLoading = true;
 
 		const { error } = await customFetch<null>(
@@ -124,7 +176,7 @@ export class MeController extends BaseController {
 	}
 
 	async disable2FA(): Promise<boolean> {
-		if (!this.#is2FAEnabled || !this.isPasswordValid || this._isLoading) return false;
+		if (!this.is2FAEnabled || !this.isPasswordValid || this._isLoading) return false;
 
 		this._isLoading = true;
 
@@ -145,6 +197,14 @@ export class MeController extends BaseController {
 		this._apiError = null;
 		this.#password = "";
 		await goto("/auth/login", { invalidateAll: true });
+		return true;
+	}
+
+	async changePassword(): Promise<boolean> {
+		return true;
+	}
+
+	async setPassword(): Promise<boolean> {
 		return true;
 	}
 }

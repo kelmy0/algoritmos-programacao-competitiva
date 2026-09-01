@@ -7,22 +7,29 @@
 	import Modal from "$lib/components/ui/Modal.svelte";
 	import Input from "$lib/components/ui/Input.svelte";
 	import CodeInput from "$lib/components/ui/CodeInput.svelte";
+	import ValidationCard from "$lib/components/ui/ValidationCard.svelte";
+
+	const isPasswordSetted = $derived(page.data.user?.hasPassword ?? true);
+	const is2FAEnabled = $derived(page.data.user?.is2FAEnabled ?? false);
 
 	const controller = new MeController(
-		page.data.user?.is2FAEnabled ?? false,
-		page.data.user?.hasPassword ?? true
+		() => is2FAEnabled,
+		() => isPasswordSetted
 	);
 
-	let is2FAModalOpen = $state(false);
-	let isChangePasswordModalOpen = $state(false);
+	type ModalType = "2fa" | "save-password" | null;
+	let activeModal = $state<ModalType>(null);
 	let showPassword = $state(false);
+	let showNewPassword = $state(false);
+	let showConfirmPassword = $state(false);
 
 	let touched = $state({
 		password: false,
+		newPassword: false,
+		confirmPassword: false,
 		code: false
 	});
 
-	const is2FAEnabled = $derived(page.data.user?.is2FAEnabled);
 	const modal2FAVariant = $derived(is2FAEnabled ? "danger" : "success");
 	const modal2FATitle = $derived(
 		is2FAEnabled
@@ -30,39 +37,49 @@
 			: "Ativar autenticação em dois fatores?"
 	);
 
-	const twoFactorLabels: Record<string, string> = {
+	const twoFactorLabels: Record<string, string> = $derived({
 		generateCode: `Você precisará de um aplicativo autenticador. 
-		${page.data.user?.hasPassword ? "Insira sua senha e clique" : "Clique"} em gerar chave.`,
+		${isPasswordSetted ? "Insira sua senha e clique" : "Clique"} em gerar chave.`,
 		saveCode: "Salve a chave em seu aplicativo autenticador e insira o código gerado nele."
-	};
+	});
 
 	const modal2FADescription = $derived(
 		is2FAEnabled
 			? `Desativar a autenticação em dois fatores deixará sua conta vulnerável! Caso deseje continuar
-			${page.data.user?.hasPassword ? "insira sua senha novamente e " : ""} clique em desativar.`
+			${isPasswordSetted ? "insira sua senha novamente e " : ""} clique em desativar.`
 			: !controller.twoFactorSecret
 				? twoFactorLabels.generateCode
 				: twoFactorLabels.saveCode
 	);
 
-	const open2FAModal = () => (is2FAModalOpen = true);
-	const close2FAModal = () => (is2FAModalOpen = false);
+	const modalSavePasswordTitle = $derived(isPasswordSetted ? "Alterar senha" : "Definir senha");
+	const modalSavePasswordDescription = $derived(
+		isPasswordSetted
+			? "Para mudar sua senha digite sua senha antiga e a nova senha. Você será desconectado de outros dispositivos!"
+			: "Para definir uma senha para sua conta basta digita-la abaixo. Você será desconectado de outros dispositivos!"
+	);
 
-	const openChangePasswordModal = () => (isChangePasswordModalOpen = true);
-	const closeChangePasswordModal = () => (isChangePasswordModalOpen = false);
+	const openModal = (name: ModalType) => (activeModal = name);
+	const closeModal = () => (activeModal = null);
 
 	const togglePassword = () => (showPassword = !showPassword);
+	const toggleNewPassword = () => (showNewPassword = !showNewPassword);
+	const toggleConfirmPassword = () => (showConfirmPassword = !showConfirmPassword);
 
 	async function handleGenerate2FA(e: SubmitEvent) {
 		e.preventDefault();
-		await controller.generate2FA();
+		const success = await controller.generate2FA();
+		if (success) {
+			touched.password = false;
+		}
 	}
 
 	async function handleSave2FA(e: SubmitEvent) {
 		e.preventDefault();
 		const success = await controller.save2FA();
 		if (success) {
-			is2FAModalOpen = false;
+			activeModal = null;
+			touched.code = false;
 		}
 	}
 
@@ -70,7 +87,21 @@
 		e.preventDefault();
 		const success = await controller.disable2FA();
 		if (success) {
-			is2FAModalOpen = false;
+			activeModal = null;
+			touched.password = false;
+		}
+	}
+
+	async function handleSavePassword(e: SubmitEvent) {
+		e.preventDefault();
+		const success: Boolean = isPasswordSetted
+			? await controller.changePassword()
+			: await controller.setPassword();
+		if (success) {
+			activeModal = null;
+			touched.password = false;
+			touched.newPassword = false;
+			touched.confirmPassword = false;
 		}
 	}
 </script>
@@ -83,27 +114,27 @@
 
 <div class="max-w-4xl space-y-8 font-inter">
 	<header
-		class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-app-border"
+		class="flex flex-col justify-between gap-4 border-b border-app-border pb-6 md:flex-row md:items-center"
 	>
 		<div>
-			<h1 class="font-montserrat font-bold text-2xl md:text-3xl text-text-primary tracking-tight">
+			<h1 class="font-montserrat text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
 				Minha conta
 			</h1>
-			<p class="text-sm text-text-muted mt-1">
+			<p class="mt-1 text-sm text-text-muted">
 				Ajuste suas informações pessoais e configurações de segurança.
 			</p>
 		</div>
 	</header>
 
 	<!-- Account -->
-	<section class="bg-app-surface border border-app-border rounded-xl p-6 shadow-xl space-y-6">
+	<section class="space-y-6 rounded-xl border border-app-border bg-app-surface p-6 shadow-xl">
 		<div class="border-b border-app-border/80 pb-4">
-			<h2 class="font-montserrat font-semibold text-lg text-text-primary">Perfil</h2>
-			<p class="text-xs text-text-muted mt-0.5">Informações visíveis do seu perfil.</p>
+			<h2 class="font-montserrat text-lg font-semibold text-text-primary">Perfil</h2>
+			<p class="mt-0.5 text-xs text-text-muted">Informações visíveis do seu perfil.</p>
 		</div>
 
 		<form onsubmit={(e) => e.preventDefault()} class="space-y-5">
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<!-- Name -->
 				<div class="space-y-2">
 					<label for="name" class="block text-sm font-medium text-text-secondary"
@@ -115,7 +146,7 @@
 						name="name"
 						placeholder="Seu nome"
 						value={page.data.user?.name}
-						class="w-full px-4 py-2.5 bg-app-bg/50 border border-app-border rounded-lg text-text-primary placeholder-text-muted text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
+						class="w-full rounded-lg border border-app-border bg-app-bg/50 px-4 py-2.5 text-sm text-text-primary placeholder-text-muted transition-all focus:border-text-brand focus:bg-app-bg focus:ring-1 focus:ring-text-brand focus:outline-none"
 					/>
 				</div>
 
@@ -126,7 +157,7 @@
 					>
 					<div class="relative flex items-center">
 						<span
-							class="absolute left-3.5 text-text-muted text-sm font-medium leading-none pointer-events-none select-none"
+							class="pointer-events-none absolute left-3.5 text-sm leading-none font-medium text-text-muted select-none"
 							>@</span
 						>
 						<input
@@ -135,7 +166,7 @@
 							name="username"
 							placeholder="dev_user"
 							value={page.data.user?.username}
-							class="w-full pl-8 pr-4 py-2.5 bg-app-bg/50 border border-app-border rounded-lg text-text-primary placeholder-text-muted text-sm focus:bg-app-bg focus:border-text-brand focus:ring-1 focus:ring-text-brand focus:outline-none transition-all"
+							class="w-full rounded-lg border border-app-border bg-app-bg/50 py-2.5 pr-4 pl-8 text-sm text-text-primary placeholder-text-muted transition-all focus:border-text-brand focus:bg-app-bg focus:ring-1 focus:ring-text-brand focus:outline-none"
 						/>
 					</div>
 				</div>
@@ -154,10 +185,10 @@
 						name="email"
 						value={page.data.user?.email}
 						disabled
-						class="w-full px-4 py-2.5 bg-app-bg/30 border border-app-border/60 rounded-lg text-text-muted text-sm cursor-not-allowed select-none opacity-80"
+						class="w-full cursor-not-allowed rounded-lg border border-app-border/60 bg-app-bg/30 px-4 py-2.5 text-sm text-text-muted opacity-80 select-none"
 					/>
 					<svg
-						class="w-4 h-4 text-text-muted absolute right-3.5"
+						class="absolute right-3.5 h-4 w-4 text-text-muted"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -175,7 +206,7 @@
 			<div class="flex justify-end pt-2">
 				<button
 					type="submit"
-					class="px-5 py-2.5 bg-text-brand text-app-bg font-semibold text-sm rounded-lg hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer"
+					class="cursor-pointer rounded-lg bg-text-brand px-5 py-2.5 text-sm font-semibold text-app-bg transition-all hover:opacity-90 active:scale-[0.98]"
 				>
 					Salvar perfil
 				</button>
@@ -184,20 +215,20 @@
 	</section>
 
 	<!-- Social accounts -->
-	<section class="bg-app-surface border border-app-border rounded-xl p-6 shadow-xl space-y-6">
+	<section class="space-y-6 rounded-xl border border-app-border bg-app-surface p-6 shadow-xl">
 		<div class="border-b border-app-border/80 pb-4">
-			<h2 class="font-montserrat font-semibold text-lg text-text-primary">Contas vinculadas</h2>
-			<p class="text-xs text-text-muted mt-0.5">Conecte suas redes para facilitar o login.</p>
+			<h2 class="font-montserrat text-lg font-semibold text-text-primary">Contas vinculadas</h2>
+			<p class="mt-0.5 text-xs text-text-muted">Conecte suas redes para facilitar o login.</p>
 		</div>
 
 		<div class="space-y-3">
 			<!-- Google -->
 			<div
-				class="flex items-center justify-between p-4 bg-app-bg/40 border border-app-border rounded-lg transition-all hover:border-app-border"
+				class="flex items-center justify-between rounded-lg border border-app-border bg-app-bg/40 p-4 transition-all hover:border-app-border"
 			>
 				<div class="flex items-center gap-3">
-					<div class="p-2 bg-app-bg border border-app-border rounded-md shrink-0">
-						<svg class="w-5 h-5" viewBox="0 0 24 24">
+					<div class="shrink-0 rounded-md border border-app-border bg-app-bg p-2">
+						<svg class="h-5 w-5" viewBox="0 0 24 24">
 							<path
 								fill="#EA4335"
 								d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.2 9 5 12 5z"
@@ -225,7 +256,7 @@
 				<!-- Connected state -->
 				<button
 					type="button"
-					class="px-3 py-1.5 border border-red-900/60 text-red-400 hover:bg-red-950/30 hover:border-red-800 rounded-md text-xs font-medium transition-all cursor-pointer"
+					class="cursor-pointer rounded-md border border-red-900/60 px-3 py-1.5 text-xs font-medium text-red-400 transition-all hover:border-red-800 hover:bg-red-950/30"
 				>
 					Desvincular
 				</button>
@@ -233,11 +264,11 @@
 
 			<!-- GitHub -->
 			<div
-				class="flex items-center justify-between p-4 bg-app-bg/40 border border-app-border rounded-lg transition-all hover:border-app-border"
+				class="flex items-center justify-between rounded-lg border border-app-border bg-app-bg/40 p-4 transition-all hover:border-app-border"
 			>
 				<div class="flex items-center gap-3">
-					<div class="p-2 bg-app-bg border border-app-border rounded-md shrink-0">
-						<svg class="w-5 h-5 fill-current text-text-primary" viewBox="0 0 24 24">
+					<div class="shrink-0 rounded-md border border-app-border bg-app-bg p-2">
+						<svg class="h-5 w-5 fill-current text-text-primary" viewBox="0 0 24 24">
 							<path
 								d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
 							/>
@@ -252,7 +283,7 @@
 				<!-- Disconnected state -->
 				<button
 					type="button"
-					class="px-3 py-1.5 bg-app-bg border border-app-border text-text-secondary hover:text-text-primary hover:border-text-muted rounded-md text-xs font-medium transition-all cursor-pointer"
+					class="cursor-pointer rounded-md border border-app-border bg-app-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition-all hover:border-text-muted hover:text-text-primary"
 				>
 					Vincular
 				</button>
@@ -261,10 +292,10 @@
 	</section>
 
 	<!-- Security -->
-	<section class="bg-app-surface border border-app-border rounded-xl p-6 shadow-xl space-y-6">
+	<section class="space-y-6 rounded-xl border border-app-border bg-app-surface p-6 shadow-xl">
 		<div class="border-b border-app-border/80 pb-4">
-			<h2 class="font-montserrat font-semibold text-lg text-text-primary">Segurança</h2>
-			<p class="text-xs text-text-muted mt-0.5">
+			<h2 class="font-montserrat text-lg font-semibold text-text-primary">Segurança</h2>
+			<p class="mt-0.5 text-xs text-text-muted">
 				Gerencie sua senha e autenticação de dois fatores.
 			</p>
 		</div>
@@ -272,22 +303,21 @@
 		<div class="space-y-6">
 			<!-- Change password -->
 			<div
-				class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-app-bg/40 border border-app-border rounded-lg"
+				class="flex flex-col justify-between gap-4 rounded-lg border border-app-border bg-app-bg/40 p-4 sm:flex-row sm:items-center"
 			>
 				<div>
 					<p class="text-sm font-medium text-text-primary">Senha de acesso</p>
-					<p class="text-xs text-text-muted mt-0.5">Última alteração há mais de 30 dias</p>
+					<p class="mt-0.5 text-xs text-text-muted">Última alteração há mais de 30 dias</p>
 				</div>
-
 				<Button
 					variant="outline"
 					aria-haspopup="dialog"
 					disabled={controller.isLoading}
-					aria-expanded={isChangePasswordModalOpen}
-					onclick={() => openChangePasswordModal()}
+					aria-expanded={activeModal === "save-password"}
+					onclick={() => openModal("save-password")}
 				>
 					<svg
-						class="w-4 h-4 text-text-muted"
+						class="h-4 w-4 text-text-muted"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -300,28 +330,28 @@
 							d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0121 9z"
 						/>
 					</svg>
-					<span>Alterar senha</span>
+					<span>{isPasswordSetted ? "Alterar senha" : "Definir senha"}</span>
 				</Button>
 			</div>
 
 			<!-- 2FA -->
 			<div
-				class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-app-bg/40 border border-app-border rounded-lg"
+				class="flex flex-col justify-between gap-4 rounded-lg border border-app-border bg-app-bg/40 p-4 sm:flex-row sm:items-center"
 			>
 				<div class="space-y-1">
 					<div class="flex items-center gap-2">
 						<p class="text-sm font-medium text-text-primary">Autenticação de Dois Fatores (2FA)</p>
 						<span
-							class="text-xs uppercase font-bold px-2 py-0.5 rounded-md border invisible ml:visible
+							class="invisible rounded-md border px-2 py-0.5 text-xs font-bold uppercase ml:visible
 							{page.data.user?.is2FAEnabled
-								? 'bg-emerald-950 border-emerald-800 text-emerald-300'
-								: 'bg-amber-950 border-amber-800 text-amber-300'}
+								? 'border-emerald-800 bg-emerald-950 text-emerald-300'
+								: 'border-amber-800 bg-amber-950 text-amber-300'}
 							 "
 						>
 							{page.data.user?.is2FAEnabled ? "Ativado" : "Desativado"}
 						</span>
 					</div>
-					<p class="text-xs text-text-muted max-w-md">
+					<p class="max-w-md text-xs text-text-muted">
 						Adicione uma camada extra de segurança usando um aplicativo autenticador (Google
 						Authenticator, Authy, etc).
 					</p>
@@ -330,11 +360,11 @@
 					variant={page.data.user?.is2FAEnabled ? "danger-soft" : "success-soft"}
 					aria-haspopup="dialog"
 					disabled={controller.isLoading}
-					aria-expanded={is2FAModalOpen}
-					onclick={() => open2FAModal()}
+					aria-expanded={activeModal === "2fa"}
+					onclick={() => openModal("2fa")}
 				>
 					<svg
-						class="w-4 h-4"
+						class="h-4 w-4"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -354,20 +384,20 @@
 	</section>
 </div>
 
-{#if is2FAModalOpen}
+{#if activeModal === "2fa"}
 	<Modal
-		isOpen={is2FAModalOpen}
+		isOpen={activeModal === "2fa"}
 		title={modal2FATitle}
 		description={modal2FADescription}
 		variant={modal2FAVariant}
 		isLoading={controller.isLoading}
-		onClose={() => close2FAModal()}
+		onClose={() => closeModal()}
 		{focusTrap}
 	>
 		{#if !is2FAEnabled}
 			{#if !controller.twoFactorSecret}
 				<form onsubmit={(e) => handleGenerate2FA(e)} class="space-y-5">
-					{#if page.data.user?.hasPassword}
+					{#if isPasswordSetted}
 						<Input
 							id="password"
 							name="password"
@@ -392,7 +422,7 @@
 								<button
 									type="button"
 									onclick={() => togglePassword()}
-									class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+									class="rounded p-1 text-text-muted transition-colors hover:text-text-primary focus:ring-1 focus:ring-text-brand focus:outline-none"
 									aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
 								>
 									{#if showPassword}
@@ -435,14 +465,14 @@
 						</Input>
 					{/if}
 					<div
-						class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-app-border"
+						class="flex flex-col-reverse justify-end gap-3 border-t border-app-border pt-4 sm:flex-row"
 					>
 						<Button
 							type="button"
 							variant="dark"
 							size="md"
 							disabled={controller.isLoading}
-							onclick={() => close2FAModal()}
+							onclick={() => closeModal()}
 							class="w-full sm:w-auto"
 						>
 							Cancelar
@@ -462,13 +492,13 @@
 				<form onsubmit={(e) => handleSave2FA(e)} class="space-y-5 font-inter">
 					<div
 						transition:slide={{ duration: 250 }}
-						class="flex flex-col items-center gap-5 p-4 bg-app-bg/20 border border-app-border rounded-lg"
+						class="flex flex-col items-center gap-5 rounded-lg border border-app-border bg-app-bg/20 p-4"
 					>
-						<div class="bg-white p-2.5 rounded-xl shadow-inner shrink-0">
+						<div class="shrink-0 rounded-xl bg-white p-2.5 shadow-inner">
 							<img
 								src={controller.qrCodeUrl}
 								alt="QR Code para Autenticação 2FA"
-								class="w-48 h-48 rounded"
+								class="h-48 w-48 rounded"
 							/>
 						</div>
 
@@ -478,12 +508,12 @@
 							</label>
 							<div class="flex items-center gap-2">
 								<div
-									class="flex-1 p-2.5 bg-app-bg border border-app-border rounded-lg shadow-inner"
+									class="flex-1 rounded-lg border border-app-border bg-app-bg p-2.5 shadow-inner"
 								>
 									<code
 										id="twoFactorSecret"
 										aria-label="Chave secreta de configuração"
-										class="text-sm font-mono font-medium text-emerald-300 break-all leading-relaxed tracking-wider"
+										class="font-mono text-sm leading-relaxed font-medium tracking-wider break-all text-emerald-300"
 									>
 										{controller.twoFactorSecret || "Gerando chave..."}
 									</code>
@@ -493,10 +523,10 @@
 									type="button"
 									title="Copiar chave secreta"
 									aria-label="Copiar chave secreta para a área de transferência"
-									class="p-2.5 rounded-lg border border-app-border bg-app-bg text-text-muted hover:bg-app-surface hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500"
+									class="rounded-lg border border-app-border bg-app-bg p-2.5 text-text-muted transition-colors hover:bg-app-surface hover:text-text-primary focus:ring-2 focus:ring-emerald-500 focus:outline-none"
 								>
 									<svg
-										class="w-5 h-5"
+										class="h-5 w-5"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -525,14 +555,14 @@
 					/>
 
 					<div
-						class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-app-border"
+						class="flex flex-col-reverse justify-end gap-3 border-t border-app-border pt-4 sm:flex-row"
 					>
 						<Button
 							type="button"
 							variant="dark"
 							size="md"
 							disabled={controller.isLoading}
-							onclick={() => close2FAModal()}
+							onclick={() => closeModal()}
 							class="w-full sm:w-auto"
 						>
 							Cancelar
@@ -551,7 +581,7 @@
 			{/if}
 		{:else}
 			<form onsubmit={(e) => handleDisable2FA(e)} class="space-y-5 font-inter">
-				{#if page.data.user?.hasPassword}
+				{#if isPasswordSetted}
 					<Input
 						id="password"
 						name="password"
@@ -576,7 +606,7 @@
 							<button
 								type="button"
 								onclick={() => togglePassword()}
-								class="p-1 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-text-brand"
+								class="rounded p-1 text-text-muted transition-colors hover:text-text-primary focus:ring-1 focus:ring-text-brand focus:outline-none"
 								aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
 							>
 								{#if showPassword}
@@ -620,14 +650,14 @@
 				{/if}
 
 				<div
-					class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-app-border"
+					class="flex flex-col-reverse justify-end gap-3 border-t border-app-border pt-4 sm:flex-row"
 				>
 					<Button
 						type="button"
 						variant="dark"
 						size="md"
 						disabled={controller.isLoading}
-						onclick={() => close2FAModal()}
+						onclick={() => closeModal()}
 						class="w-full sm:w-auto"
 					>
 						Cancelar
@@ -647,15 +677,251 @@
 	</Modal>
 {/if}
 
-{#if isChangePasswordModalOpen}
+{#if activeModal === "save-password"}
 	<Modal
-		isOpen={isChangePasswordModalOpen}
-		title="Mudar senha?"
-		description="Para mudar sua senha digite sua senha antiga e a nova senha. Você será desconectado de
-						outros dispositivos!"
+		isOpen={activeModal === "save-password"}
+		title={modalSavePasswordTitle}
+		description={modalSavePasswordDescription}
 		variant="warning"
 		isLoading={controller.isLoading}
-		onClose={() => closeChangePasswordModal()}
+		onClose={() => closeModal()}
 		{focusTrap}
-	></Modal>
+	>
+		<form onsubmit={(e) => handleSavePassword(e)} class="space-y-5">
+			{#if isPasswordSetted}
+				<Input
+					id="password"
+					name="password"
+					type={showPassword ? "text" : "password"}
+					label="Senha"
+					placeholder="••••••••"
+					autocomplete="current-password"
+					minlength={8}
+					required
+					disabled={controller.isLoading}
+					bind:value={controller.password}
+					touched={touched.password}
+					error={(touched.password && !controller.isPasswordValid) ||
+					controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+						? controller.apiError?.code === "AUTH_INCORRECT_PASSWORD"
+							? "Senha incorreta."
+							: "A senha deve conter no mínimo 8 caracteres."
+						: undefined}
+					onblur={() => (touched.password = true)}
+				>
+					{#snippet suffixIcon()}
+						<button
+							type="button"
+							onclick={() => togglePassword()}
+							class="rounded p-1 text-text-muted transition-colors hover:text-text-primary focus:ring-1 focus:ring-text-brand focus:outline-none"
+							aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+						>
+							{#if showPassword}
+								<svg
+									class="h-5 w-5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+									<circle cx="12" cy="12" r="3" />
+								</svg>
+							{:else}
+								<svg
+									class="h-5 w-5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+									<path
+										d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+									/>
+									<path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+									<line x1="2" x2="22" y1="2" y2="22" />
+								</svg>
+							{/if}
+						</button>
+					{/snippet}
+				</Input>
+			{/if}
+
+			<!-- New Password -->
+			<Input
+				id="newPassword"
+				name="newPassword"
+				type={showNewPassword ? "text" : "password"}
+				label="Nova senha"
+				placeholder="••••••••"
+				autocomplete="new-password"
+				minlength={8}
+				required
+				disabled={controller.isLoading}
+				bind:value={controller.newPassword}
+				touched={touched.newPassword}
+				error={touched.newPassword && !controller.isNewPasswordValid
+					? "A senha não atende aos requisitos mínimos."
+					: undefined}
+				onblur={() => (touched.newPassword = true)}
+			>
+				{#snippet suffixIcon()}
+					<button
+						type="button"
+						onclick={() => toggleNewPassword()}
+						class="rounded p-1 text-text-muted transition-colors hover:text-text-primary focus:ring-1 focus:ring-text-brand focus:outline-none"
+						aria-label={showNewPassword ? "Ocultar senha" : "Mostrar senha"}
+					>
+						{#if showNewPassword}
+							<svg
+								class="h-5 w-5"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+								<circle cx="12" cy="12" r="3" />
+							</svg>
+						{:else}
+							<svg
+								class="h-5 w-5"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+								<path
+									d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+								/>
+								<path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+								<line x1="2" x2="22" y1="2" y2="22" />
+							</svg>
+						{/if}
+					</button>
+				{/snippet}
+			</Input>
+
+			{#if controller.newPassword.length > 0}
+				<ValidationCard
+					title="A senha precisa conter:"
+					requirements={[
+						{ label: "Pelo menos 8 caracteres", met: controller.hasMinLength },
+						{
+							label: "Letras maiúsculas e minúsculas",
+							met: controller.hasUppercase && controller.hasLowercase
+						},
+						{ label: "Pelo menos um número (0-9)", met: controller.hasNumber },
+						{ label: "Pelo menos um símbolo (@$!%*?&)", met: controller.hasSpecialChar }
+					]}
+				/>
+			{/if}
+
+			<!-- Confirm Password -->
+			<Input
+				id="confirmPassword"
+				name="confirmPassword"
+				type={showConfirmPassword ? "text" : "password"}
+				label="Confirmar senha"
+				placeholder="••••••••"
+				autocomplete="new-password"
+				required
+				bind:value={controller.confirmPassword}
+				touched={touched.confirmPassword}
+				error={controller.apiError?.code === "USER_PASSWORDS_DONT_MATCH"
+					? "As senhas não coincidem."
+					: touched.confirmPassword &&
+						  controller.confirmPassword.length > 0 &&
+						  !controller.isPasswordsMatching
+						? "As senhas não coincidem."
+						: undefined}
+				disabled={controller.isLoading}
+				onblur={() => (touched.confirmPassword = true)}
+			>
+				{#snippet suffixIcon()}
+					<button
+						type="button"
+						onclick={() => toggleConfirmPassword()}
+						class="rounded p-1 text-text-muted transition-colors hover:text-text-primary focus:ring-1 focus:ring-text-brand focus:outline-none"
+						aria-label={showConfirmPassword
+							? "Ocultar confirmação de senha"
+							: "Mostrar confirmação de senha"}
+					>
+						{#if showConfirmPassword}
+							<svg
+								class="h-5 w-5"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+								<circle cx="12" cy="12" r="3" />
+							</svg>
+						{:else}
+							<svg
+								class="h-5 w-5"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+								<path
+									d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+								/>
+								<path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+								<line x1="2" x2="22" y1="2" y2="22" />
+							</svg>
+						{/if}
+					</button>
+				{/snippet}
+			</Input>
+
+			<!-- Modal Footer -->
+			<div
+				class="flex flex-col-reverse justify-end gap-3 border-t border-app-border pt-4 sm:flex-row"
+			>
+				<Button
+					type="button"
+					variant="dark"
+					size="md"
+					disabled={controller.isLoading}
+					onclick={() => closeModal()}
+					class="w-full sm:w-auto"
+				>
+					Cancelar
+				</Button>
+				<Button
+					type="submit"
+					variant="success-soft"
+					size="md"
+					disabled={controller.isLoading}
+					class="w-full sm:w-auto"
+				>
+					<span>{controller.isLoading ? "Salvando..." : "Salvar senha"}</span>
+				</Button>
+			</div>
+		</form>
+	</Modal>
 {/if}
