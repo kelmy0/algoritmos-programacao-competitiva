@@ -13,17 +13,17 @@ export async function getHighlighter(): Promise<HighlighterCore> {
 			{ createJavaScriptRegexEngine },
 			langCpp,
 			langPython,
-			themeGithubDark
+			themeDracula
 		] = await Promise.all([
 			import("shiki/core"),
 			import("shiki/engine/javascript"),
 			import("@shikijs/langs/cpp"),
 			import("@shikijs/langs/python"),
-			import("@shikijs/themes/github-dark")
+			import("@shikijs/themes/dracula")
 		]);
 
 		highlighterPromise = createHighlighterCore({
-			themes: [themeGithubDark],
+			themes: [themeDracula],
 			langs: [langCpp, langPython],
 			engine: createJavaScriptRegexEngine()
 		});
@@ -49,7 +49,7 @@ export async function getMarked(): Promise<Marked> {
 
 				return highlighter.codeToHtml(code, {
 					lang: language,
-					theme: "github-dark"
+					theme: "dracula"
 				});
 			}
 		})
