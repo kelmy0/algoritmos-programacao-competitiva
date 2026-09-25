@@ -64,43 +64,6 @@ func SetRefreshCookie(c *gin.Context, value, domain string, refreshDurationDays 
 	c.SetCookieData(cookie)
 }
 
-func SetAccessToken(c *gin.Context, value, domain string, isProduction bool) {
-	cookie := buildSecureCookie(CookieConfig{
-		Name:         "access_token",
-		Value:        value,
-		Domain:       domain,
-		Duration:     15 * time.Minute,
-		IsProduction: isProduction,
-		Partitioned:  isProduction,
-	})
-	c.SetCookieData(cookie)
-}
-
-func SetOAuthStateCookie(c *gin.Context, name, value, domain string, isProduction bool) {
-	cookie := buildSecureCookie(CookieConfig{
-		Name:         name,
-		Value:        value,
-		Domain:       domain,
-		Duration:     5 * time.Minute,
-		IsProduction: isProduction,
-		Partitioned:  false,
-	})
-
-	c.SetCookieData(cookie)
-}
-
-func ClearCookie(c *gin.Context, name, domain string, isProduction bool) {
-	cookie := buildSecureCookie(CookieConfig{
-		Name:         name,
-		Value:        "",
-		Domain:       domain,
-		Duration:     -1 * time.Hour,
-		IsProduction: isProduction,
-	})
-
-	c.SetCookieData(cookie)
-}
-
 func ExtractDeviceHash(r *http.Request) string {
 	fmt.Printf("DEBUG -> UA: %q | Lang: %q | Plat: %q | Mob: %q\n",
 		r.UserAgent(),

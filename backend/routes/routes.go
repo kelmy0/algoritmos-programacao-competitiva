@@ -7,9 +7,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/config"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/handlers"
+	authhandler "github.com/kelmy0/algoritmos-programacao-competitiva/backend/handlers/auth"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/middleware"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/repositories"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services"
+	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/services/auth"
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
@@ -18,7 +20,7 @@ import (
 
 func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, googleConfig, githubConfig *oauth2.Config, redisClient *redis.Client) {
 	isProd := cfg.AppEnv != "development"
-	argonParams := &utils.ArgonParams{
+	argonParams := utils.ArgonParams{
 		Memory:      cfg.Memory,
 		Iterations:  cfg.Iterations,
 		Parallelism: cfg.Parallelism,
@@ -64,13 +66,26 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	//Auth
 	authRepo := repositories.NewAuthRepository(db)
-	authService := services.NewAuthService(authRepo, userRepo, redisClient, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.JwtAccessPublicKey, cfg.JwtRefreshPublicKey, cfg.AppDomain, cfg.EncryptSecretKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
-	authHandler := handlers.NewAuthHandler(authService, isProd, cfg.AppDomain, cfg.JwtRefreshExpiresDays)
-	authSocialHandler := handlers.NewAuthSocialHandler(authService, googleConfig, githubConfig, cfg.AppDomain, cfg.FrontendUrl, isProd, cfg.JwtRefreshExpiresDays)
+	issuerService := auth.NewSessionIssuer(authRepo, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays, cfg.AppDomain)
+
+	loginService := auth.NewLoginService(userRepo, issuerService, cfg.JwtAccessPrivateKey, cfg.AppDomain)
+	loginHandler := authhandler.NewLoginHandler(loginService, cfg.JwtRefreshExpiresDays, isProd, cfg.AppDomain)
+
+	authTwoFactorService := auth.NewTwoFactorService(userRepo, issuerService, redisClient, cfg.JwtAccessPublicKey, cfg.JwtAccessPrivateKey, cfg.AppDomain, cfg.EncryptSecretKey)
+	authTwoFactorHandler := authhandler.NewTwoFactorHandler(authTwoFactorService, cfg.JwtRefreshExpiresDays, isProd, cfg.AppDomain)
+
+	sessionService := auth.NewSessionService(authRepo, userRepo, redisClient, cfg.JwtRefreshPublicKey, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays, cfg.AppDomain)
+	sessionHandler := authhandler.NewSessionHandler(sessionService, cfg.JwtRefreshExpiresDays, isProd, cfg.AppDomain)
+
+	googleProvider := authhandler.NewGoogleProvider(googleConfig)
+	githubProvider := authhandler.NewGithubProvider(githubConfig)
+
+	authSocialService := auth.NewSocialService(userRepo, issuerService, cfg.JwtAccessPrivateKey, cfg.AppDomain)
+	authSocialHandler := authhandler.NewAuthSocialHandler(authSocialService, cfg.AppDomain, cfg.FrontendUrl, isProd, cfg.JwtRefreshExpiresDays, googleProvider, githubProvider)
 
 	//Sign up
-	signUpService := services.NewSignUpService(userRepo, authRepo, *argonParams, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.AppDomain, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
-	signUpHandler := handlers.NewSignUpHandler(signUpService, cfg.JwtRefreshExpiresDays, cfg.AppDomain, isProd)
+	signUpService := auth.NewSignUpService(userRepo, authRepo, argonParams, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.AppDomain, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
+	signUpHandler := authhandler.NewSignUpHandler(signUpService, cfg.JwtRefreshExpiresDays, isProd, cfg.AppDomain)
 
 	//TwoFactor
 	twoFactorService := services.NewTwoFactorService(userRepo, authRepo, redisClient, cfg.EncryptSecretKey, cfg.AppName, cfg.AppDomain, cfg.JwtAccessPrivateKey, cfg.JwtRefreshPrivateKey, cfg.JwtAccessPublicKey, cfg.JwtRefreshPublicKey, cfg.JwtAccessExpiresMinutes, cfg.JwtRefreshExpiresDays)
@@ -78,7 +93,7 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 
 	//UserConfig
 	emailService := services.NewEmailService(cfg.HostEmail, cfg.PortEmail, cfg.UserEmail, cfg.PasswordEmail, cfg.FromEmail, cfg.FrontendUrl, cfg.AppName)
-	userConfigService := services.NewUserConfigService(userRepo, authRepo, *emailService, *argonParams, cfg.JwtRefreshPublicKey, cfg.AppDomain)
+	userConfigService := services.NewUserConfigService(userRepo, authRepo, *emailService, argonParams, cfg.JwtRefreshPublicKey, cfg.AppDomain)
 	userConfigHandler := handlers.NewUserConfigHandler(userConfigService)
 
 	api := router.Group("/api")
@@ -99,27 +114,26 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 		{
 			authFlow := auth.Group("", authFlowLimiter)
 			{
-				authFlow.POST("/login", requireCaptcha, authHandler.Auth)
-				authFlow.POST("/refresh", authHandler.Refresh)
-				authFlow.GET("/google", authSocialHandler.GoogleLogin)
-				authFlow.GET("/google/callback", authSocialHandler.GoogleCallback)
-				authFlow.GET("/github", authSocialHandler.GithubLogin)
-				authFlow.GET("/github/callback", authSocialHandler.GithubCallback)
+				authFlow.POST("/login", requireCaptcha, loginHandler.Login)
+				authFlow.POST("/refresh", sessionHandler.Refresh)
 				authFlow.POST("/sign-up", requireCaptcha, signUpHandler.SignUp)
+
+				authFlow.GET("/:provider", authSocialHandler.SocialLogin)
+				authFlow.GET("/:provider/callback", authSocialHandler.SocialCallback)
 			}
 
 			authStrict := auth.Group("", strictAbuseLimiter)
 			{
 				authStrict.POST("/forgot-password", requireCaptcha, userConfigHandler.ForgotPassword)
 				authStrict.POST("/reset-password", requireCaptcha, userConfigHandler.ResetPassword)
-				authStrict.POST("/verify-2fa", requireCaptcha, authHandler.Verify2FA)
+				authStrict.POST("/verify-2fa", requireCaptcha, authTwoFactorHandler.Verify2FA)
 			}
 
 			authenticatedAuth := auth.Group("", requireAuth, authFlowLimiter)
 			{
-				authenticatedAuth.POST("/logout", authHandler.Logout)
-				authenticatedAuth.POST("/logout/others", authHandler.LogoutOtherDevices)
-				authenticatedAuth.POST("/logout/all", authHandler.LogoutAllDevices)
+				authenticatedAuth.POST("/logout", sessionHandler.Logout)
+				authenticatedAuth.POST("/logout/others", sessionHandler.LogoutOtherDevices)
+				authenticatedAuth.POST("/logout/all", sessionHandler.LogoutAllDevices)
 			}
 		}
 
@@ -142,11 +156,13 @@ func ConfigRoutes(router *gin.Engine, db *pgxpool.Pool, cfg *config.Config, goog
 					twoFa.POST("/disable", twoFactorHandler.Disable2FA)
 				}
 
-				linkSocial := me.Group("/link-social")
-				{
-					linkSocial.GET("/google", authSocialHandler.GoogleLinkAccount)
-					linkSocial.GET("/github", authSocialHandler.GithubLinkAccount)
-				}
+				/*
+					linkSocial := me.Group("/link-social")
+					{
+						linkSocial.GET("/google", authSocialHandler.GoogleLinkAccount)
+						linkSocial.GET("/github", authSocialHandler.GithubLinkAccount)
+					}
+				*/
 
 			}
 		}

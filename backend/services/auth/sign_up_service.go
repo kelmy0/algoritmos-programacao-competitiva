@@ -1,4 +1,4 @@
-package services
+package auth
 
 import (
 	"context"
@@ -15,18 +15,18 @@ import (
 	"github.com/kelmy0/algoritmos-programacao-competitiva/backend/utils"
 )
 
-type SignUpUserRepository interface {
+type signUpUserRepository interface {
 	CheckAvailability(ctx context.Context, email, username string) (emailTaken bool, usernameTaken bool, err error)
 	CreateUser(ctx context.Context, data models.NewUser) (string, error)
 }
 
-type SignUpAuthRepository interface {
+type signUpAuthRepository interface {
 	SaveRefreshToken(ctx context.Context, tokenId, userId, familyId string, expiresAt time.Time) error
 }
 
 type SignUpService struct {
-	UserRepo             SignUpUserRepository
-	AuthRepo             SignUpAuthRepository
+	UserRepo             signUpUserRepository
+	AuthRepo             signUpAuthRepository
 	ArgonParams          utils.ArgonParams
 	JwtAccessPrivateKey  ed25519.PrivateKey
 	JwtRefreshPrivateKey ed25519.PrivateKey
@@ -35,12 +35,7 @@ type SignUpService struct {
 	AppDomain            string
 }
 
-type SignUpResult struct {
-	SignUpResponse dto.SignUpResponse
-	RefreshToken   string
-}
-
-func NewSignUpService(userRepo SignUpUserRepository, authRepo SignUpAuthRepository, argonParams utils.ArgonParams, jwtaccessPrivateKey, jwtRefreshPrivateKey ed25519.PrivateKey, appDomain string, jwtAccessExpiration, jwtRefreshExpiration int) *SignUpService {
+func NewSignUpService(userRepo signUpUserRepository, authRepo signUpAuthRepository, argonParams utils.ArgonParams, jwtaccessPrivateKey, jwtRefreshPrivateKey ed25519.PrivateKey, appDomain string, jwtAccessExpiration, jwtRefreshExpiration int) *SignUpService {
 	return &SignUpService{
 		UserRepo:             userRepo,
 		AuthRepo:             authRepo,
